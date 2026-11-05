@@ -1,0 +1,93 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-test:
+    name: Backend Lint, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma Client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: TypeScript Compilation Check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Seed Test Database & Run Linways E2E Tests
+        working-directory: backend
+        run: |
+          npx prisma db push
+          npx ts-node prisma/seed.ts
+          npm run start &
+          sleep 8
+          npx ts-node test-linways-api.ts
+
+  frontend-test:
+    name: Frontend Analyze, Test & Web Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Run Flutter Tests
+        working-directory: frontend
+        run: flutter test
+
+      - name: Build Web Release
+        working-directory: frontend
+        run: flutter build web --release
+
+  docker-build:
+    name: Docker Containerization Build
+    needs: [ backend-test, frontend-test ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: school-erp-api:latest
+
+      - name: Build Frontend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: school-erp-web:latest
