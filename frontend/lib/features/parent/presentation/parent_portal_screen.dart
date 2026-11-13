@@ -134,19 +134,23 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
               ElevatedButton.icon(
                 onPressed: () async {
+                  // Payments can only be marked successful by a verified payment-gateway
+                  // callback on the server. Until a gateway is integrated, create the
+                  // checkout order (server-side amount) and direct the parent to the office.
+                  String message;
                   try {
-                    final res = await ApiClient().dio.post('/fees/pay', data: {
+                    await ApiClient().dio.post('/payments/checkout', data: {
                       'invoiceId': inv['id'],
-                      'amount': amountDue,
                       'method': method,
                     });
-                    final receipt = res.data['data']['receiptNo'];
-                    if (mounted) {
-                      Navigator.pop(ctx);
-                      _showReceiptDialog(receipt, amountDue.toString(), inv['title']);
-                      _loadChildData(_children[_selectedChildIndex]['id']);
-                    }
-                  } catch (_) {}
+                    message = 'Online payment is not available yet. Please pay ₹$amountDue at the school office.';
+                  } catch (_) {
+                    message = 'Could not start the payment. Please try again or contact the school office.';
+                  }
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+                  }
                 },
                 icon: const Icon(Icons.lock, size: 16),
                 label: Text('Pay ₹$amountDue Now'),

@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertStudentAccess, getLinkedStudentIds } from '../../common/access/student-access';
+
+const LEAVE_DECISIONS = ['APPROVED', 'REJECTED', 'MORE_INFO_REQUIRED'];
 
 @Injectable()
 export class LeaveService {
   constructor(private prisma: PrismaService) {}
 
-  async getLeaveRequests(schoolId: string, query: { studentId?: string }) {
+  async getLeaveRequests(schoolId: string, query: { studentId?: string; userId: string; role: string }) {
     const where: any = { schoolId };
-    if (query.studentId) where.studentId = query.studentId;
+    if (query.role === 'PARENT') {
+      const linked = await getLinkedStudentIds(this.prisma, schoolId, query.userId);
+      where.studentId = { in: query.studentId ? linked.filter((id) => id === query.studentId) : linked };
+    } else if (query.studentId) {
+      where.studentId = query.studentId;
+    }
 
     const requests = await this.prisma.leaveRequest.findMany({
       where,
@@ -105,7 +113,17 @@ export class LeaveService {
     }));
   }
 
-  async createLeaveRequest(schoolId: string, data: any) {
+  async createLeaveRequest(schoolId: string, user: { userId: string; role: string }, data: any) {
+    if (!data?.studentId || !data.startDate || !data.endDate || !data.reason) {
+      throw new BadRequestException('studentId, startDate, endDate and reason are required');
+    }
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) {
+      throw new BadRequestException('Invalid leave dates');
+    }
+    await assertStudentAccess(this.prisma, schoolId, user, data.studentId);
+
     const student = await this.prisma.student.findFirst({
       where: { id: data.studentId, schoolId },
       include: {
@@ -124,9 +142,9 @@ export class LeaveService {
         schoolId,
         studentId: data.studentId,
         applicantName: data.applicantName || 'Parent / Guardian',
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
-        reason: data.reason,
+        startDate,
+        endDate,
+        reason: String(data.reason),
         status: 'PENDING',
       },
     });
@@ -159,11 +177,15 @@ export class LeaveService {
   }
 
   async decideLeave(
+    schoolId: string,
     leaveId: string,
-    data: { status: 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUIRED'; remarks?: string; decidedBy?: string; actorId?: string },
+    data: { status: 'APPROVED' | 'REJECTED' | 'MORE_INFO_REQUIRED'; remarks?: string; decidedBy: string; actorId: string },
   ) {
-    const leave = await this.prisma.leaveRequest.findUnique({
-      where: { id: leaveId },
+    if (!LEAVE_DECISIONS.includes(data.status)) {
+      throw new BadRequestException(`status must be one of ${LEAVE_DECISIONS.join(', ')}`);
+    }
+    const leave = await this.prisma.leaveRequest.findFirst({
+      where: { id: leaveId, schoolId },
       include: {
         student: {
           include: {
@@ -178,13 +200,16 @@ export class LeaveService {
     if (!leave) {
       throw new NotFoundException('Leave request not found');
     }
+    if (leave.status === 'APPROVED' || leave.status === 'REJECTED') {
+      throw new BadRequestException(`Leave request has already been ${leave.status.toLowerCase()}`);
+    }
 
     const updated = await this.prisma.leaveRequest.update({
       where: { id: leaveId },
       data: {
         status: data.status,
         decisionRemarks: data.remarks || `Decision: ${data.status}`,
-        decidedBy: data.decidedBy || 'Class Teacher',
+        decidedBy: data.decidedBy,
       },
     });
 
@@ -192,8 +217,8 @@ export class LeaveService {
     await this.prisma.auditLog.create({
       data: {
         schoolId: leave.schoolId,
-        actorId: data.actorId || 'ClassTeacher',
-        actorName: data.decidedBy || 'Class Teacher',
+        actorId: data.actorId,
+        actorName: data.decidedBy,
         action: `LEAVE_${data.status}`,
         entity: 'LeaveRequest',
         entityId: leaveId,

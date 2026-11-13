@@ -322,31 +322,50 @@ async function main() {
     if (!Array.isArray(res.body) || res.body.length === 0) {
       throw new Error('Expected at least one invoice for student');
     }
-    testInvoiceId = res.body[0].id;
+    // Pick an invoice that still has a balance (paying a settled invoice is rejected).
+    const open = res.body.find((inv: any) => inv.dueAmountMinor > 0) || res.body[0];
+    testInvoiceId = open.id;
   });
 
-  await runTest('Parent Portal', 'Execute online fee payment simulation', async () => {
+  await runTest('Parent Portal', 'Reject parent self-marking an invoice as paid (FEE-04)', async () => {
     const payRes = await request(
       'POST',
       '/fees/pay',
-      {
-        invoiceId: testInvoiceId,
-        paymentMethod: 'UPI',
-        transactionRef: `UPI-TXN-${Date.now()}`,
-      },
-      {
-        Authorization: `Bearer ${parentToken}`,
-        'x-school-id': oakridgeSchoolId,
-      },
+      { invoiceId: testInvoiceId },
+      { Authorization: `Bearer ${parentToken}` },
+    );
+    if (payRes.status !== 403) {
+      throw new Error(`Expected 403 Forbidden, got ${payRes.status}: ${JSON.stringify(payRes.body)}`);
+    }
+  });
+
+  await runTest('Fee Office', 'Record office payment for outstanding balance', async () => {
+    const payRes = await request(
+      'POST',
+      '/fees/pay',
+      { invoiceId: testInvoiceId, method: 'CASH' },
+      { Authorization: `Bearer ${oakridgeAdminToken}` },
     );
     if (payRes.status !== 200 && payRes.status !== 201) {
       throw new Error(`Payment failed with status ${payRes.status}: ${JSON.stringify(payRes.body)}`);
     }
-    if (payRes.body.invoice?.status !== 'PAID' && payRes.body.status !== 'PAID') {
-      throw new Error(`Expected invoice status PAID, got ${payRes.body.invoice?.status || payRes.body.status}`);
+    if (payRes.body.invoice?.status !== 'PAID') {
+      throw new Error(`Expected invoice status PAID, got ${payRes.body.invoice?.status}`);
     }
     if (!payRes.body.receiptNo) {
       throw new Error('Missing digital receiptNo');
+    }
+  });
+
+  await runTest('Fee Office', 'Reject payment on an already settled invoice', async () => {
+    const payRes = await request(
+      'POST',
+      '/fees/pay',
+      { invoiceId: testInvoiceId, method: 'CASH' },
+      { Authorization: `Bearer ${oakridgeAdminToken}` },
+    );
+    if (payRes.status !== 400) {
+      throw new Error(`Expected 400 Bad Request, got ${payRes.status}`);
     }
   });
 

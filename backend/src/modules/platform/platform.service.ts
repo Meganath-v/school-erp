@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSchoolDto } from './platform.dto';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class PlatformService {
@@ -87,76 +88,89 @@ export class PlatformService {
       where: dto.planCode ? { code: dto.planCode } : { code: 'GROWTH' },
     });
 
-    const passwordHash = await bcrypt.hash('password123', 10);
+    // One-time random password for a newly created admin; returned once so it can be handed over securely.
+    const temporaryPassword = randomBytes(12).toString('base64url');
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
-    // Create school, admin user, membership, and initial subscription in transaction
-    const school = await this.prisma.school.create({
-      data: {
-        name: dto.name,
-        code: dto.code.toUpperCase(),
-        slug: dto.slug.toLowerCase(),
-        address: dto.address,
-        contactEmail: dto.contactEmail,
-        contactPhone: dto.contactPhone,
-        status: 'ACTIVE',
-      },
-    });
-
-    // Find or create admin user
-    let user = await this.prisma.user.findUnique({
-      where: { email: dto.adminEmail },
-    });
-
-    if (!user) {
-      user = await this.prisma.user.create({
+    const { school, createdNewUser } = await this.prisma.$transaction(async (tx) => {
+      // Create school, admin user, membership, and initial subscription in transaction
+      const school = await tx.school.create({
         data: {
-          email: dto.adminEmail,
-          firstName: dto.adminFirstName,
-          lastName: dto.adminLastName,
-          passwordHash,
+          name: dto.name,
+          code: dto.code.toUpperCase(),
+          slug: dto.slug.toLowerCase(),
+          address: dto.address,
+          contactEmail: dto.contactEmail,
+          contactPhone: dto.contactPhone,
           status: 'ACTIVE',
         },
       });
-    }
 
-    // Assign School Admin membership
-    await this.prisma.userSchoolMembership.create({
-      data: {
-        userId: user.id,
-        schoolId: school.id,
-        defaultRole: 'SCHOOL_ADMIN',
-        status: 'ACTIVE',
-      },
-    });
+      // Find or create admin user
+      let user = await tx.user.findUnique({
+        where: { email: dto.adminEmail },
+      });
 
-    // Create subscription
-    if (defaultPlan) {
-      const endsAt = new Date();
-      endsAt.setFullYear(endsAt.getFullYear() + 1);
-      await this.prisma.subscription.create({
+      let createdNewUser = false;
+      if (!user) {
+        createdNewUser = true;
+        user = await tx.user.create({
+          data: {
+            email: dto.adminEmail,
+            firstName: dto.adminFirstName,
+            lastName: dto.adminLastName,
+            passwordHash,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      // Assign School Admin membership
+      await tx.userSchoolMembership.create({
+        data: {
+          userId: user.id,
+          schoolId: school.id,
+          defaultRole: 'SCHOOL_ADMIN',
+          status: 'ACTIVE',
+        },
+      });
+
+      // Create subscription
+      if (defaultPlan) {
+        const endsAt = new Date();
+        endsAt.setFullYear(endsAt.getFullYear() + 1);
+        await tx.subscription.create({
+          data: {
+            schoolId: school.id,
+            planId: defaultPlan.id,
+            status: 'ACTIVE',
+            startsAt: new Date(),
+            endsAt,
+            providerRef: `SUB_${school.code}_INIT`,
+          },
+        });
+      }
+
+      // Default Academic Year
+      await tx.academicYear.create({
         data: {
           schoolId: school.id,
-          planId: defaultPlan.id,
+          name: '2026-2027',
+          startDate: new Date('2026-06-01'),
+          endDate: new Date('2027-04-30'),
+          isCurrent: true,
           status: 'ACTIVE',
-          startsAt: new Date(),
-          endsAt,
-          providerRef: `SUB_${school.code}_INIT`,
         },
       });
-    }
 
-    // Default Academic Year
-    await this.prisma.academicYear.create({
-      data: {
-        schoolId: school.id,
-        name: '2026-2027',
-        startDate: new Date('2026-06-01'),
-        endDate: new Date('2027-04-30'),
-        isCurrent: true,
-        status: 'ACTIVE',
-      },
+      return { school, createdNewUser };
     });
 
-    return school;
+    return {
+      ...school,
+      adminCredentials: createdNewUser
+        ? { email: dto.adminEmail, temporaryPassword, note: 'Shown once. Share securely and change after first sign-in.' }
+        : { email: dto.adminEmail, note: 'Existing user was granted SCHOOL_ADMIN; their password is unchanged.' },
+    };
   }
 }

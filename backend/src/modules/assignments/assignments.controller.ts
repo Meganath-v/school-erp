@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AssignmentsService } from './assignments.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentSchoolId } from '../../common/decorators/current-user.decorator';
+import { Roles, ACADEMIC_STAFF } from '../../common/decorators/roles.decorator';
+import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('assignments')
 @UseGuards(JwtAuthGuard)
@@ -19,27 +20,41 @@ export class AssignmentsController {
     return { data };
   }
 
+  @Roles(...ACADEMIC_STAFF)
   @Post()
   async createAssignment(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.assignmentsService.createAssignment(schoolId, body);
     return { data };
   }
 
+  @Roles(...ACADEMIC_STAFF)
   @Get(':id/submissions')
   async getSubmissions(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
     const data = await this.assignmentsService.getSubmissions(schoolId, id);
     return { data };
   }
 
+  @Roles('PARENT')
   @Post(':id/submissions')
-  async submitAssignment(@Param('id') assignmentId: string, @Body() body: any) {
-    const data = await this.assignmentsService.submitAssignment({ ...body, assignmentId });
+  async submitAssignment(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: any,
+    @Param('id') assignmentId: string,
+    @Body() body: any,
+  ) {
+    const data = await this.assignmentsService.submitAssignment(schoolId, user, {
+      assignmentId,
+      studentId: body?.studentId,
+      notes: body?.notes,
+      fileUrl: body?.fileUrl,
+    });
     return { data };
   }
 
+  @Roles(...ACADEMIC_STAFF)
   @Post('submissions/:id/grade')
-  async gradeSubmission(@Param('id') submissionId: string, @Body() body: any) {
-    const data = await this.assignmentsService.gradeSubmission(submissionId, body);
+  async gradeSubmission(@CurrentSchoolId() schoolId: string, @Param('id') submissionId: string, @Body() body: any) {
+    const data = await this.assignmentsService.gradeSubmission(schoolId, submissionId, body);
     return { data };
   }
 }

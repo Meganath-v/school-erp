@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, UseGuards } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, SCHOOL_ADMINS } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId } from '../../common/decorators/current-user.decorator';
 
 @Controller('schools')
@@ -14,6 +15,7 @@ export class SchoolsController {
     return { data };
   }
 
+  @Roles(...SCHOOL_ADMINS)
   @Patch('current')
   async updateSchool(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.schoolsService.updateSchool(schoolId, body);
@@ -26,6 +28,7 @@ export class SchoolsController {
     return { data };
   }
 
+  @Roles(...SCHOOL_ADMINS)
   @Post('academic-years')
   async createAcademicYear(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.schoolsService.createAcademicYear(schoolId, body);
@@ -38,12 +41,14 @@ export class SchoolsController {
     return { data };
   }
 
+  @Roles(...SCHOOL_ADMINS)
   @Post('classes')
   async createClass(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.schoolsService.createClass(schoolId, body);
     return { data };
   }
 
+  @Roles(...SCHOOL_ADMINS)
   @Post('sections')
   async createSection(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.schoolsService.createSection(schoolId, body);
@@ -56,6 +61,7 @@ export class SchoolsController {
     return { data };
   }
 
+  @Roles(...SCHOOL_ADMINS)
   @Post('subjects')
   async createSubject(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.schoolsService.createSubject(schoolId, body);

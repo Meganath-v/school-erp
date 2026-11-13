@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertStudentAccess } from '../../common/access/student-access';
 
 @Injectable()
 export class AssignmentsService {
@@ -82,7 +83,30 @@ export class AssignmentsService {
     }));
   }
 
-  async submitAssignment(data: { assignmentId: string; studentId: string; notes?: string; fileUrl?: string }) {
+  async submitAssignment(
+    schoolId: string,
+    user: { userId: string; role: string },
+    data: { assignmentId: string; studentId: string; notes?: string; fileUrl?: string },
+  ) {
+    const assignment = await this.prisma.assignment.findFirst({ where: { id: data.assignmentId, schoolId } });
+    if (!assignment) {
+      throw new NotFoundException('Assignment not found');
+    }
+    if (assignment.status !== 'ACTIVE') {
+      throw new BadRequestException('This assignment is closed for submissions');
+    }
+    // The caller must be a guardian of the student, and the student must be in the assignment's section.
+    await assertStudentAccess(this.prisma, schoolId, user, data.studentId);
+    const enrolled = await this.prisma.enrollment.findFirst({
+      where: { schoolId, studentId: data.studentId, sectionId: assignment.sectionId, status: 'ACTIVE' },
+    });
+    if (!enrolled) {
+      throw new BadRequestException('Student is not enrolled in the section this assignment was issued to');
+    }
+    if (data.fileUrl && !/^https:\/\//i.test(data.fileUrl)) {
+      throw new BadRequestException('fileUrl must be an https:// link');
+    }
+
     return this.prisma.submission.upsert({
       where: {
         assignmentId_studentId: {
@@ -107,11 +131,23 @@ export class AssignmentsService {
     });
   }
 
-  async gradeSubmission(submissionId: string, data: { marksObtained: number; feedback?: string }) {
+  async gradeSubmission(schoolId: string, submissionId: string, data: { marksObtained: number; feedback?: string }) {
+    const submission = await this.prisma.submission.findFirst({
+      where: { id: submissionId, assignment: { schoolId } },
+      include: { assignment: true },
+    });
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    const marks = Number(data?.marksObtained);
+    if (!Number.isInteger(marks) || marks < 0 || marks > submission.assignment.maxMarks) {
+      throw new BadRequestException(`marksObtained must be a whole number between 0 and ${submission.assignment.maxMarks}`);
+    }
+
     return this.prisma.submission.update({
       where: { id: submissionId },
       data: {
-        marksObtained: data.marksObtained,
+        marksObtained: marks,
         feedback: data.feedback,
         status: 'REVIEWED',
       },

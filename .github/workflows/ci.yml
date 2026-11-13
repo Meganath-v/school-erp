@@ -21,6 +21,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package.json
 
+      - name: Generate per-run JWT secret
+        run: echo "JWT_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         working-directory: backend
         run: npm ci --legacy-peer-deps

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -68,8 +68,22 @@ export class AcademicsService {
     });
   }
 
-  async updateLessonProgress(id: string, data: { conductedHours?: number; actualHours?: number; status?: string }) {
-    const hours = data.conductedHours !== undefined ? data.conductedHours : (data.actualHours || 0);
+  async updateLessonProgress(
+    schoolId: string,
+    id: string,
+    data: { conductedHours?: number; actualHours?: number; status?: string },
+  ) {
+    const plan = await this.prisma.lessonPlan.findFirst({ where: { id, schoolId } });
+    if (!plan) {
+      throw new NotFoundException('Lesson plan not found');
+    }
+    const hours = Number(data.conductedHours !== undefined ? data.conductedHours : (data.actualHours || 0));
+    if (!Number.isInteger(hours) || hours < 0) {
+      throw new BadRequestException('conductedHours must be a non-negative whole number');
+    }
+    if (data.status && !['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(data.status)) {
+      throw new BadRequestException('Invalid lesson plan status');
+    }
     return this.prisma.lessonPlan.update({
       where: { id },
       data: {

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { RemindersService } from './reminders.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('reminders')
@@ -39,6 +40,7 @@ export class RemindersController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Post('trigger-automated')
   async triggerAutomated(@CurrentSchoolId() schoolId: string) {
     const data = await this.remindersService.triggerAutomatedReminders(schoolId);

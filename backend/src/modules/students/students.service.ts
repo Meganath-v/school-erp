@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertStudentAccess } from '../../common/access/student-access';
 
 @Injectable()
 export class StudentsService {
@@ -84,7 +85,8 @@ export class StudentsService {
     }));
   }
 
-  async getStudentById(schoolId: string, id: string) {
+  async getStudentById(schoolId: string, id: string, user: { userId: string; role: string }) {
+    await assertStudentAccess(this.prisma, schoolId, user, id);
     const student = await this.prisma.student.findFirst({
       where: { id, schoolId },
       include: {
@@ -104,6 +106,8 @@ export class StudentsService {
           take: 30,
         },
         marks: {
+          // Parents only see results once the exam has been published.
+          where: user.role === 'PARENT' ? { examSubject: { exam: { status: 'PUBLISHED' } } } : undefined,
           include: {
             examSubject: {
               include: {
@@ -200,7 +204,8 @@ export class StudentsService {
     return student;
   }
 
-  async getReportCard(schoolId: string, studentId: string) {
+  async getReportCard(schoolId: string, studentId: string, user: { userId: string; role: string }) {
+    await assertStudentAccess(this.prisma, schoolId, user, studentId);
     const student = await this.prisma.student.findFirst({
       where: { id: studentId, schoolId },
       include: {
@@ -209,6 +214,8 @@ export class StudentsService {
           include: { class: true, section: true, academicYear: true },
         },
         marks: {
+          // Parents only see results once the exam has been published.
+          where: user.role === 'PARENT' ? { examSubject: { exam: { status: 'PUBLISHED' } } } : undefined,
           include: {
             examSubject: {
               include: {

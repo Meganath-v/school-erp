@@ -148,7 +148,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                   }
 
                   try {
-                    await ApiClient().dio.post('/platform/schools', data: {
+                    final res = await ApiClient().dio.post('/platform/schools', data: {
                       'name': nameCtrl.text.trim(),
                       'code': codeCtrl.text.trim().toUpperCase(),
                       'slug': slugCtrl.text.trim().toLowerCase(),
@@ -157,13 +157,28 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                       'adminLastName': lastNameCtrl.text.trim().isEmpty ? 'User' : lastNameCtrl.text.trim(),
                       'planCode': selectedPlan,
                     });
+                    final creds = res.data['data']?['adminCredentials'];
+                    final tempPassword = creds?['temporaryPassword'];
 
                     if (mounted) {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('School onboarded and provisioned successfully!')),
-                      );
                       _fetchPlatformData();
+                      // The temporary admin password is returned only once; show it so it can be handed over.
+                      showDialog(
+                        context: context,
+                        builder: (dCtx) => AlertDialog(
+                          title: const Text('School provisioned'),
+                          content: SelectableText(
+                            tempPassword != null
+                                ? 'Admin: ${creds['email']}\nTemporary password: $tempPassword\n\n'
+                                    'This password is shown only once. Share it securely.'
+                                : 'Existing user ${creds?['email'] ?? ''} was made School Admin. Their password is unchanged.',
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Done')),
+                          ],
+                        ),
+                      );
                     }
                   } catch (err) {
                     ScaffoldMessenger.of(context).showSnackBar(

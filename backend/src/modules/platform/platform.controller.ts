@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, UseGuards, ForbiddenException } from '@nes
 import { PlatformService } from './platform.service';
 import { CreateSchoolDto } from './platform.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, PLATFORM_ADMINS } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('platform')
@@ -15,6 +16,7 @@ export class PlatformController {
     }
   }
 
+  @Roles(...PLATFORM_ADMINS)
   @Get('schools')
   async getAllSchools(@CurrentUser('role') role: string) {
     this.assertSuperAdmin(role);
@@ -22,6 +24,7 @@ export class PlatformController {
     return { data };
   }
 
+  @Roles(...PLATFORM_ADMINS)
   @Post('schools')
   async createSchool(@CurrentUser('role') role: string, @Body() dto: CreateSchoolDto) {
     this.assertSuperAdmin(role);
@@ -29,6 +32,7 @@ export class PlatformController {
     return { data };
   }
 
+  @Roles(...PLATFORM_ADMINS)
   @Get('stats')
   async getStats(@CurrentUser('role') role: string) {
     this.assertSuperAdmin(role);
@@ -36,6 +40,7 @@ export class PlatformController {
     return { data };
   }
 
+  @Roles(...PLATFORM_ADMINS)
   @Get('plans')
   async getPlans(@CurrentUser('role') role: string) {
     this.assertSuperAdmin(role);
