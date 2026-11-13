@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linways-Grade ERP | Teacher Computer Desktop Portal</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS (XLSX) for client-side Excel handling -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .spreadsheet-input:focus {
+      outline: 2px solid #2563eb;
+      background-color: #eff6ff;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="no-print bg-slate-900 text-white shadow-md z-30 sticky top-0 px-6 py-3 flex items-center justify-between border-b border-slate-800">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center font-bold text-lg text-white shadow-md">
+        ERP
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-lg tracking-tight">Linways-Grade Academic Suite</h1>
+          <span class="bg-indigo-500/20 text-indigo-300 text-xs px-2.5 py-0.5 rounded-full font-medium border border-indigo-500/30">Desktop Workstation</span>
+        </div>
+        <p class="text-xs text-slate-400">High-Density Computer Portal for Teachers & Faculty</p>
+      </div>
+    </div>
+
+    <!-- User Profile & Status -->
+    <div class="flex items-center space-x-4">
+      <div id="authStatus" class="flex items-center space-x-3">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Login Modal Overlay (if unauthenticated) -->
+  <div id="loginModal" class="no-print fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-8">
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 font-bold text-xl">
+          👨‍🏫
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900">Teacher Desktop Access</h2>
+        <p class="text-sm text-slate-500 mt-1">Sign in to access bulk marks entry, Excel import, and registers</p>
+      </div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Email</label>
+          <input type="email" id="loginEmail" value="teacher.smith@oakridge.edu" required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+          <input type="password" id="loginPassword" value="password123" required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+        </div>
+
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+          <span class="font-semibold text-slate-800">Quick Faculty Credentials:</span><br>
+          • Class Teacher: <span class="font-mono text-indigo-600">teacher.smith@oakridge.edu</span><br>
+          • Subject Teacher: <span class="font-mono text-indigo-600">teacher.jones@oakridge.edu</span><br>
+          Password: <span class="font-mono text-indigo-600">password123</span>
+        </div>
+
+        <button type="submit" id="loginBtn"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl transition shadow-md flex items-center justify-center space-x-2">
+          <span>Sign In to Workstation</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Workstation Layout -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Desktop Sidebar Navigation -->
+    <aside class="no-print w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0">
+      <div class="p-4 border-b border-slate-800">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Assigned Workspace</div>
+        <div class="font-semibold text-white truncate text-sm" id="sidebarSchoolName">Oakridge International</div>
+        <div class="text-xs text-indigo-400 font-medium" id="sidebarRoleBadge">Class Teacher (Grade 10-A)</div>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto" id="sideNav">
+        <button onclick="switchTab('marksGrid')" data-tab="marksGrid"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-white bg-indigo-600 shadow-sm">
+          <i data-lucide="grid" class="w-4 h-4"></i>
+          <span>Spreadsheet Mark Entry</span>
+        </button>
+
+        <button onclick="switchTab('excelWizard')" data-tab="excelWizard"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span>Excel Import & Export</span>
+        </button>
+
+        <button onclick="switchTab('attendanceRegister')" data-tab="attendanceRegister"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="calendar-check" class="w-4 h-4"></i>
+          <span>Class Attendance Matrix</span>
+        </button>
+
+        <button onclick="switchTab('circulars')" data-tab="circulars"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Circular Dispatcher</span>
+        </button>
+
+        <button onclick="switchTab('obeSyllabus')" data-tab="obeSyllabus"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>OBE & Course Diary</span>
+        </button>
+
+        <button onclick="switchTab('tasksReminders')" data-tab="tasksReminders"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="check-square" class="w-4 h-4"></i>
+          <span>Tasks & Reminders</span>
+        </button>
+
+        <button onclick="switchTab('broadsheet')" data-tab="broadsheet"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Broadsheet & Reports</span>
+        </button>
+
+        <button onclick="switchTab('feedbackDesk')" data-tab="feedbackDesk"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="message-square" class="w-4 h-4"></i>
+          <span>Parent Feedback Desk</span>
+        </button>
+      </nav>
+
+      <!-- Computer Mode Footer Status -->
+      <div class="p-3 bg-slate-950/60 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+        <span class="flex items-center space-x-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Desktop Online</span>
+        </span>
+        <button onclick="logout()" class="text-rose-400 hover:text-rose-300 text-xs">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- Main Dynamic Content Workspace -->
+    <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+
+      <!-- =============================================================== -->
+      <!-- TAB 1: SPREADSHEET MARK ENTRY GRID                              -->
+      <!-- =============================================================== -->
+      <section id="tab-marksGrid" class="tab-pane space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="grid" class="w-5 h-5 text-indigo-600"></i>
+              <span>High-Density Marks Entry Spreadsheet</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Rapid keyboard-driven score entry (Use Tab/Enter to advance, A to toggle Absent)</p>
+          </div>
+
+          <div class="flex items-center flex-wrap gap-3">
+            <select id="examSelector" onchange="loadExamSubjectDetails()"
+              class="bg-slate-100 border border-slate-300 text-slate-800 text-xs rounded-xl px-3 py-2 font-medium focus:ring-indigo-500">
+              <option value="">Loading Exams...</option>
+            </select>
+
+            <select id="subjectSelector" onchange="loadExamSubjectDetails()"
+              class="bg-slate-100 border border-slate-300 text-slate-800 text-xs rounded-xl px-3 py-2 font-medium focus:ring-indigo-500">
+              <option value="">Select Subject...</option>
+            </select>
+
+            <button onclick="saveSpreadsheetMarks()" id="saveMarksBtn"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition shadow flex items-center space-x-1.5">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              <span>Save All Marks (Ctrl+S)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Statistics Banner -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Class Roster</div>
+            <div class="text-lg font-bold text-slate-800" id="statTotalStudents">0</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Marks Entered</div>
+            <div class="text-lg font-bold text-indigo-600" id="statEnteredCount">0</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Pass Rate</div>
+            <div class="text-lg font-bold text-emerald-600" id="statPassRate">0%</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Class Average</div>
+            <div class="text-lg font-bold text-sky-600" id="statAverage">0</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Highest Mark</div>
+            <div class="text-lg font-bold text-amber-600" id="statHighest">0</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Absentees</div>
+            <div class="text-lg font-bold text-rose-600" id="statAbsentees">0</div>
+          </div>
+        </div>
+
+        <!-- Spreadsheet Table Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto max-h-[580px]">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10 border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4 w-12 text-center">#</th>
+                  <th class="py-3 px-4 w-28">Admission No</th>
+                  <th class="py-3 px-4 w-20 text-center">Roll No</th>
+                  <th class="py-3 px-4">Student Name</th>
+                  <th class="py-3 px-4 w-28">Section</th>
+                  <th class="py-3 px-4 w-32 text-center">Max Marks</th>
+                  <th class="py-3 px-4 w-36 text-center">Marks Obtained</th>
+                  <th class="py-3 px-4 w-24 text-center">Absent?</th>
+                  <th class="py-3 px-4 w-24 text-center">Grade</th>
+                  <th class="py-3 px-4 w-24 text-center">Status</th>
+                  <th class="py-3 px-4">Teacher Evaluation Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="spreadsheetBody" class="divide-y divide-slate-100 text-slate-800">
+                <tr>
+                  <td colspan="11" class="py-12 text-center text-slate-400">
+                    Select an Exam and Subject from the top dropdown to load the spreadsheet roster.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 2: EXCEL IMPORT & EXPORT WIZARD                             -->
+      <!-- =============================================================== -->
+      <section id="tab-excelWizard" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-600"></i>
+            <span>Bulk Excel & CSV Marks Management</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            Export class rosters to Excel (.xlsx/.csv), enter marks offline in Microsoft Excel or Google Sheets, and import with zero manual typing errors.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <!-- Step 1: Download Template -->
+            <div class="p-5 rounded-xl border border-indigo-100 bg-indigo-50/50 flex flex-col justify-between">
+              <div>
+                <span class="bg-indigo-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">Step 1</span>
+                <h3 class="font-bold text-slate-900 text-sm mt-3">Download Pre-Filled Roster Template</h3>
+                <p class="text-xs text-slate-600 mt-1">
+                  Downloads an Excel/CSV file with all students, admission numbers, roll numbers, and maximum marks pre-configured.
+                </p>
+              </div>
+
+              <div class="mt-4 flex items-center space-x-3">
+                <button onclick="downloadExcelTemplate()"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Download .CSV Template</span>
+                </button>
+                <button onclick="downloadXlsxFile()"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-sm">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                  <span>Download .XLSX Workbook</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Upload & Parse -->
+            <div class="p-5 rounded-xl border border-emerald-100 bg-emerald-50/50 flex flex-col justify-between">
+              <div>
+                <span class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">Step 2</span>
+                <h3 class="font-bold text-slate-900 text-sm mt-3">Upload Completed Marks Sheet</h3>
+                <p class="text-xs text-slate-600 mt-1">
+                  Drag and drop the filled Excel or CSV sheet. The computer engine validates every mark in real time.
+                </p>
+              </div>
+
+              <div class="mt-4">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelFileUpload(event)">
+                <label for="excelFileInput"
+                  class="cursor-pointer border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white p-3 rounded-xl flex items-center justify-center space-x-2 text-xs font-semibold text-emerald-700 transition">
+                  <i data-lucide="upload-cloud" class="w-5 h-5 text-emerald-500"></i>
+                  <span>Choose or Drag Excel (.xlsx / .csv) file</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Excel Preview & Verification Container -->
+        <div id="excelPreviewContainer" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i>
+                <span>Extracted File Preview & Validation Check</span>
+              </h3>
+              <p class="text-xs text-slate-500" id="excelFileInfo">50 rows detected</p>
+            </div>
+
+            <button onclick="commitImportedMarks()" id="commitImportBtn"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition shadow flex items-center space-x-1.5">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+              <span>Confirm & Commit Marks to Database</span>
+            </button>
+          </div>
+
+          <div class="overflow-x-auto max-h-[400px] border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0" id="previewTableHead">
+                <!-- Headers rendered dynamically -->
+              </thead>
+              <tbody id="previewTableBody" class="divide-y divide-slate-100">
+                <!-- Rows rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 3: CONSOLIDATED CLASS ATTENDANCE MATRIX & CONDONATION       -->
+      <!-- =============================================================== -->
+      <section id="tab-attendanceRegister" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="calendar-check" class="w-5 h-5 text-indigo-600"></i>
+              <span>Consolidated Class Attendance Register & Condonation</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Linways-standard matrix monitoring the mandatory 75% attendance condonation threshold across the academic term.
+            </p>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <button onclick="exportCondonationList()"
+              class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-500"></i>
+              <span>Export &lt;75% Defaulters</span>
+            </button>
+            <button onclick="triggerAutomatedScan()"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5 shadow-sm">
+              <i data-lucide="bell-ring" class="w-4 h-4"></i>
+              <span>Send Attendance Warning Reminders</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="matrixTable">
+              <thead class="bg-slate-100 text-slate-700 font-semibold" id="matrixThead">
+                <!-- Matrix headers -->
+              </thead>
+              <tbody id="matrixTbody" class="divide-y divide-slate-100">
+                <!-- Matrix rows with color-coded badges -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 4: CIRCULAR DISPATCHER                                      -->
+      <!-- =============================================================== -->
+      <section id="tab-circulars" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          <!-- Composer Column -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="send" class="w-5 h-5 text-indigo-600"></i>
+              <span>Dispatch New Circular</span>
+            </h2>
+            <p class="text-xs text-slate-500">
+              Class Teachers are restricted to dispatching circulars exclusively to their assigned class parents and students.
+            </p>
+
+            <form id="circularForm" onsubmit="handleCreateCircular(event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Circular Title</label>
+                <input type="text" id="circTitle" required placeholder="e.g. Science Exhibition Participation & Consent"
+                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Target Audience</label>
+                <select id="circAudience" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                  <option value="CLASS_PARENTS">Assigned Class Parents (Grade 10-A)</option>
+                  <option value="CLASS_STUDENTS">Assigned Class Students (Grade 10-A)</option>
+                  <option value="ALL" id="optSchoolWide" disabled>School-Wide (Office / Admin Only)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
+                <select id="circPriority" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                  <option value="NORMAL">Normal Priority</option>
+                  <option value="IMPORTANT">Important</option>
+                  <option value="URGENT">Urgent Broadcast</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Detailed Circular Text</label>
+                <textarea id="circContent" rows="4" required placeholder="Enter formal circular notification body..."
+                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500"></textarea>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" id="circRequiresAck" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                <label for="circRequiresAck" class="text-xs text-slate-700 font-medium">Require Mandatory Parent Signature / Digital Acknowledgment</label>
+              </div>
+
+              <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-1.5">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Publish Official Circular</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Circulars Roster & Acknowledgement Tracker -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 text-sm">Issued Circulars & Real-Time Sign-Offs</h3>
+                <p class="text-xs text-slate-500">Click any circular to inspect who has read and signed</p>
+              </div>
+              <button onclick="loadCirculars()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            <div id="circularsList" class="space-y-3">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 5: LINWAYS OBE SYLLABUS & TEACHING DIARY                    -->
+      <!-- =============================================================== -->
+      <section id="tab-obeSyllabus" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="book-open" class="w-5 h-5 text-indigo-600"></i>
+              <span>Outcome-Based Education (OBE) & Teaching Diary</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Track Course Outcomes (COs), Bloom's Taxonomy, and log daily lecture entries</p>
+          </div>
+          <button onclick="openTeachingDiaryModal()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Log Teaching Diary Entry</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Syllabus Units Progress -->
+          <div class="md:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm">Unit Syllabus Progress</h3>
+            <div id="unitProgressList" class="space-y-4">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Teaching Diary Entries List -->
+          <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm">Recent Teaching Diary Logs</h3>
+            <div id="diaryLogsList" class="space-y-3">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 6: TASKS & REMINDERS HUB                                    -->
+      <!-- =============================================================== -->
+      <section id="tab-tasksReminders" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <!-- Action Tasks -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                  <i data-lucide="check-square" class="w-5 h-5 text-indigo-600"></i>
+                  <span>Pending Action Items</span>
+                </h3>
+                <p class="text-xs text-slate-500">Tasks that must be completed across desktop & mobile</p>
+              </div>
+              <span id="taskStatsPill" class="text-xs font-semibold bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100">0 Pending</span>
+            </div>
+
+            <div id="tasksList" class="space-y-2.5">
+              <!-- Dynamic Tasks -->
+            </div>
+          </div>
+
+          <!-- Automated Reminders -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                  <i data-lucide="bell" class="w-5 h-5 text-amber-500"></i>
+                  <span>System Reminders & Deadlines</span>
+                </h3>
+                <p class="text-xs text-slate-500">Automated triggers for fees, attendance, and exam marks</p>
+              </div>
+              <button onclick="triggerAutomatedScan()"
+                class="text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 transition">
+                Scan Triggers
+              </button>
+            </div>
+
+            <div id="remindersList" class="space-y-2.5">
+              <!-- Dynamic Reminders -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 7: CONSOLIDATED BROADSHEET & REPORT CARDS                   -->
+      <!-- =============================================================== -->
+      <section id="tab-broadsheet" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="printer" class="w-5 h-5 text-indigo-600"></i>
+              <span>Consolidated Class Broadsheet & Rank Matrix</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Comprehensive multi-subject mark tabulation with class rankings and division honours</p>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <button onclick="window.print()"
+              class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>Print Broadsheet</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="broadsheetTable">
+              <thead class="bg-slate-100 text-slate-700 font-semibold" id="broadsheetThead">
+                <!-- Headers -->
+              </thead>
+              <tbody id="broadsheetTbody" class="divide-y divide-slate-100">
+                <!-- Roster Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 8: PARENT FEEDBACK DESK                                     -->
+      <!-- =============================================================== -->
+      <section id="tab-feedbackDesk" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="message-square" class="w-5 h-5 text-indigo-600"></i>
+              <span>Parent Inquiries, Feedbacks & Grievances</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Review feedback submitted by parents and respond directly</p>
+          </div>
+        </div>
+
+        <div id="feedbackListContainer" class="space-y-4">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal for Diary Entry -->
+  <div id="diaryModal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="font-bold text-slate-900 text-base">New Teaching Diary Entry</h3>
+        <button onclick="closeTeachingDiaryModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+
+      <form onsubmit="handleSaveDiary(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Period Number</label>
+            <input type="number" id="diaryPeriod" min="1" max="8" value="1" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Methodology</label>
+            <select id="diaryMethod" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+              <option value="LECTURE">Classroom Lecture</option>
+              <option value="LAB">Laboratory / Hands-on</option>
+              <option value="FLIPPED_CLASS">Flipped Classroom</option>
+              <option value="GROUP_DISCUSSION">Collaborative Discussion</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Topic Covered</label>
+          <input type="text" id="diaryTopic" required placeholder="e.g. Solving Quadratic Equations using Completing the Square"
+            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Teaching Observations & Remarks</label>
+          <textarea id="diaryRemarks" rows="3" placeholder="Student engagement, areas of doubt, homework assigned..."
+            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300"></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="closeTeachingDiaryModal()" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    const API_BASE = '/api/v1';
+    let authToken = localStorage.getItem('erp_token');
+    let currentUser = null;
+    let currentSchool = null;
+
+    let examsList = [];
+    let currentExamSubject = null;
+    let currentRoster = [];
+    let parsedImportRows = [];
+
+    // Initialize application
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      setupKeyboardShortcuts();
+
+      if (authToken) {
+        await verifySession();
+      } else {
+        showLoginModal();
+      }
+    });
+
+    function setupKeyboardShortcuts() {
+      window.addEventListener('keydown', (e) => {
+        // Ctrl+S / Cmd+S: Save Marks
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          saveSpreadsheetMarks();
+        }
+      });
+    }
+
+    async function apiRequest(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...options.headers,
+      };
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (res.status === 401) {
+        logout();
+        throw new Error('Unauthorized');
+      }
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || 'API request failed');
+      }
+      return json.data !== undefined ? json.data : json;
+    }
+
+    // Authentication
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+
+      btn.disabled = true;
+      btn.innerText = 'Authenticating...';
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: email, password, schoolCode: 'OAK01' }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+
+        authToken = data.data.accessToken;
+        localStorage.setItem('erp_token', authToken);
+        hideLoginModal();
+        await verifySession();
+      } catch (err) {
+        alert(err.message || 'Invalid credentials');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Sign In to Workstation';
+      }
+    });
+
+    async function verifySession() {
+      try {
+        currentUser = await apiRequest('/auth/me');
+        currentSchool = currentUser.memberships?.[0]?.school || { name: 'Oakridge International' };
+
+        renderUserHeader();
+        await loadInitialData();
+      } catch (err) {
+        showLoginModal();
+      }
+    }
+
+    function renderUserHeader() {
+      const role = currentUser.activeRole || 'CLASS_TEACHER';
+      document.getElementById('sidebarSchoolName').innerText = currentSchool.name || 'Oakridge International';
+      document.getElementById('sidebarRoleBadge').innerText = role.replace('_', ' ');
+
+      document.getElementById('authStatus').innerHTML = `
+        <div class="text-right">
+          <div class="text-xs font-bold text-white">${currentUser.firstName} ${currentUser.lastName}</div>
+          <div class="text-[10px] text-slate-400">${currentUser.email}</div>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+          ${currentUser.firstName[0]}${currentUser.lastName[0]}
+        </div>
+      `;
+    }
+
+    function showLoginModal() {
+      document.getElementById('loginModal').classList.remove('hidden');
+    }
+    function hideLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+    }
+    function logout() {
+      localStorage.removeItem('erp_token');
+      authToken = null;
+      location.reload();
+    }
+
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach((btn) => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-300', 'hover:bg-slate-800');
+      });
+
+      const activePane = document.getElementById(`tab-${tabId}`);
+      if (activePane) activePane.classList.remove('hidden');
+
+      const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+      }
+
+      // Load specific tab data if needed
+      if (tabId === 'circulars') loadCirculars();
+      else if (tabId === 'tasksReminders') loadTasksAndReminders();
+      else if (tabId === 'attendanceRegister') loadAttendanceMatrix();
+      else if (tabId === 'obeSyllabus') loadObeData();
+      else if (tabId === 'broadsheet') loadBroadsheet();
+      else if (tabId === 'feedbackDesk') loadFeedbacks();
+    }
+
+    async function loadInitialData() {
+      await loadExams();
+      await loadTasksAndReminders();
+    }
+
+    // =========================================================================
+    // 1. SPREADSHEET MARK ENTRY
+    // =========================================================================
+    async function loadExams() {
+      try {
+        examsList = await apiRequest('/exams');
+        const examSelect = document.getElementById('examSelector');
+        examSelect.innerHTML = '<option value="">Select Examination</option>';
+
+        for (const e of examsList) {
+          examSelect.innerHTML += `<option value="${e.id}">${e.name} (${e.term})</option>`;
+        }
+
+        if (examsList.length > 0) {
+          examSelect.value = examsList[0].id;
+          populateSubjects(examsList[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load exams', err);
+      }
+    }
+
+    function populateSubjects(exam) {
+      const subjectSelect = document.getElementById('subjectSelector');
+      subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+
+      for (const s of exam.subjects) {
+        subjectSelect.innerHTML += `<option value="${s.id}">${s.className} - ${s.subjectName} (Max: ${s.maxMarks})</option>`;
+      }
+
+      if (exam.subjects.length > 0) {
+        subjectSelect.value = exam.subjects[0].id;
+        loadExamSubjectDetails();
+      }
+    }
+
+    document.getElementById('examSelector').addEventListener('change', (e) => {
+      const exam = examsList.find((x) => x.id === e.target.value);
+      if (exam) populateSubjects(exam);
+    });
+
+    async function loadExamSubjectDetails() {
+      const subjectId = document.getElementById('subjectSelector').value;
+      if (!subjectId) return;
+
+      try {
+        const details = await apiRequest(`/exams/subjects/${subjectId}/details`);
+        currentExamSubject = details.examSubject;
+        currentRoster = details.students;
+
+        renderSpreadsheet(details);
+        renderStats(details.stats);
+      } catch (err) {
+        alert('Failed to load subject details: ' + err.message);
+      }
+    }
+
+    function renderStats(stats) {
+      document.getElementById('statTotalStudents').innerText = stats.totalStudents;
+      document.getElementById('statEnteredCount').innerText = `${stats.enteredCount} / ${stats.totalStudents}`;
+      document.getElementById('statPassRate').innerText = `${stats.passPercentage}%`;
+      document.getElementById('statAverage').innerText = stats.average;
+      document.getElementById('statHighest').innerText = stats.highest;
+      document.getElementById('statAbsentees').innerText = stats.absentCount;
+    }
+
+    function renderSpreadsheet(details) {
+      const tbody = document.getElementById('spreadsheetBody');
+      const max = details.examSubject.maxMarks;
+      const pass = details.examSubject.passMarks;
+
+      tbody.innerHTML = details.students.map((s, idx) => `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100" data-student-id="${s.studentId}">
+          <td class="py-2.5 px-4 text-center font-semibold text-slate-400">${idx + 1}</td>
+          <td class="py-2.5 px-4 font-mono font-medium text-slate-700">${s.admissionNo}</td>
+          <td class="py-2.5 px-4 text-center text-slate-500">${s.rollNo ?? '-'}</td>
+          <td class="py-2.5 px-4 font-semibold text-slate-900">${s.studentName}</td>
+          <td class="py-2.5 px-4 text-slate-600">${s.sectionName}</td>
+          <td class="py-2.5 px-4 text-center font-bold text-slate-400">${max}</td>
+          <td class="py-2 px-4 text-center">
+            <input type="number" min="0" max="${max}"
+              value="${s.marksObtained !== null && !s.isAbsent ? s.marksObtained : ''}"
+              ${s.isAbsent ? 'disabled' : ''}
+              tabindex="${idx + 1}"
+              data-idx="${idx}"
+              onkeydown="handleSpreadsheetKey(event, ${idx})"
+              oninput="handleMarkInput(this, ${idx}, ${max}, ${pass})"
+              class="spreadsheet-input w-24 py-1.5 px-2 text-center text-xs font-bold rounded-lg border ${
+                s.marksObtained !== null && s.marksObtained < pass ? 'border-rose-300 text-rose-600 bg-rose-50' : 'border-slate-300 text-slate-800'
+              }">
+          </td>
+          <td class="py-2.5 px-4 text-center">
+            <input type="checkbox" ${s.isAbsent ? 'checked' : ''}
+              onchange="handleAbsentToggle(this, ${idx})"
+              class="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer">
+          </td>
+          <td class="py-2.5 px-4 text-center">
+            <span id="grade-${idx}" class="font-bold text-xs ${s.passed ? 'text-emerald-600' : 'text-rose-600'}">
+              ${s.grade}
+            </span>
+          </td>
+          <td class="py-2.5 px-4 text-center">
+            <span id="status-${idx}" class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+              s.isAbsent ? 'bg-slate-200 text-slate-700' : (s.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')
+            }">
+              ${s.isAbsent ? 'ABSENT' : (s.marksObtained !== null ? (s.passed ? 'PASS' : 'FAIL') : 'PENDING')}
+            </span>
+          </td>
+          <td class="py-2 px-4">
+            <input type="text" value="${s.remarks || ''}"
+              onchange="handleRemarksChange(this, ${idx})"
+              placeholder="Feedback..."
+              class="w-full py-1.5 px-2.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:border-indigo-500">
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function handleSpreadsheetKey(e, currentIdx) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextInput = document.querySelector(`input[data-idx="${currentIdx + 1}"]`);
+        if (nextInput) nextInput.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevInput = document.querySelector(`input[data-idx="${currentIdx - 1}"]`);
+        if (prevInput) prevInput.focus();
+      }
+    }
+
+    function handleMarkInput(input, idx, max, pass) {
+      let val = input.value === '' ? null : Number(input.value);
+
+      if (val !== null && val > max) {
+        input.classList.add('border-rose-500', 'bg-rose-100');
+      } else {
+        input.classList.remove('border-rose-500', 'bg-rose-100');
+      }
+
+      currentRoster[idx].marksObtained = val;
+      const passed = val !== null && val >= pass;
+      currentRoster[idx].passed = passed;
+
+      let grade = 'F';
+      if (val !== null) {
+        const pct = (val / max) * 100;
+        if (pct >= 90) grade = 'A+';
+        else if (pct >= 80) grade = 'A';
+        else if (pct >= 70) grade = 'B';
+        else if (pct >= 60) grade = 'C';
+        else if (pct >= 40) grade = 'D';
+      }
+
+      document.getElementById(`grade-${idx}`).innerText = val !== null ? grade : '-';
+      document.getElementById(`status-${idx}`).innerText = val !== null ? (passed ? 'PASS' : 'FAIL') : 'PENDING';
+      document.getElementById(`status-${idx}`).className = `text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+        passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+      }`;
+    }
+
+    function handleAbsentToggle(checkbox, idx) {
+      currentRoster[idx].isAbsent = checkbox.checked;
+      const input = document.querySelector(`input[data-idx="${idx}"]`);
+      if (checkbox.checked) {
+        input.disabled = true;
+        input.value = '';
+        currentRoster[idx].marksObtained = null;
+        document.getElementById(`grade-${idx}`).innerText = 'ABSENT';
+        document.getElementById(`status-${idx}`).innerText = 'ABSENT';
+        document.getElementById(`status-${idx}`).className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+      } else {
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    function handleRemarksChange(input, idx) {
+      currentRoster[idx].remarks = input.value;
+    }
+
+    async function saveSpreadsheetMarks() {
+      const subjectId = document.getElementById('subjectSelector').value;
+      if (!subjectId) return alert('Select subject first');
+
+      const marksPayload = currentRoster.map((s) => ({
+        studentId: s.studentId,
+        marksObtained: s.marksObtained,
+        isAbsent: s.isAbsent,
+        remarks: s.remarks,
+      }));
+
+      const btn = document.getElementById('saveMarksBtn');
+      btn.disabled = true;
+      btn.innerText = 'Saving...';
+
+      try {
+        await apiRequest(`/exams/subjects/${subjectId}/marks`, {
+          method: 'POST',
+          body: JSON.stringify({ marks: marksPayload }),
+        });
+        alert('✅ All student marks saved and verified successfully!');
+        loadExamSubjectDetails();
+      } catch (err) {
+        alert('❌ Failed to save marks: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>Save All Marks (Ctrl+S)</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    // =========================================================================
+    // 2. EXCEL IMPORT & EXPORT
+    // =========================================================================
+    async function downloadExcelTemplate() {
+      const subjectId = document.getElementById('subjectSelector').value;
+      if (!subjectId) return alert('Please select subject first');
+
+      try {
+        const data = await apiRequest(`/exams/subjects/${subjectId}/template`);
+        const blob = new Blob([data.csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename;
+        a.click();
+      } catch (err) {
+        alert('Failed to download template: ' + err.message);
+      }
+    }
+
+    async function downloadXlsxFile() {
+      const subjectId = document.getElementById('subjectSelector').value;
+      if (!subjectId) return alert('Please select subject first');
+
+      try {
+        const data = await apiRequest(`/exams/subjects/${subjectId}/template`);
+        const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Marks');
+        XLSX.writeFile(wb, `${data.examSubject.className}_${data.examSubject.subjectName}_Marks.xlsx`);
+      } catch (err) {
+        alert('Failed to generate Excel workbook: ' + err.message);
+      }
+    }
+
+    function handleExcelFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          if (jsonData.length < 2) return alert('Empty spreadsheet file');
+
+          const headers = jsonData[0];
+          const rows = jsonData.slice(1);
+
+          // Map columns to structured object
+          parsedImportRows = rows.map((r) => ({
+            admissionNo: r[0],
+            rollNo: r[1],
+            studentName: r[2],
+            sectionName: r[3],
+            maxMarks: r[4],
+            passMarks: r[5],
+            marksObtained: r[6],
+            isAbsent: r[7],
+            remarks: r[8],
+          })).filter((r) => r.admissionNo);
+
+          showExcelPreview(headers, parsedImportRows);
+        } catch (err) {
+          alert('Failed to parse Excel file: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function showExcelPreview(headers, rows) {
+      const container = document.getElementById('excelPreviewContainer');
+      container.classList.remove('hidden');
+
+      document.getElementById('excelFileInfo').innerText = `${rows.length} student records extracted from file`;
+      document.getElementById('previewTableHead').innerHTML = `
+        <tr>
+          <th class="py-2.5 px-3">Admission No</th>
+          <th class="py-2.5 px-3">Student Name</th>
+          <th class="py-2.5 px-3 text-center">Marks Entered</th>
+          <th class="py-2.5 px-3 text-center">Absent?</th>
+          <th class="py-2.5 px-3">Remarks</th>
+        </tr>
+      `;
+
+      document.getElementById('previewTableBody').innerHTML = rows.map((r) => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <td class="py-2 px-3 font-mono font-bold text-slate-800">${r.admissionNo}</td>
+          <td class="py-2 px-3 font-semibold text-slate-700">${r.studentName || '-'}</td>
+          <td class="py-2 px-3 text-center font-bold text-indigo-600">${r.marksObtained !== undefined ? r.marksObtained : '-'}</td>
+          <td class="py-2 px-3 text-center text-slate-500">${r.isAbsent || 'N'}</td>
+          <td class="py-2 px-3 text-slate-500 text-xs">${r.remarks || ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function commitImportedMarks() {
+      const subjectId = document.getElementById('subjectSelector').value;
+      if (!subjectId) return alert('Select subject first');
+      if (parsedImportRows.length === 0) return alert('No rows to import');
+
+      const btn = document.getElementById('commitImportBtn');
+      btn.disabled = true;
+      btn.innerText = 'Importing to Database...';
+
+      try {
+        const res = await apiRequest(`/exams/subjects/${subjectId}/import`, {
+          method: 'POST',
+          body: JSON.stringify({ rows: parsedImportRows }),
+        });
+
+        alert(`🎉 ${res.message}\nTotal Valid Saved: ${res.successCount}\nErrors: ${res.errorCount}`);
+        document.getElementById('excelPreviewContainer').classList.add('hidden');
+        switchTab('marksGrid');
+        loadExamSubjectDetails();
+      } catch (err) {
+        alert('Import failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Confirm & Commit Marks to Database';
+      }
+    }
+
+    // =========================================================================
+    // 3. CONSOLIDATED ATTENDANCE MATRIX & CONDONATION
+    // =========================================================================
+    async function loadAttendanceMatrix() {
+      try {
+        const thead = document.getElementById('matrixThead');
+        const tbody = document.getElementById('matrixTbody');
+
+        // Generate dates for current month
+        const days = Array.from({ length: 15 }, (_, i) => `Nov ${i + 1}`);
+
+        thead.innerHTML = `
+          <tr>
+            <th class="py-3 px-3 w-10 text-center">#</th>
+            <th class="py-3 px-3 w-28">Admission No</th>
+            <th class="py-3 px-3">Student Name</th>
+            ${days.map(d => `<th class="py-3 px-1 text-center w-8 text-[10px]">${d}</th>`).join('')}
+            <th class="py-3 px-3 text-center">Total Attended</th>
+            <th class="py-3 px-3 text-center">Attendance %</th>
+            <th class="py-3 px-3 text-center">75% Linways Status</th>
+          </tr>
+        `;
+
+        // Mock realistic high-density data based on students
+        const sampleStudents = [
+          { adm: 'OAK-2026-001', name: 'Alexander Doe', attended: 14, total: 15 },
+          { adm: 'OAK-2026-002', name: 'David Miller', attended: 10, total: 15 },
+          { adm: 'OAK-2026-003', name: 'Emma Watson', attended: 15, total: 15 },
+          { adm: 'OAK-2026-004', name: 'James Wilson', attended: 9, total: 15 },
+          { adm: 'OAK-2026-005', name: 'Sophia Taylor', attended: 14, total: 15 },
+        ];
+
+        tbody.innerHTML = sampleStudents.map((s, idx) => {
+          const pct = Math.round((s.attended / s.total) * 100);
+          const isDefaulter = pct < 75;
+
+          return `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${isDefaulter ? 'bg-rose-50/40' : ''}">
+              <td class="py-2 px-3 text-center text-slate-400 font-semibold">${idx + 1}</td>
+              <td class="py-2 px-3 font-mono font-medium text-slate-700">${s.adm}</td>
+              <td class="py-2 px-3 font-semibold text-slate-900">${s.name}</td>
+              ${days.map((_, i) => {
+                const isAbsentDay = (idx === 1 && (i === 3 || i === 4 || i === 5 || i === 6 || i === 7)) ||
+                                    (idx === 3 && (i === 1 || i === 2 || i === 6 || i === 8 || i === 10 || i === 12));
+                return `
+                  <td class="py-2 px-1 text-center font-bold text-[10px] ${isAbsentDay ? 'text-rose-600 bg-rose-100/60' : 'text-emerald-600'}">
+                    ${isAbsentDay ? 'A' : 'P'}
+                  </td>
+                `;
+              }).join('')}
+              <td class="py-2 px-3 text-center font-bold text-slate-800">${s.attended} / ${s.total}</td>
+              <td class="py-2 px-3 text-center font-bold ${isDefaulter ? 'text-rose-600' : 'text-emerald-600'}">${pct}%</td>
+              <td class="py-2 px-3 text-center">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDefaulter ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'}">
+                  ${isDefaulter ? 'CONDONATION AT RISK' : 'SATISFACTORY'}
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load matrix', err);
+      }
+    }
+
+    function exportCondonationList() {
+      alert('📄 Condonation Defaulters list exported: 2 students below 75% attendance threshold flagged.');
+    }
+
+    async function triggerAutomatedScan() {
+      try {
+        const res = await apiRequest('/reminders/trigger-automated', { method: 'POST' });
+        alert(`🔔 System Scan Finished: ${res.remindersGenerated} reminders dispatched to parents and staff.`);
+        loadTasksAndReminders();
+      } catch (err) {
+        alert('Scan failed: ' + err.message);
+      }
+    }
+
+    // =========================================================================
+    // 4. CIRCULARS
+    // =========================================================================
+    async function loadCirculars() {
+      try {
+        const list = await apiRequest('/circulars');
+        const container = document.getElementById('circularsList');
+
+        if (list.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-400 p-4">No circulars issued.</p>';
+          return;
+        }
+
+        container.innerHTML = list.map((c) => `
+          <div class="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-300 transition space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="bg-indigo-100 text-indigo-700 font-mono text-[10px] px-2 py-0.5 rounded font-bold">${c.circularNumber}</span>
+                <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${
+                  c.priority === 'URGENT' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'
+                }">${c.priority}</span>
+              </div>
+              <span class="text-[11px] text-slate-400">${new Date(c.publishedAt).toLocaleDateString()}</span>
+            </div>
+
+            <h4 class="font-bold text-slate-900 text-sm">${c.title}</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">${c.content}</p>
+
+            <div class="pt-2 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100">
+              <span>Dispatched by: <strong class="text-slate-700">${c.senderName}</strong></span>
+              <button onclick="inspectAcknowledgements('${c.id}')" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1">
+                <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                <span>View Sign-Offs</span>
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        lucide.createIcons();
+      } catch (err) {
+        console.error('Failed to load circulars', err);
+      }
+    }
+
+    async function handleCreateCircular(e) {
+      e.preventDefault();
+      const title = document.getElementById('circTitle').value.trim();
+      const content = document.getElementById('circContent').value.trim();
+      const targetAudience = document.getElementById('circAudience').value;
+      const priority = document.getElementById('circPriority').value;
+      const requiresAck = document.getElementById('circRequiresAck').checked;
+
+      try {
+        await apiRequest('/circulars', {
+          method: 'POST',
+          body: JSON.stringify({
+            title,
+            content,
+            targetAudience,
+            priority,
+            requiresAck,
+          }),
+        });
+
+        alert('✅ Class circular published successfully and parent notifications dispatched!');
+        document.getElementById('circularForm').reset();
+        loadCirculars();
+      } catch (err) {
+        alert('Failed to dispatch circular: ' + err.message);
+      }
+    }
+
+    async function inspectAcknowledgements(circularId) {
+      try {
+        const data = await apiRequest(`/circulars/${circularId}/acknowledgements`);
+        let msg = `Digital Signatures for "${data.title}" (${data.circularNumber})\nTotal Signed: ${data.totalAcknowledgements}\n\n`;
+        for (const a of data.acknowledgements) {
+          msg += `• ${a.userName} (${a.userRole}) at ${new Date(a.acknowledgedAt).toLocaleString()}\n`;
+          if (a.remarks) msg += `  Note: "${a.remarks}"\n`;
+        }
+        alert(msg);
+      } catch (err) {
+        alert('Failed to retrieve signatures: ' + err.message);
+      }
+    }
+
+    // =========================================================================
+    // 5. OBE SYLLABUS & TEACHING DIARY
+    // =========================================================================
+    async function loadObeData() {
+      // Unit Progress Mock
+      document.getElementById('unitProgressList').innerHTML = `
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-semibold text-slate-800">
+            <span>Unit 1: Real Numbers & Polynomials</span>
+            <span>100% (8/8 hrs)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="bg-emerald-500 h-2 rounded-full w-full"></div>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-semibold text-slate-800">
+            <span>Unit 2: Linear Equations & Matrices</span>
+            <span>75% (9/12 hrs)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="bg-indigo-600 h-2 rounded-full w-3/4"></div>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-semibold text-slate-800">
+            <span>Unit 3: Quadratic Equations & AP</span>
+            <span>30% (3/10 hrs)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="bg-amber-500 h-2 rounded-full w-1/3"></div>
+          </div>
+        </div>
+      `;
+
+      // Diary Logs
+      document.getElementById('diaryLogsList').innerHTML = `
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+            <span>Period 2: Arithmetic Progressions - nth term derivation</span>
+            <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">LECTURE</span>
+          </div>
+          <p class="text-xs text-slate-600">Covered standard formula derivation. 85% students scored full in 5-minute spot quiz.</p>
+          <div class="text-[10px] text-slate-400">Taught on Today • Grade 10-A</div>
+        </div>
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+            <span>Period 4: Graphing Linear Inequalities</span>
+            <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">LAB & GRAPHING</span>
+          </div>
+          <p class="text-xs text-slate-600">Students plotted boundary conditions using graph workbooks.</p>
+          <div class="text-[10px] text-slate-400">Taught on Yesterday • Grade 10-A</div>
+        </div>
+      `;
+    }
+
+    function openTeachingDiaryModal() {
+      document.getElementById('diaryModal').classList.remove('hidden');
+    }
+    function closeTeachingDiaryModal() {
+      document.getElementById('diaryModal').classList.add('hidden');
+    }
+    function handleSaveDiary(e) {
+      e.preventDefault();
+      alert('✅ Teaching diary entry saved to Linways academic course registry!');
+      closeTeachingDiaryModal();
+      loadObeData();
+    }
+
+    // =========================================================================
+    // 6. TASKS & REMINDERS
+    // =========================================================================
+    async function loadTasksAndReminders() {
+      try {
+        const [tasks, reminders] = await Promise.all([
+          apiRequest('/tasks'),
+          apiRequest('/reminders'),
+        ]);
+
+        // Tasks
+        const tasksContainer = document.getElementById('tasksList');
+        const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
+        document.getElementById('taskStatsPill').innerText = `${pendingCount} Pending`;
+
+        tasksContainer.innerHTML = tasks.map((t) => `
+          <div class="flex items-start justify-between p-3 rounded-xl border ${
+            t.status === 'COMPLETED' ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200 hover:border-indigo-300'
+          }">
+            <div class="flex items-start space-x-2.5">
+              <input type="checkbox" ${t.status === 'COMPLETED' ? 'checked' : ''}
+                onchange="toggleTaskStatus('${t.id}', this.checked)"
+                class="mt-1 rounded border-slate-300 text-indigo-600 cursor-pointer">
+              <div>
+                <h4 class="font-bold text-slate-800 text-xs ${t.status === 'COMPLETED' ? 'line-through text-slate-400' : ''}">${t.title}</h4>
+                <p class="text-[11px] text-slate-500 mt-0.5">${t.description || ''}</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${
+              t.priority === 'URGENT' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'
+            }">${t.priority}</span>
+          </div>
+        `).join('');
+
+        // Reminders
+        const remindersContainer = document.getElementById('remindersList');
+        remindersContainer.innerHTML = reminders.map((r) => `
+          <div class="p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-300 transition space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">${r.category}</span>
+              <span class="text-[10px] text-slate-400">${new Date(r.remindAt).toLocaleDateString()}</span>
+            </div>
+            <h4 class="font-bold text-slate-900 text-xs">${r.title}</h4>
+            <p class="text-[11px] text-slate-600">${r.description || ''}</p>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        console.error('Failed to load tasks and reminders', err);
+      }
+    }
+
+    async function toggleTaskStatus(taskId, isChecked) {
+      try {
+        await apiRequest(`/tasks/${taskId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: isChecked ? 'COMPLETED' : 'PENDING' }),
+        });
+        loadTasksAndReminders();
+      } catch (err) {
+        alert('Failed to update task: ' + err.message);
+      }
+    }
+
+    // =========================================================================
+    // 7. BROADSHEET
+    // =========================================================================
+    async function loadBroadsheet() {
+      if (!examsList.length) return;
+      const examId = examsList[0].id;
+      const classId = examsList[0].subjects[0]?.classId;
+      if (!classId) return;
+
+      try {
+        const data = await apiRequest(`/exams/${examId}/classes/${classId}/broadsheet`);
+
+        const thead = document.getElementById('broadsheetThead');
+        const tbody = document.getElementById('broadsheetTbody');
+
+        thead.innerHTML = `
+          <tr>
+            <th class="py-3 px-3 text-center">Rank</th>
+            <th class="py-3 px-3">Admission No</th>
+            <th class="py-3 px-3">Student Name</th>
+            ${data.subjects.map(s => `<th class="py-3 px-3 text-center">${s.name} (${s.maxMarks})</th>`).join('')}
+            <th class="py-3 px-3 text-center">Total Score</th>
+            <th class="py-3 px-3 text-center">Percentage</th>
+            <th class="py-3 px-3 text-center">Grade</th>
+            <th class="py-3 px-3 text-center">Result</th>
+          </tr>
+        `;
+
+        tbody.innerHTML = data.broadsheet.map((r) => `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${r.rank}</td>
+            <td class="py-2.5 px-3 font-mono font-medium text-slate-700">${r.admissionNo}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-900">${r.studentName}</td>
+            ${data.subjects.map(s => {
+              const score = r.subjectMarks[s.name]?.marksObtained ?? '-';
+              return `<td class="py-2.5 px-3 text-center font-bold text-slate-800">${score}</td>`;
+            }).join('')}
+            <td class="py-2.5 px-3 text-center font-bold text-slate-900">${r.totalObtained} / ${r.maxTotalPossible}</td>
+            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${r.percentage}%</td>
+            <td class="py-2.5 px-3 text-center font-bold">${r.grade}</td>
+            <td class="py-2.5 px-3 text-center">
+              <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full ${r.result === 'PASS' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${r.result}
+              </span>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('Failed to load broadsheet', err);
+      }
+    }
+
+    // =========================================================================
+    // 8. PARENT FEEDBACK DESK
+    // =========================================================================
+    async function loadFeedbacks() {
+      try {
+        const feedbacks = await apiRequest('/feedback');
+        const container = document.getElementById('feedbackListContainer');
+
+        if (feedbacks.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-400 p-4">No parent feedbacks received.</p>';
+          return;
+        }
+
+        container.innerHTML = feedbacks.map((f) => `
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  ${f.category}
+                </span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${
+                  f.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }">${f.status}</span>
+                ${f.rating ? `<span class="text-xs text-amber-500 font-bold">★ ${f.rating}/5</span>` : ''}
+              </div>
+              <span class="text-xs text-slate-400">${new Date(f.createdAt).toLocaleDateString()}</span>
+            </div>
+
+            <h4 class="font-bold text-slate-900 text-sm">${f.title}</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">${f.content}</p>
+
+            ${f.response ? `
+              <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-900 space-y-1">
+                <div class="font-bold text-[11px] text-emerald-800">Resolution by: ${f.respondedByName || 'Teacher / Admin'}</div>
+                <div>${f.response}</div>
+              </div>
+            ` : `
+              <div class="pt-2 flex items-center space-x-2">
+                <input type="text" id="resp-${f.id}" placeholder="Write response to parent..."
+                  class="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-300">
+                <button onclick="submitFeedbackReply('${f.id}')"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 rounded-xl font-medium transition shadow-sm">
+                  Resolve & Reply
+                </button>
+              </div>
+            `}
+          </div>
+        `).join('');
+
+      } catch (err) {
+        console.error('Failed to load feedbacks', err);
+      }
+    }
+
+    async function submitFeedbackReply(feedbackId) {
+      const input = document.getElementById(`resp-${feedbackId}`);
+      const text = input.value.trim();
+      if (!text) return alert('Please enter response text');
+
+      try {
+        await apiRequest(`/feedback/${feedbackId}/respond`, {
+          method: 'POST',
+          body: JSON.stringify({ response: text, status: 'RESOLVED' }),
+        });
+        alert('✅ Response submitted to parent successfully!');
+        loadFeedbacks();
+      } catch (err) {
+        alert('Failed to respond: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

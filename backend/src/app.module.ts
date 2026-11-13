@@ -18,6 +18,10 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AcademicsModule } from './modules/academics/academics.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
+import { TasksModule } from './modules/tasks/tasks.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { CircularsModule } from './modules/circulars/circulars.module';
 
 @Module({
   imports: [
@@ -43,6 +47,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AcademicsModule,
     ParentModule,
     NotificationsModule,
+    RemindersModule,
+    TasksModule,
+    FeedbackModule,
+    CircularsModule,
   ],
 })
 export class AppModule {}

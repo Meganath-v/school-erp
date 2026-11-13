@@ -1,7 +1,6 @@
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
@@ -51,6 +50,10 @@ model School {
   announcements       Announcement[]
   auditLogs           AuditLog[]
   notifications       Notification[]
+  reminders           Reminder[]
+  tasks               Task[]
+  feedbacks           Feedback[]
+  circulars           Circular[]
 }
 
 model SchoolDomain {
@@ -110,6 +113,12 @@ model User {
   guardians     Guardian[]
   staff         Staff[]
   notifications Notification[]
+  reminders           Reminder[]
+  assignedTasks       Task[]                    @relation("AssignedToUser")
+  createdTasks        Task[]                    @relation("CreatedByUser")
+  submittedFeedbacks  Feedback[]                @relation("SubmitterUser")
+  respondedFeedbacks  Feedback[]                @relation("ResponderUser")
+  circularAcknowledgements CircularAcknowledgement[]
 }
 
 model UserSchoolMembership {
@@ -213,6 +222,7 @@ model Class {
   feePlans           FeePlan[]
   lessonPlans        LessonPlan[]
   teachingDiaries    TeachingDiaryEntry[]
+  circulars          Circular[]
 }
 
 model Section {
@@ -231,6 +241,7 @@ model Section {
   timetableEntries    TimetableEntry[]
   assignments         Assignment[]
   teachingDiaries     TeachingDiaryEntry[]
+  circulars           Circular[]
 }
 
 model Subject {
@@ -724,5 +735,118 @@ model CourseMaterial {
   createdAt   DateTime @default(now())
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------
+// 12. REMINDERS, TASKS, FEEDBACKS & CIRCULARS
+// ----------------------------------------------------
+
+model Reminder {
+  id          String    @id @default(uuid())
+  schoolId    String
+  userId      String
+  title       String
+  description String?
+  category    String    // FEE_DUE, ATTENDANCE_LOW, TASK_DUE, EXAM_MARK_ENTRY, SYLLABUS_PENDING, CUSTOM
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dueDate     DateTime?
+  remindAt    DateTime  @default(now())
+  status      String    @default("PENDING") // PENDING, SENT, COMPLETED, DISMISSED
+  entityType  String?   // Invoice, ExamSubject, Task, Attendance
+  entityId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  schoolId     String
+  assignedToId String
+  createdById  String?
+  title        String
+  description  String?
+  category     String    // ATTENDANCE, MARK_ENTRY, SYLLABUS, FEE_PAYMENT, LEAVE_APPROVAL, CIRCULAR, ASSIGNMENT, GENERAL
+  priority     String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  status       String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, OVERDUE, CANCELLED
+  dueDate      DateTime?
+  completedAt  DateTime?
+  actionUrl    String?
+  metadata     String?   // JSON
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  school     School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignedTo User   @relation("AssignedToUser", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdBy  User?  @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model Feedback {
+  id              String    @id @default(uuid())
+  schoolId        String
+  submitterId     String
+  targetType      String    @default("GENERAL") // TEACHER, SCHOOL, FACILITY, TRANSPORT, STUDENT, ACADEMIC
+  targetId        String?
+  targetName      String?
+  category        String    // ACADEMIC, BEHAVIOR, INFRASTRUCTURE, TRANSPORT, GENERAL, COMPLAINT, SUGGESTION
+  title           String
+  content         String
+  rating          Int?
+  isAnonymous     Boolean   @default(false)
+  status          String    @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, RESOLVED, DISMISSED
+  response        String?
+  respondedById   String?
+  respondedByName String?
+  respondedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  school      School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  submitter   User   @relation("SubmitterUser", fields: [submitterId], references: [id], onDelete: Cascade)
+  respondedBy User?  @relation("ResponderUser", fields: [respondedById], references: [id], onDelete: SetNull)
+}
+
+model Circular {
+  id             String    @id @default(uuid())
+  schoolId       String
+  circularNumber String
+  title          String
+  content        String
+  senderType     String    // CLASS_TEACHER, OFFICE_EMPLOYEE, PRINCIPAL, SCHOOL_ADMIN
+  senderId       String
+  senderName     String
+  targetAudience String    // ALL, CLASS_STUDENTS, CLASS_PARENTS, ALL_TEACHERS, ALL_PARENTS, OFFICE_STAFF
+  classId        String?
+  sectionId      String?
+  priority       String    @default("NORMAL") // NORMAL, IMPORTANT, URGENT
+  requiresAck    Boolean   @default(false)
+  ackDeadline    DateTime?
+  attachments    String?   // JSON
+  status         String    @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  publishedAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  school           School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class            Class?                    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  section          Section?                  @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  acknowledgements CircularAcknowledgement[]
+}
+
+model CircularAcknowledgement {
+  id             String   @id @default(uuid())
+  circularId     String
+  userId         String
+  userName       String
+  userRole       String
+  acknowledgedAt DateTime @default(now())
+  remarks        String?
+
+  circular Circular @relation(fields: [circularId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circularId, userId])
 }
 

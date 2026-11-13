@@ -7,6 +7,11 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // 0. Clean slate for idempotent re-seeding
+  await prisma.circularAcknowledgement.deleteMany();
+  await prisma.circular.deleteMany();
+  await prisma.feedback.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.reminder.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.payment.deleteMany();
@@ -1172,6 +1177,184 @@ async function main() {
         fileType: 'PDF',
         fileUrl: 'https://docs.erp.com/oakridge/cs10/python_algorithms.pdf',
         uploadedBy: 'David Jones (Faculty)',
+      },
+    ],
+  });
+
+  // 17. Seed Circulars (Office Employee & Class Teacher sent)
+  console.log('📢 Seeding circulars...');
+  const officeCircular = await prisma.circular.create({
+    data: {
+      schoolId: oakridgeSchool.id,
+      circularNumber: 'CIR/2026/001',
+      title: 'Annual Day Celebrations & Rehearsal Schedule',
+      content: 'Dear Parents and Staff, The Annual Day Gala will be celebrated on December 15th. Rehearsals will commence next Monday from 2:00 PM to 4:00 PM. Transport arrangements have been made for participating students. Kindly acknowledge receipt of this circular.',
+      senderType: 'OFFICE_EMPLOYEE',
+      senderId: officeUser.id,
+      senderName: 'Eleanor Pence (Office Administration)',
+      targetAudience: 'ALL',
+      priority: 'IMPORTANT',
+      requiresAck: true,
+      ackDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'PUBLISHED',
+      publishedAt: new Date(),
+    },
+  });
+
+  const classTeacherCircular = await prisma.circular.create({
+    data: {
+      schoolId: oakridgeSchool.id,
+      circularNumber: 'CIR/2026/002',
+      title: 'Class 10-A Science Museum Field Trip & Parent Consent',
+      content: 'Dear Parents of Class 10-A, Our class will be visiting the Regional Science City on Friday, November 28th. Students must wear school uniform with ID cards. Please review the attached itinerary and confirm student participation consent.',
+      senderType: 'CLASS_TEACHER',
+      senderId: classTeacherUser.id,
+      senderName: 'Sarah Smith (Class Teacher, 10-A)',
+      targetAudience: 'CLASS_PARENTS',
+      classId: grade10.id,
+      sectionId: sec10A.id,
+      priority: 'NORMAL',
+      requiresAck: true,
+      ackDeadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      status: 'PUBLISHED',
+      publishedAt: new Date(),
+    },
+  });
+
+  // Parent acknowledgement for office circular
+  await prisma.circularAcknowledgement.create({
+    data: {
+      circularId: officeCircular.id,
+      userId: parentUser.id,
+      userName: 'Michael Doe (Parent)',
+      userRole: 'PARENT',
+      acknowledgedAt: new Date(),
+      remarks: 'Noted with thanks. Alexander Doe will participate in choir.',
+    },
+  });
+
+  // 18. Seed Feedbacks
+  console.log('💬 Seeding feedbacks...');
+  await prisma.feedback.createMany({
+    data: [
+      {
+        schoolId: oakridgeSchool.id,
+        submitterId: parentUser.id,
+        targetType: 'TEACHER',
+        targetId: classTeacherUser.id,
+        targetName: 'Sarah Smith (Class Teacher)',
+        category: 'ACADEMIC',
+        title: 'Appreciation for Extra Doubt Clearing Sessions',
+        content: 'I would like to express our appreciation for Mrs. Smith taking extra time after school hours to help students with algebra doubt resolution.',
+        rating: 5,
+        isAnonymous: false,
+        status: 'RESOLVED',
+        response: 'Thank you Mr. Doe! We are committed to supporting every student’s academic success.',
+        respondedById: oakAdminUser.id,
+        respondedByName: 'Marcus Sterling (Principal Office)',
+        respondedAt: new Date(),
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        submitterId: parentUser.id,
+        targetType: 'TRANSPORT',
+        targetName: 'School Bus Route 14',
+        category: 'TRANSPORT',
+        title: 'Bus Route 14 Morning Timing Delay',
+        content: 'The bus has arrived 15 minutes late over the past two days near Central Park stop. Please check traffic scheduling.',
+        rating: 3,
+        isAnonymous: false,
+        status: 'UNDER_REVIEW',
+        response: 'Transport supervisor has been alerted and driver route re-sequenced to avoid road construction bottlenecks.',
+        respondedById: officeUser.id,
+        respondedByName: 'Eleanor Pence (Transport Desk)',
+        respondedAt: new Date(),
+      },
+    ],
+  });
+
+  // 19. Seed Reminders & Tasks
+  console.log('⏰ Seeding reminders and tasks...');
+  await prisma.reminder.createMany({
+    data: [
+      {
+        schoolId: oakridgeSchool.id,
+        userId: classTeacherUser.id,
+        title: 'Mark Entry Deadline for Mid-Term Exam',
+        description: 'Complete mark evaluation and enter grades for Mathematics 10-A before the portal closes.',
+        category: 'EXAM_MARK_ENTRY',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        status: 'PENDING',
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        userId: parentUser.id,
+        title: 'Tuition Fee Due Reminder: Term 1',
+        description: 'Term 1 tuition fee payment of ₹45,000 for Alexander Doe is due in 3 days.',
+        category: 'FEE_DUE',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        status: 'PENDING',
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        userId: classTeacherUser.id,
+        title: 'Attendance Condonation Review',
+        description: 'Review students with attendance below 75% for condonation eligibility warning letters.',
+        category: 'ATTENDANCE_LOW',
+        priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        status: 'PENDING',
+      },
+    ],
+  });
+
+  await prisma.task.createMany({
+    data: [
+      {
+        schoolId: oakridgeSchool.id,
+        assignedToId: classTeacherUser.id,
+        title: 'Submit Today’s Attendance Roster for 10-A',
+        description: 'Lock daily morning attendance and mark absentees.',
+        category: 'ATTENDANCE',
+        priority: 'URGENT',
+        dueDate: new Date(),
+        actionUrl: '/attendance',
+        status: 'PENDING',
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        assignedToId: classTeacherUser.id,
+        title: 'Review Leave Application for David Miller',
+        description: 'Approve medical leave application submitted for Nov 14-15.',
+        category: 'LEAVE_APPROVAL',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        actionUrl: '/leave-requests',
+        status: 'PENDING',
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        assignedToId: subjectTeacherUser.id,
+        title: 'Import Term 1 Physics Marks via Excel',
+        description: 'Download class spreadsheet template, populate lab + theory marks, and upload.',
+        category: 'MARK_ENTRY',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        actionUrl: '/exams',
+        status: 'PENDING',
+      },
+      {
+        schoolId: oakridgeSchool.id,
+        assignedToId: parentUser.id,
+        title: 'Digitally Acknowledge Field Trip Circular',
+        description: 'Confirm consent for Class 10-A Science Museum visit.',
+        category: 'CIRCULAR',
+        priority: 'NORMAL',
+        dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        actionUrl: '/circulars',
+        status: 'PENDING',
       },
     ],
   });

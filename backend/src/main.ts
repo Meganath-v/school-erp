@@ -2,12 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import { join } from 'path';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Serve static assets (Teacher desktop portal, uploads, assets)
+  app.useStaticAssets(join(process.cwd(), 'public'));
 
   // Security headers with Helmet
   app.use(
@@ -59,6 +64,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 Linways-Grade ERP API running at: http://localhost:${port}/api/v1`);
   console.log(`📑 OpenAPI Documentation available at: http://localhost:${port}/api/docs`);
+  console.log(`🖥️  Teacher Desktop Webpage available at: http://localhost:${port}/teacher/index.html`);
 }
 
 bootstrap();
