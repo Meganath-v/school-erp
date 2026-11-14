@@ -679,10 +679,15 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                     label: Text('Pay ₹${inv['dueAmount']}'),
                   )
                 else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('PAID IN FULL', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 11)),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final receipt = inv['payments'] is List && (inv['payments'] as List).isNotEmpty
+                          ? inv['payments'][0]['receiptNo'] ?? 'REC-${inv['invoiceNo']}'
+                          : 'REC-${inv['invoiceNo']}';
+                      _showReceiptDialog(receipt, (inv['paidAmount'] ?? inv['amount']).toString(), inv['title']);
+                    },
+                    icon: const Icon(Icons.receipt_long, size: 16, color: AppTheme.success),
+                    label: const Text('View Receipt', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
               ],
             ),
