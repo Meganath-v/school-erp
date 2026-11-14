@@ -197,6 +197,7 @@ The database comes pre-seeded with full institutional demo data:
 | **Class Teacher** | `teacher.smith@oakridge.edu` | `password123` | `OAK01` |
 | **Subject Teacher** | `teacher.jones@oakridge.edu` | `password123` | `OAK01` |
 | **Parent** | `parent.doe@gmail.com` | `password123` | `OAK01` |
+| **Student** | `student.john@oakridge.edu` | `password123` | `OAK01` |
 
 ---
 
