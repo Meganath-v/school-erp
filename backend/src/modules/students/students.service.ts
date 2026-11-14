@@ -349,4 +349,177 @@ export class StudentsService {
       })),
     };
   }
+
+  async promoteStudent(
+    schoolId: string,
+    studentId: string,
+    dto: { targetAcademicYearId: string; targetClassId: string; targetSectionId: string; newRollNo?: number },
+    actorId?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const student = await tx.student.findFirst({
+        where: { id: studentId, schoolId },
+      });
+      if (!student) {
+        throw new NotFoundException('Student not found in this school');
+      }
+
+      // Mark other current active enrollments as PROMOTED
+      await tx.enrollment.updateMany({
+        where: {
+          studentId,
+          schoolId,
+          status: 'ACTIVE',
+          academicYearId: { not: dto.targetAcademicYearId },
+        },
+        data: { status: 'PROMOTED' },
+      });
+
+      // Upsert target enrollment
+      const newEnrollment = await tx.enrollment.upsert({
+        where: {
+          studentId_academicYearId: {
+            studentId,
+            academicYearId: dto.targetAcademicYearId,
+          },
+        },
+        update: {
+          classId: dto.targetClassId,
+          sectionId: dto.targetSectionId,
+          rollNo: dto.newRollNo,
+          status: 'ACTIVE',
+        },
+        create: {
+          schoolId,
+          studentId,
+          academicYearId: dto.targetAcademicYearId,
+          classId: dto.targetClassId,
+          sectionId: dto.targetSectionId,
+          rollNo: dto.newRollNo,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Audit log
+      if (actorId) {
+        await tx.auditLog.create({
+          data: {
+            schoolId,
+            actorId,
+            action: 'STUDENT_PROMOTED',
+            entity: 'Student',
+            entityId: studentId,
+            details: JSON.stringify(dto),
+          },
+        });
+      }
+
+      return {
+        message: 'Student promoted successfully',
+        studentId,
+        newEnrollment,
+      };
+    });
+  }
+
+  async transferStudent(
+    schoolId: string,
+    studentId: string,
+    dto: { tcNumber?: string; reason: string; transferDate?: string },
+    actorId?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const student = await tx.student.findFirst({
+        where: { id: studentId, schoolId },
+      });
+      if (!student) {
+        throw new NotFoundException('Student not found in this school');
+      }
+
+      // Update student status to TRANSFERRED
+      const updated = await tx.student.update({
+        where: { id: studentId },
+        data: { status: 'TRANSFERRED' },
+      });
+
+      // Mark active enrollments as TRANSFERRED
+      await tx.enrollment.updateMany({
+        where: { studentId, schoolId, status: 'ACTIVE' },
+        data: { status: 'TRANSFERRED' },
+      });
+
+      // Audit log
+      if (actorId) {
+        await tx.auditLog.create({
+          data: {
+            schoolId,
+            actorId,
+            action: 'STUDENT_TRANSFERRED',
+            entity: 'Student',
+            entityId: studentId,
+            details: JSON.stringify(dto),
+          },
+        });
+      }
+
+      return {
+        message: 'Student transfer completed successfully',
+        student: updated,
+        tcNumber: dto.tcNumber,
+      };
+    });
+  }
+
+  async addStudentDocument(
+    schoolId: string,
+    studentId: string,
+    dto: { title: string; documentType: string; fileUrl: string; fileType?: string },
+  ) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+    });
+    if (!student) {
+      throw new NotFoundException('Student not found in this school');
+    }
+
+    return this.prisma.studentDocument.create({
+      data: {
+        schoolId,
+        studentId,
+        title: dto.title,
+        documentType: dto.documentType,
+        fileUrl: dto.fileUrl,
+        fileType: dto.fileType,
+      },
+    });
+  }
+
+  async getStudentDocuments(schoolId: string, studentId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+    });
+    if (!student) {
+      throw new NotFoundException('Student not found in this school');
+    }
+
+    return this.prisma.studentDocument.findMany({
+      where: { schoolId, studentId },
+      orderBy: { uploadedAt: 'desc' },
+    });
+  }
+
+  async deleteStudentDocument(schoolId: string, studentId: string, docId: string) {
+    const doc = await this.prisma.studentDocument.findFirst({
+      where: { id: docId, studentId, schoolId },
+    });
+    if (!doc) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.prisma.studentDocument.delete({
+      where: { id: docId },
+    });
+
+    return { message: 'Document deleted successfully' };
+  }
 }

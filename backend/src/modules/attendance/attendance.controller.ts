@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, ACADEMIC_STAFF, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
-import { SaveAttendanceDto, AttendanceFilterDto } from './attendance.dto';
+import { SaveAttendanceDto, AttendanceFilterDto, CorrectAttendanceRecordDto } from './attendance.dto';
 
 @ApiTags('Attendance Sessions & Roster Marking')
 @ApiBearerAuth()
@@ -62,6 +62,27 @@ export class AttendanceController {
       query.sectionId,
       query.month,
       query.year,
+    );
+    return { data };
+  }
+
+  @Roles(...ACADEMIC_STAFF)
+  @Patch('records/:id/correction')
+  @ApiOperation({ summary: 'Correct an existing attendance record with reason and audit trail' })
+  @ApiParam({ name: 'id', description: 'AttendanceRecord UUID' })
+  @ApiResponse({ status: 200, description: 'Attendance record corrected successfully' })
+  async correctRecord(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('name') userName: string,
+    @Param('id') id: string,
+    @Body() body: CorrectAttendanceRecordDto,
+  ) {
+    const data = await this.attendanceService.correctAttendanceRecord(
+      schoolId,
+      id,
+      body,
+      { id: userId, name: userName || 'Staff' },
     );
     return { data };
   }

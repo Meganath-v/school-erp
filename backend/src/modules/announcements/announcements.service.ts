@@ -11,6 +11,11 @@ export class AnnouncementsService {
       where.targetRole = { in: ['ALL', role] };
     }
 
+    where.OR = [
+      { expiresAt: null },
+      { expiresAt: { gte: new Date() } },
+    ];
+
     return this.prisma.announcement.findMany({
       where,
       orderBy: { publishedAt: 'desc' },
@@ -34,6 +39,9 @@ export class AnnouncementsService {
         content: data.content,
         targetRole: data.targetRole || 'ALL',
         priority: data.priority || 'NORMAL',
+        startsAt: data.startsAt ? new Date(data.startsAt) : new Date(),
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        attachments: data.attachments || null,
         authorName: data.authorName || sender?.name || 'School Administration',
       },
     });

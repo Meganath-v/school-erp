@@ -134,3 +134,69 @@ export class GetStudentsFilterDto extends PaginationQueryDto {
   sectionId?: string;
 }
 
+export class PromoteStudentDto {
+  @ApiProperty({ example: 'academic-year-uuid', description: 'Target academic year' })
+  @IsNotEmpty()
+  @IsString()
+  targetAcademicYearId: string;
+
+  @ApiProperty({ example: 'class-uuid', description: 'Target class' })
+  @IsNotEmpty()
+  @IsString()
+  targetClassId: string;
+
+  @ApiProperty({ example: 'section-uuid', description: 'Target section' })
+  @IsNotEmpty()
+  @IsString()
+  targetSectionId: string;
+
+  @ApiPropertyOptional({ example: 12, description: 'New roll number' })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  newRollNo?: number;
+}
+
+export class TransferStudentDto {
+  @ApiPropertyOptional({ example: 'TC-2026-089', description: 'Transfer Certificate number' })
+  @IsOptional()
+  @IsString()
+  tcNumber?: string;
+
+  @ApiProperty({ example: 'Relocation to another city', description: 'Reason for transfer' })
+  @IsNotEmpty()
+  @IsString()
+  reason: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30', description: 'Date of transfer' })
+  @IsOptional()
+  @IsDateString()
+  transferDate?: string;
+}
+
+export class AddStudentDocumentDto {
+  @ApiProperty({ example: 'Birth Certificate', description: 'Document title' })
+  @IsNotEmpty()
+  @IsString()
+  title: string;
+
+  @ApiProperty({
+    example: 'BIRTH_CERTIFICATE',
+    enum: ['BIRTH_CERTIFICATE', 'TRANSFER_CERTIFICATE', 'PREVIOUS_MARKSHEET', 'MEDICAL_RECORD', 'OTHER'],
+  })
+  @IsNotEmpty()
+  @IsIn(['BIRTH_CERTIFICATE', 'TRANSFER_CERTIFICATE', 'PREVIOUS_MARKSHEET', 'MEDICAL_RECORD', 'OTHER'])
+  documentType: string;
+
+  @ApiProperty({ example: 'https://example.com/docs/cert123.pdf', description: 'URL or path to uploaded document' })
+  @IsNotEmpty()
+  @IsString()
+  fileUrl: string;
+
+  @ApiPropertyOptional({ example: 'application/pdf', description: 'MIME type' })
+  @IsOptional()
+  @IsString()
+  fileType?: string;
+}
+
+

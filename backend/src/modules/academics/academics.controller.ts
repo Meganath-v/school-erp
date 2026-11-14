@@ -6,6 +6,7 @@ import {
   UpdateLessonPlanProgressDto,
   CreateTeachingDiaryDto,
   CreateCourseMaterialDto,
+  CreateCourseOutcomeDto,
 } from './academics.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, ACADEMIC_STAFF } from '../../common/decorators/roles.decorator';
@@ -118,6 +119,38 @@ export class AcademicsController {
   @Get('attendance-analytics')
   async getAttendanceAnalytics(@CurrentSchoolId() schoolId: string) {
     const data = await this.academicsService.getAttendanceShortageAnalytics(schoolId);
+    return { data };
+  }
+
+  @ApiOperation({ summary: 'Get Bloom\'s Taxonomy 6 cognitive complexity levels and action verbs' })
+  @ApiResponse({ status: 200, description: 'Bloom\'s Taxonomy framework' })
+  @Get('blooms-taxonomy')
+  getBloomsTaxonomy() {
+    const data = this.academicsService.getBloomsTaxonomyLevels();
+    return { data };
+  }
+
+  @ApiOperation({ summary: 'Get OBE course outcomes for a subject' })
+  @ApiResponse({ status: 200, description: 'List of Course Outcomes' })
+  @Get('subjects/:subjectId/course-outcomes')
+  async getCourseOutcomes(
+    @CurrentSchoolId() schoolId: string,
+    @Param('subjectId') subjectId: string,
+  ) {
+    const data = await this.academicsService.getCourseOutcomes(schoolId, subjectId);
+    return { data };
+  }
+
+  @Roles(...ACADEMIC_STAFF)
+  @ApiOperation({ summary: 'Create or update OBE Course Outcome for a subject' })
+  @ApiResponse({ status: 201, description: 'Course Outcome saved' })
+  @Post('subjects/:subjectId/course-outcomes')
+  async createCourseOutcome(
+    @CurrentSchoolId() schoolId: string,
+    @Param('subjectId') subjectId: string,
+    @Body() body: CreateCourseOutcomeDto,
+  ) {
+    const data = await this.academicsService.createCourseOutcome(schoolId, subjectId, body);
     return { data };
   }
 }

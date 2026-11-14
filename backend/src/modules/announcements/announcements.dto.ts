@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateAnnouncementDto {
   @ApiProperty({ example: 'Winter Vacation Schedule 2026', description: 'Announcement title' })
@@ -31,5 +31,20 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsString()
   authorName?: string;
+
+  @ApiPropertyOptional({ example: '2026-11-14T00:00:00Z', description: 'Start date' })
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  @ApiPropertyOptional({ example: '2026-12-31T23:59:59Z', description: 'Expiration date' })
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/notices/circular12.pdf' })
+  @IsOptional()
+  @IsString()
+  attachments?: string;
 }
 

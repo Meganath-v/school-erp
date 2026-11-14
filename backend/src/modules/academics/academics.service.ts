@@ -248,4 +248,90 @@ export class AcademicsService {
       atRiskStudents,
     };
   }
+
+  // 5. Outcome-Based Education (OBE) Course Outcomes & Bloom's Taxonomy
+  async getCourseOutcomes(schoolId: string, subjectId: string) {
+    return this.prisma.courseOutcome.findMany({
+      where: { schoolId, subjectId },
+      orderBy: { code: 'asc' },
+    });
+  }
+
+  async createCourseOutcome(schoolId: string, subjectId: string, data: any) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId },
+    });
+    if (!subject) {
+      throw new NotFoundException('Subject not found in this school');
+    }
+
+    return this.prisma.courseOutcome.upsert({
+      where: {
+        subjectId_code: {
+          subjectId,
+          code: data.code,
+        },
+      },
+      update: {
+        description: data.description,
+        bloomLevel: data.bloomLevel,
+        targetAttainment: data.targetAttainment !== undefined ? data.targetAttainment : 70,
+      },
+      create: {
+        schoolId,
+        subjectId,
+        code: data.code,
+        description: data.description,
+        bloomLevel: data.bloomLevel,
+        targetAttainment: data.targetAttainment !== undefined ? data.targetAttainment : 70,
+      },
+    });
+  }
+
+  getBloomsTaxonomyLevels() {
+    return [
+      {
+        level: 'REMEMBER',
+        name: 'Remembering',
+        order: 1,
+        cognitiveProcess: 'Recall facts, basic concepts, and retrieval of relevant knowledge',
+        actionVerbs: ['define', 'duplicate', 'list', 'memorize', 'recall', 'repeat', 'reproduce', 'state'],
+      },
+      {
+        level: 'UNDERSTAND',
+        name: 'Understanding',
+        order: 2,
+        cognitiveProcess: 'Explain ideas or concepts, interpret, exemplify, classify, summarize',
+        actionVerbs: ['classify', 'describe', 'discuss', 'explain', 'identify', 'locate', 'recognize', 'report', 'select', 'translate'],
+      },
+      {
+        level: 'APPLY',
+        name: 'Applying',
+        order: 3,
+        cognitiveProcess: 'Use information in new situations, execute or implement tasks',
+        actionVerbs: ['execute', 'implement', 'solve', 'use', 'demonstrate', 'interpret', 'operate', 'schedule', 'sketch'],
+      },
+      {
+        level: 'ANALYZE',
+        name: 'Analyzing',
+        order: 4,
+        cognitiveProcess: 'Draw connections among ideas, differentiate, organize, attribute',
+        actionVerbs: ['differentiate', 'organize', 'relate', 'compare', 'contrast', 'distinguish', 'examine', 'experiment', 'question', 'test'],
+      },
+      {
+        level: 'EVALUATE',
+        name: 'Evaluating',
+        order: 5,
+        cognitiveProcess: 'Justify a stand or decision, appraise, argue, defend, critique',
+        actionVerbs: ['appraise', 'argue', 'defend', 'judge', 'select', 'support', 'value', 'critique', 'weigh'],
+      },
+      {
+        level: 'CREATE',
+        name: 'Creating',
+        order: 6,
+        cognitiveProcess: 'Produce new or original work, design, assemble, construct, formulate',
+        actionVerbs: ['design', 'assemble', 'construct', 'conjecture', 'develop', 'formulate', 'author', 'investigate'],
+      },
+    ];
+  }
 }

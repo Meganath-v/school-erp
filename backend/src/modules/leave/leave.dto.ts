@@ -22,6 +22,16 @@ export class CreateLeaveRequestDto {
   @IsString()
   @MaxLength(500)
   reason: string;
+
+  @ApiPropertyOptional({ example: 'MEDICAL', enum: ['MEDICAL', 'CASUAL', 'FAMILY', 'OTHER'] })
+  @IsOptional()
+  @IsString()
+  leaveType?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/docs/medical_cert.pdf' })
+  @IsOptional()
+  @IsString()
+  supportingDocUrl?: string;
 }
 
 export class DecideLeaveDto {

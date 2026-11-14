@@ -32,6 +32,43 @@ export class TimetableController {
     return { data };
   }
 
+  @Get('grid')
+  @ApiOperation({ summary: 'Get 8-period weekly schedule matrix grid for printing and class displays' })
+  @ApiResponse({ status: 200, description: 'Timetable 8-period weekly grid matrix' })
+  async getTimetableGrid(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+    @Query() query: TimetableFilterDto,
+  ) {
+    const data = await this.timetableService.getTimetableGrid(schoolId, {
+      sectionId: query.sectionId,
+      staffId: query.staffId,
+      classId: query.classId,
+      userId,
+      role,
+    });
+    return { data };
+  }
+
+  @Get('check-availability')
+  @ApiOperation({ summary: 'Check if a teacher is free or occupied at a given day and period' })
+  @ApiResponse({ status: 200, description: 'Availability status' })
+  async checkTeacherAvailability(
+    @CurrentSchoolId() schoolId: string,
+    @Query('staffId') staffId: string,
+    @Query('dayOfWeek') dayOfWeek: string,
+    @Query('periodNumber') periodNumber: string,
+  ) {
+    const data = await this.timetableService.checkTeacherAvailability(
+      schoolId,
+      staffId,
+      parseInt(dayOfWeek, 10),
+      parseInt(periodNumber, 10),
+    );
+    return { data };
+  }
+
   @Roles(...SCHOOL_ADMINS)
   @Post('entries')
   @ApiOperation({ summary: 'Schedule a new timetable slot with teacher/room conflict detection' })

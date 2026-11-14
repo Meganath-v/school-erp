@@ -8,7 +8,7 @@ import { CreateLeaveRequestDto, DecideLeaveDto } from './leave.dto';
 
 @ApiTags('Student Leave Applications & Approval Workflow')
 @ApiBearerAuth()
-@Controller('leave-requests')
+@Controller(['leave-requests', 'leave/requests'])
 @UseGuards(JwtAuthGuard)
 export class LeaveController {
   constructor(private leaveService: LeaveService) {}
@@ -55,13 +55,15 @@ export class LeaveController {
       startDate: body.startDate,
       endDate: body.endDate,
       reason: body.reason,
+      leaveType: body.leaveType,
+      supportingDocUrl: body.supportingDocUrl,
       applicantName: user.name,
     });
     return { data };
   }
 
   @Roles('CLASS_TEACHER', ...SCHOOL_ADMINS)
-  @Post(':id/decision')
+  @Post([':id/decision', ':id/decide'])
   @ApiOperation({ summary: 'Approve or reject a student leave application' })
   @ApiParam({ name: 'id', description: 'LeaveRequest UUID' })
   @ApiResponse({ status: 200, description: 'Leave decision recorded' })

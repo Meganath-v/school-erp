@@ -132,4 +132,78 @@ export class TimetableService {
       },
     });
   }
+
+  async getTimetableGrid(
+    schoolId: string,
+    query: { sectionId?: string; staffId?: string; classId?: string; userId?: string; role?: string },
+  ) {
+    const entries = await this.getEntries(schoolId, query);
+
+    const dayNames: { [key: number]: string } = {
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+    };
+
+    const standardPeriods = [
+      { periodNumber: 1, startTime: '09:00', endTime: '09:45' },
+      { periodNumber: 2, startTime: '09:45', endTime: '10:30' },
+      { periodNumber: 3, startTime: '10:45', endTime: '11:30' },
+      { periodNumber: 4, startTime: '11:30', endTime: '12:15' },
+      { periodNumber: 5, startTime: '13:00', endTime: '13:45' },
+      { periodNumber: 6, startTime: '13:45', endTime: '14:30' },
+      { periodNumber: 7, startTime: '14:35', endTime: '15:20' },
+      { periodNumber: 8, startTime: '15:20', endTime: '16:00' },
+    ];
+
+    const grid = [1, 2, 3, 4, 5, 6].map((dayOfWeek) => {
+      const dayEntries = entries.filter((e) => e.dayOfWeek === dayOfWeek);
+      const periods = standardPeriods.map((p) => {
+        const slot = dayEntries.find((e) => e.periodNumber === p.periodNumber);
+        return {
+          periodNumber: p.periodNumber,
+          startTime: slot?.startTime || p.startTime,
+          endTime: slot?.endTime || p.endTime,
+          isAssigned: !!slot,
+          entry: slot || null,
+        };
+      });
+
+      return {
+        dayOfWeek,
+        dayName: dayNames[dayOfWeek],
+        periods,
+      };
+    });
+
+    return {
+      periodsHeader: standardPeriods,
+      days: grid,
+    };
+  }
+
+  async checkTeacherAvailability(schoolId: string, staffId: string, dayOfWeek: number, periodNumber: number) {
+    const clash = await this.prisma.timetableEntry.findFirst({
+      where: { schoolId, staffId, dayOfWeek, periodNumber },
+      include: {
+        section: { include: { class: true } },
+        subject: true,
+      },
+    });
+
+    return {
+      available: !clash,
+      clash: clash
+        ? {
+            className: clash.section.class.name,
+            sectionName: clash.section.name,
+            subjectName: clash.subject.name,
+            room: clash.room,
+          }
+        : null,
+    };
+  }
 }

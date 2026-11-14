@@ -333,4 +333,61 @@ export class AttendanceService {
       },
     };
   }
+
+  async correctAttendanceRecord(
+    schoolId: string,
+    recordId: string,
+    data: { status: string; remarks?: string; reason?: string },
+    actor: { id: string; name: string },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.attendanceRecord.findFirst({
+        where: { id: recordId },
+        include: {
+          session: true,
+          student: true,
+        },
+      });
+
+      if (!record || record.session.schoolId !== schoolId) {
+        throw new BadRequestException('Attendance record not found in this school');
+      }
+
+      const previousStatus = record.status;
+
+      const updated = await tx.attendanceRecord.update({
+        where: { id: recordId },
+        data: {
+          status: data.status,
+          remarks: data.remarks || record.remarks,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor.id,
+          actorName: actor.name,
+          action: 'ATTENDANCE_CORRECTED',
+          entity: 'AttendanceRecord',
+          entityId: recordId,
+          details: JSON.stringify({
+            studentId: record.studentId,
+            studentName: `${record.student.firstName} ${record.student.lastName}`,
+            date: record.session.date,
+            from: previousStatus,
+            to: data.status,
+            reason: data.reason,
+            remarks: data.remarks,
+          }),
+        },
+      });
+
+      return {
+        message: 'Attendance record corrected successfully',
+        record: updated,
+        previousStatus,
+      };
+    });
+  }
 }

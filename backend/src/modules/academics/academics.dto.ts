@@ -143,3 +143,31 @@ export class CreateCourseMaterialDto {
   fileUrl: string;
 }
 
+export class CreateCourseOutcomeDto {
+  @ApiProperty({ example: 'CO1', description: 'Course Outcome code' })
+  @IsNotEmpty()
+  @IsString()
+  code: string;
+
+  @ApiProperty({ example: 'Analyze algorithm time and space complexity using Big-O notation' })
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  @ApiProperty({
+    example: 'ANALYZE',
+    enum: ['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE'],
+  })
+  @IsNotEmpty()
+  @IsString()
+  bloomLevel: string;
+
+  @ApiPropertyOptional({ example: 75, description: 'Target attainment percentage threshold' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  targetAttainment?: number;
+}
+
+

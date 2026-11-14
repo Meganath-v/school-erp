@@ -59,6 +59,8 @@ model School {
   lessonPlans         LessonPlan[]
   teachingDiaries     TeachingDiaryEntry[]
   courseMaterials     CourseMaterial[]
+  courseOutcomes      CourseOutcome[]
+  studentDocuments    StudentDocument[]
 }
 
 model Campus {
@@ -327,6 +329,7 @@ model Subject {
   lessonPlans        LessonPlan[]
   teachingDiaries    TeachingDiaryEntry[]
   courseMaterials    CourseMaterial[]
+  courseOutcomes     CourseOutcome[]
 
   @@index([schoolId])
 }
@@ -377,6 +380,7 @@ model Student {
   marks             Mark[]
   invoices          Invoice[]
   leaveRequests     LeaveRequest[]
+  documents         StudentDocument[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -438,6 +442,23 @@ model Enrollment {
   @@index([studentId])
   @@index([academicYearId])
   @@index([classId, sectionId])
+}
+
+model StudentDocument {
+  id           String   @id @default(uuid())
+  schoolId     String
+  studentId    String
+  title        String
+  documentType String   // BIRTH_CERTIFICATE, TRANSFER_CERTIFICATE, PREVIOUS_MARKSHEET, MEDICAL_RECORD, OTHER
+  fileUrl      String
+  fileType     String?
+  uploadedAt   DateTime @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
 }
 
 // ----------------------------------------------------
@@ -762,9 +783,11 @@ model LeaveRequest {
   schoolId        String
   studentId       String
   applicantName   String
+  leaveType       String   @default("MEDICAL") // MEDICAL, CASUAL, FAMILY, OTHER
   startDate       DateTime
   endDate         DateTime
   reason          String
+  supportingDocUrl String?
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
   decisionRemarks String?
   decidedBy       String?
@@ -785,6 +808,9 @@ model Announcement {
   content     String
   targetRole  String   @default("ALL") // ALL, TEACHER, PARENT, STUDENT
   priority    String   @default("NORMAL") // NORMAL, URGENT
+  startsAt    DateTime @default(now())
+  expiresAt   DateTime?
+  attachments String?  // JSON
   publishedAt DateTime @default(now())
   authorName  String?
 
@@ -902,6 +928,24 @@ model CourseMaterial {
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId])
+  @@index([subjectId])
+}
+
+model CourseOutcome {
+  id               String   @id @default(uuid())
+  schoolId         String
+  subjectId        String
+  code             String   // e.g. "CO1", "CO2"
+  description      String
+  bloomLevel       String   // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, CREATE
+  targetAttainment Int      @default(70)
+  createdAt        DateTime @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, code])
   @@index([schoolId])
   @@index([subjectId])
 }

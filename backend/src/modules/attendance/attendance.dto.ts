@@ -60,3 +60,20 @@ export class AttendanceFilterDto {
   year?: number;
 }
 
+export class CorrectAttendanceRecordDto {
+  @ApiProperty({ example: 'PRESENT', enum: ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED', 'HALF_DAY'] })
+  @IsIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED', 'HALF_DAY'])
+  status: string;
+
+  @ApiPropertyOptional({ example: 'Medical certificate submitted, approved by Principal' })
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+
+  @ApiPropertyOptional({ example: 'Doctor certificate provided' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+
