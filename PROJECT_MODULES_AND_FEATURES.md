@@ -228,3 +228,4 @@ flutter pub get
 flutter run -d chrome --web-port=8080
 ```
 *(Or target `windows`, `edge`, or mobile emulators).*
+
