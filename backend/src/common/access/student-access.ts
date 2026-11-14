@@ -31,5 +31,12 @@ export async function assertStudentAccess(
     const ids = await getLinkedStudentIds(prisma, schoolId, user.userId);
     if (ids.includes(studentId)) return;
   }
+  if (user.role === 'STUDENT') {
+    const studentUserRecord = await prisma.student.findFirst({
+      where: { id: studentId, schoolId, userId: user.userId },
+      select: { id: true },
+    });
+    if (studentUserRecord) return;
+  }
   throw new ForbiddenException('You are not authorized to access records for this student');
 }

@@ -10,6 +10,8 @@ import 'features/principal/presentation/principal_dashboard.dart';
 import 'features/class_teacher/presentation/teacher_dashboard.dart';
 import 'features/subject_teacher/presentation/subject_teacher_dashboard.dart';
 import 'features/parent/presentation/parent_portal_screen.dart';
+import 'features/office/presentation/office_dashboard.dart';
+import 'features/student/presentation/student_portal_screen.dart';
 import 'features/audit/presentation/audit_logs_screen.dart';
 
 void main() {
@@ -129,8 +131,33 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         break;
 
-      case 'SCHOOL_ADMIN':
       case 'OFFICE':
+        destinations = const [
+          NavigationDestinationItem(
+            label: 'Office Operations & Fees',
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+          ),
+        ];
+        pages = const [
+          OfficeDashboard(),
+        ];
+        break;
+
+      case 'STUDENT':
+        destinations = const [
+          NavigationDestinationItem(
+            label: 'Student Academic Portal',
+            icon: Icons.school_outlined,
+            selectedIcon: Icons.school,
+          ),
+        ];
+        pages = const [
+          StudentPortalScreen(),
+        ];
+        break;
+
+      case 'SCHOOL_ADMIN':
       default:
         destinations = const [
           NavigationDestinationItem(

@@ -20,6 +20,8 @@ export class StudentsService {
       where.studentGuardians = {
         some: { guardianId: guardian.id },
       };
+    } else if (query.role === 'STUDENT' && query.userId) {
+      where.userId = query.userId;
     } else {
       if (query.classId || query.sectionId) {
         where.enrollments = {
@@ -277,6 +279,51 @@ export class StudentsService {
       totalWorkingDays: totalAttendance || 65,
       daysPresent: presentAttendance || 62,
       exams: Object.values(marksByExam),
+    };
+  }
+
+  async getStudentMe(schoolId: string, userId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { schoolId, userId },
+      include: {
+        enrollments: {
+          where: { status: 'ACTIVE' },
+          include: {
+            class: true,
+            section: true,
+            academicYear: true,
+          },
+        },
+        studentGuardians: {
+          include: { guardian: true },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student profile not found for this user');
+    }
+
+    return {
+      id: student.id,
+      admissionNo: student.admissionNo,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      fullName: `${student.firstName} ${student.lastName}`,
+      dob: student.dob,
+      gender: student.gender,
+      bloodGroup: student.bloodGroup,
+      address: student.address,
+      className: student.enrollments[0]?.class?.name || 'Grade 10',
+      sectionName: student.enrollments[0]?.section?.name || 'Section A',
+      classId: student.enrollments[0]?.classId,
+      sectionId: student.enrollments[0]?.sectionId,
+      rollNo: student.enrollments[0]?.rollNo,
+      guardians: student.studentGuardians.map((sg) => ({
+        name: sg.guardian.name,
+        relation: sg.relationship,
+        phone: sg.guardian.phone,
+      })),
     };
   }
 }

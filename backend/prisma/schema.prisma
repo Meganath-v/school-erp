@@ -113,6 +113,7 @@ model User {
   memberships UserSchoolMembership[]
   guardians     Guardian[]
   staff         Staff[]
+  students      Student[]
   notifications Notification[]
   reminders           Reminder[]
   assignedTasks       Task[]                    @relation("AssignedToUser")
@@ -283,6 +284,7 @@ model ClassSubject {
 model Student {
   id               String   @id @default(uuid())
   schoolId         String
+  userId           String?  // Linked student login account
   admissionNo      String
   firstName        String
   lastName         String
@@ -297,6 +299,7 @@ model Student {
   updatedAt        DateTime @updatedAt
 
   school            School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user              User?              @relation(fields: [userId], references: [id])
   studentGuardians  StudentGuardian[]
   enrollments       Enrollment[]
   attendanceRecords AttendanceRecord[]

@@ -203,6 +203,20 @@ async function main() {
     },
   });
 
+  const studentUser = await prisma.user.upsert({
+    where: { email: 'student.john@oakridge.edu' },
+    update: { passwordHash },
+    create: {
+      email: 'student.john@oakridge.edu',
+      username: 'studentjohn',
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+91 9876543220',
+      passwordHash,
+      status: 'ACTIVE',
+    },
+  });
+
   // Second school admin
   const stxAdminUser = await prisma.user.upsert({
     where: { email: 'admin@stxaviers.edu' },
@@ -367,6 +381,18 @@ async function main() {
       userId: parentUser.id,
       schoolId: stxaviersSchool.id,
       defaultRole: 'PARENT',
+      status: 'ACTIVE',
+    },
+  });
+
+  // Oakridge Student
+  await prisma.userSchoolMembership.upsert({
+    where: { userId_schoolId: { userId: studentUser.id, schoolId: oakridgeSchool.id } },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      schoolId: oakridgeSchool.id,
+      defaultRole: 'STUDENT',
       status: 'ACTIVE',
     },
   });
@@ -537,6 +563,7 @@ async function main() {
   const studentJohn = await prisma.student.create({
     data: {
       schoolId: oakridgeSchool.id,
+      userId: studentUser.id,
       admissionNo: 'ADM-2026-001',
       firstName: 'John',
       lastName: 'Doe',

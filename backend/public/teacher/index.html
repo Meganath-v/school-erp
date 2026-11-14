@@ -562,6 +562,9 @@
           </div>
 
           <div class="flex items-center space-x-3">
+            <select id="broadsheetExamSelector" onchange="loadBroadsheet()" class="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium bg-white text-slate-700 shadow-sm">
+              <option value="">Select Examination</option>
+            </select>
             <button onclick="window.print()"
               class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
               <i data-lucide="printer" class="w-4 h-4"></i>
@@ -829,14 +832,25 @@
       try {
         examsList = await apiRequest('/exams');
         const examSelect = document.getElementById('examSelector');
+        const broadsheetExamSelect = document.getElementById('broadsheetExamSelector');
         examSelect.innerHTML = '<option value="">Select Examination</option>';
+        if (broadsheetExamSelect) {
+          broadsheetExamSelect.innerHTML = '<option value="">Select Examination</option>';
+        }
 
         for (const e of examsList) {
-          examSelect.innerHTML += `<option value="${esc(e.id)}">${esc(e.name)} (${esc(e.term)})</option>`;
+          const opt = `<option value="${esc(e.id)}">${esc(e.name)} (${esc(e.term)})</option>`;
+          examSelect.innerHTML += opt;
+          if (broadsheetExamSelect) {
+            broadsheetExamSelect.innerHTML += opt;
+          }
         }
 
         if (examsList.length > 0) {
           examSelect.value = examsList[0].id;
+          if (broadsheetExamSelect) {
+            broadsheetExamSelect.value = examsList[0].id;
+          }
           populateSubjects(examsList[0]);
         }
       } catch (err) {
@@ -1162,55 +1176,58 @@
     // =========================================================================
     // 3. CONSOLIDATED ATTENDANCE MATRIX & CONDONATION
     // =========================================================================
+    let currentMatrixData = null;
+
     async function loadAttendanceMatrix() {
       try {
         const thead = document.getElementById('matrixThead');
         const tbody = document.getElementById('matrixTbody');
+        tbody.innerHTML = '<tr><td colspan="20" class="p-8 text-center text-xs text-slate-400">Loading live attendance registry...</td></tr>';
 
-        // Generate dates for current month
-        const days = Array.from({ length: 15 }, (_, i) => `Nov ${i + 1}`);
+        const data = await apiRequest('/attendance/matrix');
+        currentMatrixData = data;
+
+        if (!data || !data.students || data.students.length === 0) {
+          thead.innerHTML = '';
+          tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No attendance sessions recorded yet.</td></tr>';
+          return;
+        }
+
+        const sessions = data.sessions || [];
 
         thead.innerHTML = `
           <tr>
             <th class="py-3 px-3 w-10 text-center">#</th>
             <th class="py-3 px-3 w-28">Admission No</th>
             <th class="py-3 px-3">Student Name</th>
-            ${days.map(d => `<th class="py-3 px-1 text-center w-8 text-[10px]">${d}</th>`).join('')}
+            ${sessions.map(s => `<th class="py-3 px-1 text-center w-8 text-[10px]">${esc(s.date ? s.date.substring(5) : s)}</th>`).join('')}
             <th class="py-3 px-3 text-center">Total Attended</th>
             <th class="py-3 px-3 text-center">Attendance %</th>
             <th class="py-3 px-3 text-center">75% Linways Status</th>
           </tr>
         `;
 
-        // Mock realistic high-density data based on students
-        const sampleStudents = [
-          { adm: 'OAK-2026-001', name: 'Alexander Doe', attended: 14, total: 15 },
-          { adm: 'OAK-2026-002', name: 'David Miller', attended: 10, total: 15 },
-          { adm: 'OAK-2026-003', name: 'Emma Watson', attended: 15, total: 15 },
-          { adm: 'OAK-2026-004', name: 'James Wilson', attended: 9, total: 15 },
-          { adm: 'OAK-2026-005', name: 'Sophia Taylor', attended: 14, total: 15 },
-        ];
-
-        tbody.innerHTML = sampleStudents.map((s, idx) => {
-          const pct = Math.round((s.attended / s.total) * 100);
-          const isDefaulter = pct < 75;
+        tbody.innerHTML = data.students.map((s, idx) => {
+          const isDefaulter = s.isCondonationRisk;
 
           return `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${isDefaulter ? 'bg-rose-50/40' : ''}">
               <td class="py-2 px-3 text-center text-slate-400 font-semibold">${idx + 1}</td>
-              <td class="py-2 px-3 font-mono font-medium text-slate-700">${esc(s.adm)}</td>
-              <td class="py-2 px-3 font-semibold text-slate-900">${esc(s.name)}</td>
-              ${days.map((_, i) => {
-                const isAbsentDay = (idx === 1 && (i === 3 || i === 4 || i === 5 || i === 6 || i === 7)) ||
-                                    (idx === 3 && (i === 1 || i === 2 || i === 6 || i === 8 || i === 10 || i === 12));
+              <td class="py-2 px-3 font-mono font-medium text-slate-700">${esc(s.admissionNo)}</td>
+              <td class="py-2 px-3 font-semibold text-slate-900">${esc(s.fullName)}</td>
+              ${sessions.map(sess => {
+                const dateKey = sess.date || sess;
+                const status = (s.dailyStatus && s.dailyStatus[dateKey]) || '-';
+                const isAbsent = status === 'ABSENT';
+                const isPresent = status === 'PRESENT';
                 return `
-                  <td class="py-2 px-1 text-center font-bold text-[10px] ${isAbsentDay ? 'text-rose-600 bg-rose-100/60' : 'text-emerald-600'}">
-                    ${isAbsentDay ? 'A' : 'P'}
+                  <td class="py-2 px-1 text-center font-bold text-[10px] ${isAbsent ? 'text-rose-600 bg-rose-100/60' : (isPresent ? 'text-emerald-600' : 'text-amber-600')}">
+                    ${status === 'PRESENT' ? 'P' : (status === 'ABSENT' ? 'A' : (status === 'HALF_DAY' ? 'HD' : status))}
                   </td>
                 `;
               }).join('')}
-              <td class="py-2 px-3 text-center font-bold text-slate-800">${esc(s.attended)} / ${esc(s.total)}</td>
-              <td class="py-2 px-3 text-center font-bold ${isDefaulter ? 'text-rose-600' : 'text-emerald-600'}">${pct}%</td>
+              <td class="py-2 px-3 text-center font-bold text-slate-800">${esc(s.attended)} / ${esc(s.totalConducted)}</td>
+              <td class="py-2 px-3 text-center font-bold ${isDefaulter ? 'text-rose-600' : 'text-emerald-600'}">${s.attendancePercentage}%</td>
               <td class="py-2 px-3 text-center">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDefaulter ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'}">
                   ${isDefaulter ? 'CONDONATION AT RISK' : 'SATISFACTORY'}
@@ -1221,11 +1238,30 @@
         }).join('');
       } catch (err) {
         console.error('Failed to load matrix', err);
+        document.getElementById('matrixTbody').innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-rose-500">Failed to load attendance matrix: ${esc(err.message)}</td></tr>`;
       }
     }
 
     function exportCondonationList() {
-      alert('📄 Condonation Defaulters list exported: 2 students below 75% attendance threshold flagged.');
+      if (!currentMatrixData || !currentMatrixData.students) {
+        alert('Attendance data not loaded yet.');
+        return;
+      }
+      const defaulters = currentMatrixData.students.filter(s => s.isCondonationRisk);
+      const rows = defaulters.length > 0 ? defaulters : currentMatrixData.students;
+      const exportData = rows.map(s => ({
+        'Admission No': s.admissionNo,
+        'Student Name': s.fullName,
+        'Sessions Conducted': s.totalConducted,
+        'Sessions Attended': s.attended,
+        'Attendance %': `${s.attendancePercentage}%`,
+        'Status': s.isCondonationRisk ? 'CONDONATION AT RISK (<75%)' : 'SATISFACTORY',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Condonation Report');
+      XLSX.writeFile(wb, `Attendance_Condonation_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
     async function triggerAutomatedScan() {
@@ -1328,56 +1364,51 @@
     // 5. OBE SYLLABUS & TEACHING DIARY
     // =========================================================================
     async function loadObeData() {
-      // Unit Progress Mock
-      document.getElementById('unitProgressList').innerHTML = `
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-xs font-semibold text-slate-800">
-            <span>Unit 1: Real Numbers & Polynomials</span>
-            <span>100% (8/8 hrs)</span>
-          </div>
-          <div class="w-full bg-slate-100 rounded-full h-2">
-            <div class="bg-emerald-500 h-2 rounded-full w-full"></div>
-          </div>
-        </div>
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-xs font-semibold text-slate-800">
-            <span>Unit 2: Linear Equations & Matrices</span>
-            <span>75% (9/12 hrs)</span>
-          </div>
-          <div class="w-full bg-slate-100 rounded-full h-2">
-            <div class="bg-indigo-600 h-2 rounded-full w-3/4"></div>
-          </div>
-        </div>
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-xs font-semibold text-slate-800">
-            <span>Unit 3: Quadratic Equations & AP</span>
-            <span>30% (3/10 hrs)</span>
-          </div>
-          <div class="w-full bg-slate-100 rounded-full h-2">
-            <div class="bg-amber-500 h-2 rounded-full w-1/3"></div>
-          </div>
-        </div>
-      `;
+      try {
+        const [plansRes, diariesRes] = await Promise.all([
+          apiRequest('/academics/lesson-plans'),
+          apiRequest('/academics/teaching-diaries'),
+        ]);
 
-      // Diary Logs
-      document.getElementById('diaryLogsList').innerHTML = `
-        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-          <div class="flex items-center justify-between text-xs font-bold text-slate-800">
-            <span>Period 2: Arithmetic Progressions - nth term derivation</span>
-            <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">LECTURE</span>
-          </div>
-          <p class="text-xs text-slate-600">Covered standard formula derivation. 85% students scored full in 5-minute spot quiz.</p>
-          <div class="text-[10px] text-slate-400">Taught on Today • Grade 10-A</div>
-        </div>
-        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-          <div class="flex items-center justify-between text-xs font-bold text-slate-800">
-            <span>Period 4: Graphing Linear Inequalities</span>
-            <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">LAB & GRAPHING</span>
-          </div>
-          <p class="text-xs text-slate-600">Students plotted boundary conditions using graph workbooks.</p>
-          <div class="text-[10px] text-slate-400">Taught on Yesterday • Grade 10-A</div>
-        </div>
-      `;
+        const plans = (plansRes.data && plansRes.data.plans) || plansRes.plans || (Array.isArray(plansRes.data) ? plansRes.data : []);
+        const unitContainer = document.getElementById('unitProgressList');
+
+        if (!plans || plans.length === 0) {
+          unitContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No unit lesson plans recorded yet.</p>';
+        } else {
+          unitContainer.innerHTML = plans.map(p => `
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs font-semibold text-slate-800">
+                <span>Unit ${esc(p.unitNumber)}: ${esc(p.unitTitle || p.topic || 'Syllabus Module')}</span>
+                <span>${esc(p.coveragePercent || 0)}% (${esc(p.conductedHours || 0)}/${esc(p.plannedHours || 0)} hrs)</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2">
+                <div class="${(p.coveragePercent || 0) >= 100 ? 'bg-emerald-500' : ((p.coveragePercent || 0) >= 50 ? 'bg-indigo-600' : 'bg-amber-500')} h-2 rounded-full" style="width: ${Math.min(100, p.coveragePercent || 0)}%"></div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        const diaries = diariesRes.data || (Array.isArray(diariesRes) ? diariesRes : []);
+        const diaryContainer = document.getElementById('diaryLogsList');
+
+        if (!diaries || diaries.length === 0) {
+          diaryContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No diary entries logged yet.</p>';
+        } else {
+          diaryContainer.innerHTML = diaries.map(d => `
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                <span>Period ${esc(d.periodNumber)}: ${esc(d.topicTaught || 'Lesson Session')}</span>
+                <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px] font-semibold">${esc(d.methodology || 'LECTURE')}</span>
+              </div>
+              <p class="text-xs text-slate-600">${esc(d.remarks || 'No notes logged.')}</p>
+              <div class="text-[10px] text-slate-400">Taught on ${new Date(d.date).toLocaleDateString()} • ${esc(d.className || '')} ${esc(d.subjectName || '')}</div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load OBE data', err);
+      }
     }
 
     function openTeachingDiaryModal() {
@@ -1386,11 +1417,32 @@
     function closeTeachingDiaryModal() {
       document.getElementById('diaryModal').classList.add('hidden');
     }
-    function handleSaveDiary(e) {
+    async function handleSaveDiary(e) {
       e.preventDefault();
-      alert('✅ Teaching diary entry saved to Linways academic course registry!');
-      closeTeachingDiaryModal();
-      loadObeData();
+      const periodNumber = parseInt(document.getElementById('diaryPeriod').value, 10) || 1;
+      const methodology = document.getElementById('diaryMethod').value;
+      const topicTaught = document.getElementById('diaryTopic').value.trim();
+      const remarks = document.getElementById('diaryRemarks').value.trim();
+
+      try {
+        await apiRequest('/academics/teaching-diaries', {
+          method: 'POST',
+          body: JSON.stringify({
+            periodNumber,
+            methodology,
+            topicTaught,
+            remarks,
+          }),
+        });
+
+        alert('✅ Teaching diary entry saved to Linways academic course registry!');
+        document.getElementById('diaryTopic').value = '';
+        document.getElementById('diaryRemarks').value = '';
+        closeTeachingDiaryModal();
+        loadObeData();
+      } catch (err) {
+        alert('Failed to save diary entry: ' + err.message);
+      }
     }
 
     // =========================================================================
@@ -1461,16 +1513,30 @@
     // 7. BROADSHEET
     // =========================================================================
     async function loadBroadsheet() {
-      if (!examsList.length) return;
-      const examId = examsList[0].id;
-      const classId = examsList[0].subjects[0]?.classId;
-      if (!classId) return;
+      if (!examsList || !examsList.length) return;
+      const selector = document.getElementById('broadsheetExamSelector');
+      const examId = (selector && selector.value) ? selector.value : examsList[0].id;
+      const currentExam = examsList.find(e => e.id === examId) || examsList[0];
+      const classId = currentExam.subjects && currentExam.subjects[0]?.classId;
+      
+      const thead = document.getElementById('broadsheetThead');
+      const tbody = document.getElementById('broadsheetTbody');
+
+      if (!classId) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No subjects or classes configured for this examination.</td></tr>';
+        return;
+      }
 
       try {
+        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">Loading broadsheet...</td></tr>';
         const data = await apiRequest(`/exams/${examId}/classes/${classId}/broadsheet`);
 
-        const thead = document.getElementById('broadsheetThead');
-        const tbody = document.getElementById('broadsheetTbody');
+        if (!data.broadsheet || data.broadsheet.length === 0) {
+          thead.innerHTML = '';
+          tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No marks entered for this class yet.</td></tr>';
+          return;
+        }
 
         thead.innerHTML = `
           <tr>
@@ -1507,6 +1573,7 @@
 
       } catch (err) {
         console.error('Failed to load broadsheet', err);
+        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-rose-500">Failed to load broadsheet: ${esc(err.message)}</td></tr>`;
       }
     }
 

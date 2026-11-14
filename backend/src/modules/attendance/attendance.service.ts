@@ -201,4 +201,106 @@ export class AttendanceService {
       };
     });
   }
+
+  async getAttendanceMatrix(schoolId: string, sectionId?: string, month?: number, year?: number) {
+    const targetSection = sectionId
+      ? await this.prisma.section.findFirst({ where: { id: sectionId, schoolId }, include: { class: true } })
+      : await this.prisma.section.findFirst({ where: { schoolId }, include: { class: true } });
+
+    if (!targetSection) {
+      return {
+        section: null,
+        sessions: [],
+        students: [],
+        stats: { totalStudents: 0, condonationThreshold: 75, defaultersCount: 0, averageAttendance: 0 },
+      };
+    }
+
+    // 1. Fetch active enrollments in this section
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        schoolId,
+        sectionId: targetSection.id,
+        status: 'ACTIVE',
+      },
+      include: { student: true },
+      orderBy: [{ rollNo: 'asc' }, { student: { lastName: 'asc' } }],
+    });
+
+    // 2. Fetch all daily sessions recorded for this section
+    const sessions = await this.prisma.attendanceSession.findMany({
+      where: {
+        schoolId,
+        sectionId: targetSection.id,
+        sessionType: 'DAILY',
+      },
+      include: {
+        records: true,
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const dates = sessions.map((s) => ({
+      sessionId: s.id,
+      date: s.date.toISOString().split('T')[0],
+      displayDate: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    }));
+
+    const condonationThreshold = Number(process.env.ATTENDANCE_CONDONATION_THRESHOLD || 75);
+
+    const students = enrollments.map((enr, idx) => {
+      let attended = 0;
+      const dailyStatus: Record<string, string> = {};
+
+      for (const sess of sessions) {
+        const rec = sess.records.find((r) => r.studentId === enr.student.id);
+        const status = rec ? rec.status : 'ABSENT';
+        const dateKey = sess.date.toISOString().split('T')[0];
+        dailyStatus[dateKey] = status;
+
+        if (status === 'PRESENT' || status === 'LATE' || status === 'HALF_DAY') {
+          attended += status === 'HALF_DAY' ? 0.5 : 1;
+        }
+      }
+
+      const totalConducted = sessions.length;
+      const percentage = totalConducted > 0 ? Math.round((attended / totalConducted) * 100) : 100;
+      const isCondonationRisk = totalConducted > 0 && percentage < condonationThreshold;
+
+      return {
+        studentId: enr.student.id,
+        admissionNo: enr.student.admissionNo,
+        rollNo: enr.rollNo ?? idx + 1,
+        fullName: `${enr.student.firstName} ${enr.student.lastName}`,
+        dailyStatus,
+        totalConducted,
+        attended,
+        attendancePercentage: percentage,
+        isCondonationRisk,
+      };
+    });
+
+    const defaultersCount = students.filter((s) => s.isCondonationRisk).length;
+    const avg =
+      students.length > 0
+        ? Math.round(students.reduce((acc, curr) => acc + curr.attendancePercentage, 0) / students.length)
+        : 100;
+
+    return {
+      section: {
+        id: targetSection.id,
+        name: targetSection.name,
+        className: targetSection.class.name,
+      },
+      sessions: dates,
+      students,
+      stats: {
+        totalStudents: students.length,
+        totalSessions: sessions.length,
+        condonationThreshold,
+        defaultersCount,
+        averageAttendance: avg,
+      },
+    };
+  }
 }

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { Roles, ALL_STAFF, OFFICE_STAFF } from '../../common/decorators/roles.decorator';
+import { Roles, ALL_STAFF, OFFICE_STAFF, ALL_SCHOOL_ROLES } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('students')
@@ -9,7 +9,17 @@ import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-us
 export class StudentsController {
   constructor(private studentsService: StudentsService) {}
 
-  @Roles(...ALL_STAFF, 'PARENT')
+  @Roles('STUDENT')
+  @Get('me/profile')
+  async getStudentMe(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const data = await this.studentsService.getStudentMe(schoolId, userId);
+    return { data };
+  }
+
+  @Roles(...ALL_SCHOOL_ROLES)
   @Get()
   async getStudents(
     @CurrentSchoolId() schoolId: string,
@@ -29,7 +39,7 @@ export class StudentsController {
     return { data };
   }
 
-  @Roles(...ALL_STAFF, 'PARENT')
+  @Roles(...ALL_SCHOOL_ROLES)
   @Get(':id')
   async getStudentById(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
     const data = await this.studentsService.getStudentById(schoolId, id, user);
@@ -43,7 +53,7 @@ export class StudentsController {
     return { data };
   }
 
-  @Roles(...ALL_STAFF, 'PARENT')
+  @Roles(...ALL_SCHOOL_ROLES)
   @Get(':id/report-card')
   async getReportCard(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
     const data = await this.studentsService.getReportCard(schoolId, id, user);

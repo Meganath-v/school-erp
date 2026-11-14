@@ -36,4 +36,16 @@ export class AttendanceController {
     const data = await this.attendanceService.getAttendanceReports(schoolId, sectionId);
     return { data };
   }
+
+  @Roles(...ALL_STAFF)
+  @Get('matrix')
+  async getAttendanceMatrix(
+    @CurrentSchoolId() schoolId: string,
+    @Query('sectionId') sectionId?: string,
+    @Query('month') month?: number,
+    @Query('year') year?: number,
+  ) {
+    const data = await this.attendanceService.getAttendanceMatrix(schoolId, sectionId, month, year);
+    return { data };
+  }
 }

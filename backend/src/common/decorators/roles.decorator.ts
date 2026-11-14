@@ -22,3 +22,5 @@ export const TEACHERS = ['CLASS_TEACHER', 'SUBJECT_TEACHER'];
 export const ACADEMIC_STAFF = [...SCHOOL_ADMINS, ...TEACHERS];
 export const ALL_STAFF = [...OFFICE_STAFF, ...TEACHERS];
 export const PLATFORM_ADMINS = ['PLATFORM_OWNER', 'SUPER_ADMIN'];
+export const COMMUNITY = ['PARENT', 'STUDENT'];
+export const ALL_SCHOOL_ROLES = [...ALL_STAFF, 'PARENT', 'STUDENT'];
