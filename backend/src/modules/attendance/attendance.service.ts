@@ -50,14 +50,40 @@ export class AttendanceService {
       }
     }
 
-    const students = enrollments.map((e) => ({
-      studentId: e.student.id,
-      admissionNo: e.student.admissionNo,
-      fullName: `${e.student.firstName} ${e.student.lastName}`,
-      rollNo: e.rollNo,
-      status: recordsMap.get(e.student.id)?.status || 'PRESENT',
-      remarks: recordsMap.get(e.student.id)?.remarks || '',
-    }));
+    // Compute cumulative attendance percentage and condonation shortage risk
+    const condonationThreshold = Number(process.env.ATTENDANCE_CONDONATION_THRESHOLD || 75);
+    const pastSessions = await this.prisma.attendanceSession.findMany({
+      where: { schoolId, sectionId: targetSection.id },
+      include: { records: true },
+    });
+    const totalSessionsConducted = pastSessions.length;
+
+    const students = enrollments.map((e) => {
+      let attendedCount = 0;
+      for (const sess of pastSessions) {
+        const rec = sess.records.find((r) => r.studentId === e.student.id);
+        if (rec && (rec.status === 'PRESENT' || rec.status === 'LATE' || rec.status === 'HALF_DAY')) {
+          attendedCount += rec.status === 'HALF_DAY' ? 0.5 : 1;
+        }
+      }
+      const percentage = totalSessionsConducted > 0
+        ? Math.round((attendedCount / totalSessionsConducted) * 100)
+        : 100;
+      const isShortageRisk = totalSessionsConducted > 0 && percentage < condonationThreshold;
+
+      return {
+        studentId: e.student.id,
+        admissionNo: e.student.admissionNo,
+        fullName: `${e.student.firstName} ${e.student.lastName}`,
+        rollNo: e.rollNo,
+        status: recordsMap.get(e.student.id)?.status || 'PRESENT',
+        remarks: recordsMap.get(e.student.id)?.remarks || '',
+        totalSessionsConducted,
+        attendedCount,
+        attendancePercentage: percentage,
+        isShortageRisk,
+      };
+    });
 
     return {
       section: {

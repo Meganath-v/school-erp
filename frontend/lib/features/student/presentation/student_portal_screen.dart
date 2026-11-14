@@ -227,6 +227,76 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
     );
   }
 
+  void _showSubmitAssignmentDialog(dynamic a) {
+    final notesCtrl = TextEditingController();
+    final fileUrlCtrl = TextEditingController(text: 'https://docs.erp.com/solutions/homework.pdf');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Submit Homework: ${a['title']}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Enter your homework notes or solution summary:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Solved exercises 1 through 10...'),
+                ),
+                const SizedBox(height: 12),
+                Text('Attachment URL / Cloud Document Link (Optional):', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: fileUrlCtrl,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'https://...'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              onPressed: () async {
+                if (notesCtrl.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter solution notes')));
+                  return;
+                }
+                try {
+                  await ApiClient().dio.post('/assignments/${a['id']}/submissions', data: {
+                    'studentId': _studentProfile?['id'],
+                    'notes': notesCtrl.text.trim(),
+                    'fileUrl': fileUrlCtrl.text.trim(),
+                  });
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Homework solution submitted successfully!'), backgroundColor: AppTheme.success),
+                    );
+                    _loadAllStudentData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Submission failed: $e'), backgroundColor: AppTheme.error),
+                    );
+                  }
+                }
+              },
+              child: const Text('Submit Solution', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -506,6 +576,22 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
                   const SizedBox(height: 4),
                   Text(a['description'], style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
                 ],
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Max Marks: ${a['maxMarks'] ?? 100}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textDark)),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      ),
+                      onPressed: () => _showSubmitAssignmentDialog(a),
+                      icon: const Icon(Icons.upload, size: 16, color: Colors.white),
+                      label: const Text('Submit Homework', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

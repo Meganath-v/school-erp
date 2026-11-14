@@ -14,6 +14,7 @@ class SchoolAdminDashboard extends ConsumerStatefulWidget {
 class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
+  String? _errorMessage;
 
   Map<String, dynamic>? _overview;
   List<dynamic> _students = [];
@@ -22,6 +23,10 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
   List<dynamic> _invoices = [];
 
   String? _selectedClassFilter;
+  String _studentSearchQuery = '';
+  String _staffSearchQuery = '';
+  String _invoiceSearchQuery = '';
+  String _selectedInvoiceStatusFilter = 'ALL';
 
   @override
   void initState() {
@@ -30,25 +35,40 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
     _loadAllData();
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadAllData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final overviewRes = await ApiClient().dio.get('/reports/overview');
-      final studentsRes = await ApiClient().dio.get('/students');
-      final classesRes = await ApiClient().dio.get('/schools/classes');
-      final staffRes = await ApiClient().dio.get('/staff');
-      final invoicesRes = await ApiClient().dio.get('/fees/invoices');
+      final results = await Future.wait([
+        ApiClient().dio.get('/reports/overview').then((r) => r.data['data'] as Map<String, dynamic>?).catchError((_) => null),
+        ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/staff').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/fees/invoices').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+      ]);
 
       setState(() {
-        _overview = overviewRes.data['data'];
-        _students = studentsRes.data['data'] ?? [];
-        _classes = classesRes.data['data'] ?? [];
-        _staff = staffRes.data['data'] ?? [];
-        _invoices = invoicesRes.data['data'] ?? [];
+        _overview = results[0] as Map<String, dynamic>?;
+        _students = results[1] as List<dynamic>;
+        _classes = results[2] as List<dynamic>;
+        _staff = results[3] as List<dynamic>;
+        _invoices = results[4] as List<dynamic>;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -109,7 +129,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                             value: selectedClassId,
                             decoration: const InputDecoration(labelText: 'Grade / Class'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
-                              return DropdownMenuItem(value: c['id'], child: Text(c['name']));
+                              return DropdownMenuItem(value: c['id'] as String, child: Text(c['name']));
                             }).toList(),
                             onChanged: (val) {
                               setDialogState(() {
@@ -126,7 +146,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
                             items: currentClassSections.map<DropdownMenuItem<String>>((s) {
-                              return DropdownMenuItem(value: s['id'], child: Text(s['name']));
+                              return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
                             }).toList(),
                             onChanged: (val) => setDialogState(() => selectedSectionId = val),
                           ),
@@ -171,12 +191,12 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Student admitted and enrolled successfully!')),
+                        const SnackBar(content: Text('Student admitted and enrolled successfully!'), backgroundColor: AppTheme.success),
                       );
                       _loadAllData();
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to admit student')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to admit student'), backgroundColor: AppTheme.error));
                   }
                 },
                 child: const Text('Complete Admission'),
@@ -314,6 +334,30 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+              const SizedBox(height: 12),
+              Text('Failed to load school administration data', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textMuted)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadAllData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry Connection'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final stats = _overview?['stats'] ?? {};
 
     return Column(
@@ -321,18 +365,30 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
         // Tab Header
         Container(
           color: Colors.white,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: AppTheme.primary,
-            unselectedLabelColor: AppTheme.textMuted,
-            indicatorColor: AppTheme.primary,
-            isScrollable: true,
-            tabs: const [
-              Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
-              Tab(icon: Icon(Icons.people_outline, size: 18), text: 'Students & Admissions'),
-              Tab(icon: Icon(Icons.account_tree_outlined, size: 18), text: 'Academics & Classes'),
-              Tab(icon: Icon(Icons.badge_outlined, size: 18), text: 'Faculty & Staff'),
-              Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Fees & Invoices'),
+          child: Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: AppTheme.primary,
+                  unselectedLabelColor: AppTheme.textMuted,
+                  indicatorColor: AppTheme.primary,
+                  isScrollable: true,
+                  tabs: const [
+                    Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
+                    Tab(icon: Icon(Icons.people_outline, size: 18), text: 'Students & Admissions'),
+                    Tab(icon: Icon(Icons.account_tree_outlined, size: 18), text: 'Academics & Classes'),
+                    Tab(icon: Icon(Icons.badge_outlined, size: 18), text: 'Faculty & Staff'),
+                    Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Fees & Invoices'),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: 'Refresh School Data',
+                onPressed: _loadAllData,
+              ),
+              const SizedBox(width: 8),
             ],
           ),
         ),
@@ -355,141 +411,163 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
   }
 
   Widget _buildOverviewTab(Map<String, dynamic> stats) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _buildMetricCard('Total Enrolled Students', '${stats['totalStudents'] ?? 0}', Icons.people, AppTheme.primary),
-              const SizedBox(width: 16),
-              _buildMetricCard('Teaching Faculty', '${stats['totalStaff'] ?? 0}', Icons.badge, AppTheme.secondary),
-              const SizedBox(width: 16),
-              _buildMetricCard('Classrooms', '${stats['totalClasses'] ?? 0}', Icons.meeting_room, AppTheme.accent),
-              const SizedBox(width: 16),
-              _buildMetricCard('Today Attendance Rate', '${stats['todayAttendanceRate'] ?? 0}%', Icons.check_circle, AppTheme.success),
-              const SizedBox(width: 16),
-              _buildMetricCard('Fee Collected', '₹${(stats['totalCollected'] ?? 0).toStringAsFixed(0)}', Icons.payments, AppTheme.warning),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Recent Notices
-              Expanded(
-                flex: 5,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.campaign, color: AppTheme.primary),
-                            const SizedBox(width: 8),
-                            Text('Campus Announcements', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ...((_overview?['recentAnnouncements'] as List? ?? []).map((ann) {
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppTheme.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final todayRate = stats['todayAttendanceRate'];
+    final attendanceStr = todayRate != null ? '$todayRate%' : 'Not Marked';
+
+    return RefreshIndicator(
+      onRefresh: _loadAllData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildMetricCard('Total Enrolled Students', '${stats['totalStudents'] ?? 0}', Icons.people, AppTheme.primary),
+                const SizedBox(width: 16),
+                _buildMetricCard('Teaching Faculty', '${stats['totalStaff'] ?? 0}', Icons.badge, AppTheme.secondary),
+                const SizedBox(width: 16),
+                _buildMetricCard('Classrooms', '${stats['totalClasses'] ?? 0}', Icons.meeting_room, AppTheme.accent),
+                const SizedBox(width: 16),
+                _buildMetricCard('Today Attendance Rate', attendanceStr, Icons.check_circle, todayRate != null ? AppTheme.success : AppTheme.textMuted),
+                const SizedBox(width: 16),
+                _buildMetricCard('Fee Collected', '₹${(stats['totalCollected'] ?? 0).toStringAsFixed(0)}', Icons.payments, AppTheme.warning),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Recent Notices
+                Expanded(
+                  flex: 5,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.campaign, color: AppTheme.primary),
+                              const SizedBox(width: 8),
+                              Text('Campus Announcements', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if ((_overview?['recentAnnouncements'] as List? ?? []).isEmpty)
+                            const Text('No school announcements posted yet.', style: TextStyle(color: AppTheme.textMuted))
+                          else
+                            ...((_overview?['recentAnnouncements'] as List? ?? []).map((ann) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppTheme.border),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(ann['title'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
-                                    if (ann['priority'] == 'URGENT')
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                        child: const Text('URGENT', style: TextStyle(color: AppTheme.error, fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(ann['title'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        if (ann['priority'] == 'URGENT')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                            child: const Text('URGENT', style: TextStyle(color: AppTheme.error, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(ann['content'] ?? '', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(ann['content'], style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
-                              ],
-                            ),
-                          );
-                        }).toList()),
-                      ],
+                              );
+                            }).toList()),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 20),
-              // Recent Audit Events
-              Expanded(
-                flex: 5,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.history, color: AppTheme.secondary),
-                            const SizedBox(width: 8),
-                            Text('System Audit Trail', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ...((_overview?['recentAuditLogs'] as List? ?? []).map((log) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${log['action']} by ${log['actorName'] ?? 'System'}',
-                                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                const SizedBox(width: 20),
+                // Recent Audit Events
+                Expanded(
+                  flex: 5,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.history, color: AppTheme.secondary),
+                              const SizedBox(width: 8),
+                              Text('System Audit Trail', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if ((_overview?['recentAuditLogs'] as List? ?? []).isEmpty)
+                            const Text('No audit events registered yet.', style: TextStyle(color: AppTheme.textMuted))
+                          else
+                            ...((_overview?['recentAuditLogs'] as List? ?? []).map((log) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${log['action']} by ${log['actorName'] ?? 'System'}',
+                                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                                          ),
+                                          Text(
+                                            'Entity: ${log['entity']} • ${log['timestamp']}',
+                                            style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
+                                          ),
+                                        ],
                                       ),
-                                      Text(
-                                        'Entity: ${log['entity']} • ${log['timestamp']}',
-                                        style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          );
-                        }).toList()),
-                      ],
+                              );
+                            }).toList()),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStudentsTab() {
+    final filteredStudents = _students.where((s) {
+      final matchClass = _selectedClassFilter == null || s['currentClass'] == _selectedClassFilter;
+      final q = _studentSearchQuery.toLowerCase();
+      final matchSearch = q.isEmpty ||
+          (s['fullName'] ?? '').toString().toLowerCase().contains(q) ||
+          (s['admissionNo'] ?? '').toString().toLowerCase().contains(q);
+      return matchClass && matchSearch;
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -509,52 +587,102 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Card(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
-                  columns: const [
-                    DataColumn(label: Text('Admission No')),
-                    DataColumn(label: Text('Student Full Name')),
-                    DataColumn(label: Text('Class & Section')),
-                    DataColumn(label: Text('Roll No')),
-                    DataColumn(label: Text('Primary Guardian')),
-                    DataColumn(label: Text('Status')),
-                    DataColumn(label: Text('Action')),
-                  ],
-                  rows: _students.map((s) {
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(s['admissionNo'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(s['fullName'], style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
-                        DataCell(Text('${s['currentClass']} - ${s['currentSection']}')),
-                        DataCell(Text('${s['rollNo'] ?? 'N/A'}')),
-                        DataCell(Text((s['guardians'] as List).isNotEmpty ? s['guardians'][0]['name'] : 'N/A')),
-                        DataCell(
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppTheme.success.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(s['status'], style: const TextStyle(color: AppTheme.success, fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        DataCell(
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                            onPressed: () => _showStudentReportCard(s['id'], s['fullName']),
-                            child: const Text('Report Card', style: TextStyle(fontSize: 12)),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search by student name or admission number...',
+                    prefixIcon: Icon(Icons.search, size: 20),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onChanged: (val) => setState(() => _studentSearchQuery = val),
                 ),
               ),
-            ),
+              const SizedBox(width: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedClassFilter,
+                  hint: const Text('Filter by Class'),
+                  underline: const SizedBox(),
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('All Classes')),
+                    ..._classes.map((c) => DropdownMenuItem<String>(value: c['name'] as String, child: Text(c['name'] as String))),
+                  ],
+                  onChanged: (val) => setState(() => _selectedClassFilter = val),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: filteredStudents.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.people_outline, size: 48, color: AppTheme.border),
+                        const SizedBox(height: 12),
+                        Text(
+                          _studentSearchQuery.isNotEmpty || _selectedClassFilter != null
+                              ? 'No students match current filter criteria'
+                              : 'No students enrolled yet',
+                          style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
+                : Card(
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+                        columns: const [
+                          DataColumn(label: Text('Admission No')),
+                          DataColumn(label: Text('Student Full Name')),
+                          DataColumn(label: Text('Class & Section')),
+                          DataColumn(label: Text('Roll No')),
+                          DataColumn(label: Text('Primary Guardian')),
+                          DataColumn(label: Text('Status')),
+                          DataColumn(label: Text('Action')),
+                        ],
+                        rows: filteredStudents.map((s) {
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(s['admissionNo'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(s['fullName'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+                              DataCell(Text('${s['currentClass']} - ${s['currentSection']}')),
+                              DataCell(Text('${s['rollNo'] ?? 'N/A'}')),
+                              DataCell(Text((s['guardians'] as List? ?? []).isNotEmpty ? s['guardians'][0]['name'] : 'N/A')),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.success.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(s['status'] ?? 'ACTIVE', style: const TextStyle(color: AppTheme.success, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              DataCell(
+                                OutlinedButton(
+                                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
+                                  onPressed: () => _showStudentReportCard(s['id'], s['fullName']),
+                                  child: const Text('Report Card', style: TextStyle(fontSize: 12)),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -569,143 +697,187 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
         children: [
           Text('Classes, Sections & Subjects Configuration', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          ..._classes.map((c) {
-            final sections = c['sections'] as List? ?? [];
-            final subjects = c['classSubjects'] as List? ?? [];
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16),
+          if (_classes.isEmpty)
+            const Card(
               child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.class_, color: AppTheme.primary),
-                            const SizedBox(width: 8),
-                            Text(c['name'], style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                              child: Text('Code: ${c['code']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
-                        Text('${sections.length} Sections Active', style: GoogleFonts.inter(color: AppTheme.textMuted)),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Text('Sections:', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      children: sections.map((sec) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.border),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('No classes or curricula configured for this institution.')),
+              ),
+            )
+          else
+            ..._classes.map((c) {
+              final sections = c['sections'] as List? ?? [];
+              final subjects = c['classSubjects'] as List? ?? [];
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
                             children: [
-                              const Icon(Icons.meeting_room, size: 16, color: AppTheme.primary),
-                              const SizedBox(width: 6),
-                              Text('${sec['name']} (${sec['room'] ?? 'No Room'})', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                              const SizedBox(width: 6),
-                              Text('• Cap: ${sec['capacity']}', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
+                              const Icon(Icons.class_, color: AppTheme.primary),
+                              const SizedBox(width: 8),
+                              Text(c['name'] ?? '', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                                child: Text('Code: ${c['code']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
                             ],
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 14),
-                    Text('Curriculum Subjects:', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: subjects.map((sub) {
-                        return Chip(
-                          label: Text(sub['subject']['name'], style: const TextStyle(fontSize: 12)),
-                          backgroundColor: AppTheme.primary.withOpacity(0.06),
-                          side: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                          Text('${sections.length} Sections Active', style: GoogleFonts.inter(color: AppTheme.textMuted)),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Text('Sections:', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 12,
+                        children: sections.map((sec) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.border),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.meeting_room, size: 16, color: AppTheme.primary),
+                                const SizedBox(width: 6),
+                                Text('${sec['name']} (${sec['room'] ?? 'No Room'})', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 6),
+                                Text('• Cap: ${sec['capacity']}', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('Curriculum Subjects:', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: subjects.map((sub) {
+                          return Chip(
+                            label: Text(sub['subject']?['name'] ?? '', style: const TextStyle(fontSize: 12)),
+                            backgroundColor: AppTheme.primary.withOpacity(0.06),
+                            side: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
         ],
       ),
     );
   }
 
   Widget _buildStaffTab() {
+    final filteredStaff = _staffSearchQuery.isEmpty
+        ? _staff
+        : _staff.where((st) {
+            final q = _staffSearchQuery.toLowerCase();
+            final name = (st['fullName'] ?? '').toString().toLowerCase();
+            final empNo = (st['employeeNo'] ?? '').toString().toLowerCase();
+            final dept = (st['department'] ?? '').toString().toLowerCase();
+            final desig = (st['designation'] ?? '').toString().toLowerCase();
+            return name.contains(q) || empNo.contains(q) || dept.contains(q) || desig.contains(q);
+          }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Faculty & Staff Directory (${_staff.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search faculty by name, employee ID, designation or department...',
+              prefixIcon: Icon(Icons.search, size: 20),
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            onChanged: (val) => setState(() => _staffSearchQuery = val),
+          ),
           const SizedBox(height: 16),
           Expanded(
-            child: Card(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
-                  columns: const [
-                    DataColumn(label: Text('Employee No')),
-                    DataColumn(label: Text('Staff Name')),
-                    DataColumn(label: Text('Designation')),
-                    DataColumn(label: Text('Department')),
-                    DataColumn(label: Text('Email')),
-                    DataColumn(label: Text('Active Assignments')),
-                  ],
-                  rows: _staff.map((st) {
-                    final assignments = st['assignments'] as List? ?? [];
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(st['employeeNo'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(st['fullName'], style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
-                        DataCell(Text(st['designation'])),
-                        DataCell(Text(st['department'])),
-                        DataCell(Text(st['email'])),
-                        DataCell(
-                          Wrap(
-                            spacing: 4,
-                            children: assignments.map((a) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: a['isClassTeacher'] ? AppTheme.accent.withOpacity(0.1) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '${a['className']} (${a['sectionName']}) ${a['isClassTeacher'] ? '• Class Teacher' : ''}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: a['isClassTeacher'] ? AppTheme.accent : AppTheme.textDark,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
+            child: filteredStaff.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.badge_outlined, size: 48, color: AppTheme.border),
+                        const SizedBox(height: 12),
+                        Text(
+                          _staffSearchQuery.isNotEmpty ? 'No staff match "$_staffSearchQuery"' : 'No faculty records found',
+                          style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16),
                         ),
                       ],
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
+                    ),
+                  )
+                : Card(
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+                        columns: const [
+                          DataColumn(label: Text('Employee No')),
+                          DataColumn(label: Text('Staff Name')),
+                          DataColumn(label: Text('Designation')),
+                          DataColumn(label: Text('Department')),
+                          DataColumn(label: Text('Email')),
+                          DataColumn(label: Text('Active Assignments')),
+                        ],
+                        rows: filteredStaff.map((st) {
+                          final assignments = st['assignments'] as List? ?? [];
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(st['employeeNo'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(st['fullName'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+                              DataCell(Text(st['designation'] ?? '')),
+                              DataCell(Text(st['department'] ?? '')),
+                              DataCell(Text(st['email'] ?? '')),
+                              DataCell(
+                                Wrap(
+                                  spacing: 4,
+                                  children: assignments.map((a) {
+                                    final isCT = a['isClassTeacher'] == true;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isCT ? AppTheme.accent.withOpacity(0.1) : const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '${a['className']} (${a['sectionName']}) ${isCT ? '• Class Teacher' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isCT ? AppTheme.accent : AppTheme.textDark,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -713,60 +885,122 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
   }
 
   Widget _buildFeesTab() {
+    final filteredInvoices = _invoices.where((inv) {
+      final matchStatus = _selectedInvoiceStatusFilter == 'ALL' || inv['status'] == _selectedInvoiceStatusFilter;
+      final q = _invoiceSearchQuery.toLowerCase();
+      final matchSearch = q.isEmpty ||
+          (inv['studentName'] ?? '').toString().toLowerCase().contains(q) ||
+          (inv['invoiceNo'] ?? '').toString().toLowerCase().contains(q) ||
+          (inv['title'] ?? '').toString().toLowerCase().contains(q);
+      return matchStatus && matchSearch;
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Fee Demands, Invoices & Collections (${_invoices.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Card(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
-                  columns: const [
-                    DataColumn(label: Text('Invoice No')),
-                    DataColumn(label: Text('Student')),
-                    DataColumn(label: Text('Fee Title')),
-                    DataColumn(label: Text('Total Amount')),
-                    DataColumn(label: Text('Paid Amount')),
-                    DataColumn(label: Text('Due Amount')),
-                    DataColumn(label: Text('Status')),
-                  ],
-                  rows: _invoices.map((inv) {
-                    final isPaid = inv['status'] == 'PAID';
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(inv['invoiceNo'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text(inv['studentName'], style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
-                        DataCell(Text(inv['title'])),
-                        DataCell(Text('₹${inv['amount']}')),
-                        DataCell(Text('₹${inv['paidAmount']}', style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold))),
-                        DataCell(Text('₹${inv['dueAmount']}', style: TextStyle(color: isPaid ? AppTheme.textMuted : AppTheme.error, fontWeight: FontWeight.bold))),
-                        DataCell(
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isPaid ? AppTheme.success.withOpacity(0.1) : AppTheme.warning.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              inv['status'],
-                              style: TextStyle(
-                                color: isPaid ? AppTheme.success : AppTheme.warning,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Fee Demands, Invoices & Collections (${_invoices.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+              IconButton(onPressed: _loadAllData, icon: const Icon(Icons.refresh)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search by student name, invoice number, or fee title...',
+                    prefixIcon: Icon(Icons.search, size: 20),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onChanged: (val) => setState(() => _invoiceSearchQuery = val),
                 ),
               ),
-            ),
+              const SizedBox(width: 14),
+              Wrap(
+                spacing: 8,
+                children: ['ALL', 'PAID', 'PENDING', 'OVERDUE'].map((status) {
+                  final isSelected = _selectedInvoiceStatusFilter == status;
+                  return ChoiceChip(
+                    label: Text(status),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) setState(() => _selectedInvoiceStatusFilter = status);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: filteredInvoices.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.receipt_long_outlined, size: 48, color: AppTheme.border),
+                        const SizedBox(height: 12),
+                        Text(
+                          _invoiceSearchQuery.isNotEmpty || _selectedInvoiceStatusFilter != 'ALL'
+                              ? 'No invoices match current filter'
+                              : 'No fee invoices created yet',
+                          style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
+                : Card(
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+                        columns: const [
+                          DataColumn(label: Text('Invoice No')),
+                          DataColumn(label: Text('Student')),
+                          DataColumn(label: Text('Fee Title')),
+                          DataColumn(label: Text('Total Amount')),
+                          DataColumn(label: Text('Paid Amount')),
+                          DataColumn(label: Text('Due Amount')),
+                          DataColumn(label: Text('Status')),
+                        ],
+                        rows: filteredInvoices.map((inv) {
+                          final isPaid = inv['status'] == 'PAID';
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(inv['invoiceNo'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(inv['studentName'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+                              DataCell(Text(inv['title'] ?? '')),
+                              DataCell(Text('₹${inv['amount']}')),
+                              DataCell(Text('₹${inv['paidAmount']}', style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold))),
+                              DataCell(Text('₹${inv['dueAmount']}', style: TextStyle(color: isPaid ? AppTheme.textMuted : AppTheme.error, fontWeight: FontWeight.bold))),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isPaid ? AppTheme.success.withOpacity(0.1) : AppTheme.warning.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    inv['status'] ?? 'PENDING',
+                                    style: TextStyle(
+                                      color: isPaid ? AppTheme.success : AppTheme.warning,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),

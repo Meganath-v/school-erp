@@ -218,20 +218,20 @@ export class AcademicsService {
     const normalStudents = [];
 
     for (const s of students) {
-      const total = s.attendanceRecords.length || 20; // fallback sample count
-      const present = s.attendanceRecords.filter((r) => r.status === 'PRESENT').length || 18;
-      const rate = Math.round((present / total) * 100);
+      const total = s.attendanceRecords.length;
+      const present = s.attendanceRecords.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const rate = total > 0 ? Math.round((present / total) * 100) : 100;
 
       const studentData = {
         id: s.id,
         admissionNo: s.admissionNo,
         fullName: `${s.firstName} ${s.lastName}`,
-        className: s.enrollments[0]?.class?.name || 'Grade 10',
-        sectionName: s.enrollments[0]?.section?.name || 'Section A',
+        className: s.enrollments[0]?.class?.name || 'Unassigned',
+        sectionName: s.enrollments[0]?.section?.name || 'Unassigned',
         totalSessions: total,
         attendedSessions: present,
         attendanceRate: rate,
-        isAtRisk: rate < 75,
+        isAtRisk: total > 0 && rate < 75,
       };
 
       if (rate < 75) {

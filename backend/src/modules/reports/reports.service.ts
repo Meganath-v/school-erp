@@ -37,9 +37,10 @@ export class ReportsService {
       presentAttendanceRecords += s.records.filter((r) => r.status === 'PRESENT').length;
     }
 
-    const todayAttendanceRate = totalAttendanceRecords > 0
+    const isAttendanceMarkedToday = totalAttendanceRecords > 0;
+    const todayAttendanceRate = isAttendanceMarkedToday
       ? Math.round((presentAttendanceRecords / totalAttendanceRecords) * 100)
-      : 94; // fallback demo rate if not marked yet today
+      : null;
 
     // Recent announcements
     const recentAnnouncements = await this.prisma.announcement.findMany({
@@ -62,6 +63,7 @@ export class ReportsService {
         totalClasses,
         totalSections,
         todayAttendanceRate,
+        isAttendanceMarkedToday,
         totalInvoiced,
         totalCollected,
         totalDue,

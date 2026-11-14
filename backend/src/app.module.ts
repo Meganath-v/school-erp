@@ -24,6 +24,7 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CircularsModule } from './modules/circulars/circulars.module';
+import { FilesModule } from './modules/files/files.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { CircularsModule } from './modules/circulars/circulars.module';
     TasksModule,
     FeedbackModule,
     CircularsModule,
+    FilesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

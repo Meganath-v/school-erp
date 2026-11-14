@@ -5,10 +5,33 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class TimetableService {
   constructor(private prisma: PrismaService) {}
 
-  async getEntries(schoolId: string, query: { sectionId?: string; staffId?: string; classId?: string }) {
+  async getEntries(
+    schoolId: string,
+    query: { sectionId?: string; staffId?: string; classId?: string; userId?: string; role?: string },
+  ) {
     const where: any = { schoolId };
-    if (query.sectionId) where.sectionId = query.sectionId;
-    if (query.staffId) where.staffId = query.staffId;
+    let sectionId = query.sectionId;
+    let staffId = query.staffId;
+
+    if (!sectionId && query.role === 'STUDENT' && query.userId) {
+      const student = await this.prisma.student.findFirst({
+        where: { schoolId, userId: query.userId },
+        include: { enrollments: { where: { status: 'ACTIVE' } } },
+      });
+      if (student && student.enrollments.length > 0) {
+        sectionId = student.enrollments[0].sectionId;
+      }
+    } else if (!staffId && (query.role === 'SUBJECT_TEACHER' || query.role === 'CLASS_TEACHER') && query.userId) {
+      const staff = await this.prisma.staff.findFirst({
+        where: { schoolId, userId: query.userId },
+      });
+      if (staff) {
+        staffId = staff.id;
+      }
+    }
+
+    if (sectionId) where.sectionId = sectionId;
+    if (staffId) where.staffId = staffId;
     if (query.classId) where.classId = query.classId;
 
     const entries = await this.prisma.timetableEntry.findMany({

@@ -42,18 +42,46 @@ export class AssignmentsService {
     }));
   }
 
-  async createAssignment(schoolId: string, data: any) {
+  async createAssignment(schoolId: string, data: any, user?: any) {
+    let teacherId = data.teacherId;
+    if (!teacherId && user?.id) {
+      const staff = await this.prisma.staff.findFirst({
+        where: { schoolId, userId: user.id },
+      });
+      if (staff) teacherId = staff.id;
+    }
+    if (!teacherId) {
+      const fallbackStaff = await this.prisma.staff.findFirst({ where: { schoolId } });
+      if (fallbackStaff) teacherId = fallbackStaff.id;
+    }
+
+    let classId = data.classId;
+    let sectionId = data.sectionId;
+    let subjectId = data.subjectId;
+
+    if (!classId || !sectionId || !subjectId) {
+      const firstClass = await this.prisma.class.findFirst({
+        where: { schoolId },
+        include: { sections: true, classSubjects: true },
+      });
+      if (firstClass) {
+        if (!classId) classId = firstClass.id;
+        if (!sectionId && firstClass.sections.length > 0) sectionId = firstClass.sections[0].id;
+        if (!subjectId && firstClass.classSubjects.length > 0) subjectId = firstClass.classSubjects[0].subjectId;
+      }
+    }
+
     return this.prisma.assignment.create({
       data: {
         schoolId,
-        classId: data.classId,
-        sectionId: data.sectionId,
-        subjectId: data.subjectId,
-        teacherId: data.teacherId,
+        classId,
+        sectionId,
+        subjectId,
+        teacherId,
         title: data.title,
         description: data.description,
-        dueDate: new Date(data.dueDate),
-        maxMarks: data.maxMarks || 100,
+        dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 7 * 86400000),
+        maxMarks: Number(data.maxMarks) || 100,
         status: 'ACTIVE',
       },
     });
@@ -151,6 +179,12 @@ export class AssignmentsService {
         feedback: data.feedback,
         status: 'REVIEWED',
       },
+    });
+  }
+
+  async deleteAssignment(schoolId: string, id: string) {
+    return this.prisma.assignment.deleteMany({
+      where: { id, schoolId },
     });
   }
 }

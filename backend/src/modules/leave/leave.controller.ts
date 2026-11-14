@@ -9,7 +9,7 @@ import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-us
 export class LeaveController {
   constructor(private leaveService: LeaveService) {}
 
-  @Roles(...ALL_STAFF, 'PARENT')
+  @Roles(...ALL_STAFF, 'PARENT', 'STUDENT')
   @Get()
   async getLeaveRequests(
     @CurrentSchoolId() schoolId: string,
@@ -32,7 +32,7 @@ export class LeaveController {
     return { data };
   }
 
-  @Roles(...ALL_STAFF, 'PARENT')
+  @Roles(...ALL_STAFF, 'PARENT', 'STUDENT')
   @Post()
   async createLeaveRequest(
     @CurrentSchoolId() schoolId: string,

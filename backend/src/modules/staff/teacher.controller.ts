@@ -26,27 +26,12 @@ export class TeacherController {
     });
 
     if (!staff) {
-      // Fallback for demo or if staff record doesn't exist yet
-      const fallbackSection = await this.prisma.section.findFirst({
-        where: { schoolId },
-        include: { class: true },
-      });
       return {
         data: {
           staffId: null,
           staffName: 'Faculty',
-          isClassTeacher: true,
-          assignedSections: fallbackSection
-            ? [
-                {
-                  sectionId: fallbackSection.id,
-                  sectionName: fallbackSection.name,
-                  classId: fallbackSection.classId,
-                  className: fallbackSection.class.name,
-                  isPrimary: true,
-                },
-              ]
-            : [],
+          isClassTeacher: false,
+          assignedSections: [],
         },
       };
     }

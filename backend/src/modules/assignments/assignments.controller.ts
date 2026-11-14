@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AssignmentsService } from './assignments.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, ACADEMIC_STAFF } from '../../common/decorators/roles.decorator';
@@ -22,8 +22,8 @@ export class AssignmentsController {
 
   @Roles(...ACADEMIC_STAFF)
   @Post()
-  async createAssignment(@CurrentSchoolId() schoolId: string, @Body() body: any) {
-    const data = await this.assignmentsService.createAssignment(schoolId, body);
+  async createAssignment(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Body() body: any) {
+    const data = await this.assignmentsService.createAssignment(schoolId, body, user);
     return { data };
   }
 
@@ -34,7 +34,7 @@ export class AssignmentsController {
     return { data };
   }
 
-  @Roles('PARENT')
+  @Roles('PARENT', 'STUDENT')
   @Post(':id/submissions')
   async submitAssignment(
     @CurrentSchoolId() schoolId: string,
@@ -55,6 +55,13 @@ export class AssignmentsController {
   @Post('submissions/:id/grade')
   async gradeSubmission(@CurrentSchoolId() schoolId: string, @Param('id') submissionId: string, @Body() body: any) {
     const data = await this.assignmentsService.gradeSubmission(schoolId, submissionId, body);
+    return { data };
+  }
+
+  @Roles(...ACADEMIC_STAFF)
+  @Delete(':id')
+  async deleteAssignment(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
+    const data = await this.assignmentsService.deleteAssignment(schoolId, id);
     return { data };
   }
 }

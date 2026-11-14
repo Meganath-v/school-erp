@@ -53,4 +53,10 @@ export class AnnouncementsService {
 
     return announcement;
   }
+
+  async deleteAnnouncement(schoolId: string, id: string) {
+    return this.prisma.announcement.deleteMany({
+      where: { id, schoolId },
+    });
+  }
 }

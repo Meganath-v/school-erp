@@ -195,47 +195,94 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
 
   void _showApplyLeaveDialog() {
     final reasonCtrl = TextEditingController();
+    DateTimeRange? selectedRange = DateTimeRange(
+      start: DateTime.now().add(const Duration(days: 1)),
+      end: DateTime.now().add(const Duration(days: 2)),
+    );
 
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: Text('Apply for Student Leave', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 450,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: reasonCtrl,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Reason for Leave', hintText: 'e.g. Attending family function out of town'),
-                ),
-              ],
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: Text('Apply for Student Leave', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            content: SizedBox(
+              width: 450,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Leave Duration', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 180)),
+                        initialDateRange: selectedRange,
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedRange = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.date_range, size: 16),
+                    label: Text(
+                      selectedRange != null
+                          ? '${selectedRange!.start.toString().split(' ')[0]} to ${selectedRange!.end.toString().split(' ')[0]}'
+                          : 'Select Dates',
+                      style: GoogleFonts.inter(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: reasonCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason for Leave',
+                      hintText: 'e.g. Attending family function out of town',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                if (reasonCtrl.text.isEmpty) return;
-                try {
-                  await ApiClient().dio.post('/leave-requests', data: {
-                    'studentId': _children[_selectedChildIndex]['id'],
-                    'startDate': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
-                    'endDate': DateTime.now().add(const Duration(days: 2)).toIso8601String(),
-                    'reason': reasonCtrl.text.trim(),
-                  });
-                  if (mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave application sent to Class Teacher.')));
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  if (reasonCtrl.text.trim().isEmpty || selectedRange == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please select dates and provide a reason.')),
+                    );
+                    return;
                   }
-                } catch (_) {}
-              },
-              child: const Text('Submit Application'),
-            ),
-          ],
-        );
+                  try {
+                    await ApiClient().dio.post('/leave-requests', data: {
+                      'studentId': _children[_selectedChildIndex]['id'],
+                      'startDate': selectedRange!.start.toIso8601String(),
+                      'endDate': selectedRange!.end.toIso8601String(),
+                      'reason': reasonCtrl.text.trim(),
+                    });
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Leave application sent to Class Teacher.'), backgroundColor: AppTheme.success),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to submit leave: $e'), backgroundColor: AppTheme.error),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Submit Application'),
+              ),
+            ],
+          );
+        });
       },
     );
   }
@@ -251,7 +298,7 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
     }
 
     final currentChild = _children[_selectedChildIndex];
-    final attendancePct = _selectedChildDetail?['attendancePercentage'] ?? 95;
+    final attendancePct = _selectedChildDetail?['attendancePercentage'] ?? 100;
     final isShortage = attendancePct < 75;
 
     return SingleChildScrollView(

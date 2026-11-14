@@ -417,10 +417,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   children: [
                     _buildDemoChip('👑 Platform Owner', 'superadmin@erp.com', 'PLATFORM_OWNER', 'OAK01', 'Oakridge International'),
                     _buildDemoChip('🏫 School Admin', 'admin@oakridge.edu', 'SCHOOL_ADMIN', 'OAK01', 'Oakridge International'),
+                    _buildDemoChip('🏢 Office Staff', 'office@oakridge.edu', 'OFFICE', 'OAK01', 'Oakridge International'),
                     _buildDemoChip('🎓 Principal', 'principal@oakridge.edu', 'PRINCIPAL', 'OAK01', 'Oakridge International'),
                     _buildDemoChip('👩‍🏫 Class Teacher', 'teacher.smith@oakridge.edu', 'CLASS_TEACHER', 'OAK01', 'Oakridge International'),
                     _buildDemoChip('🔬 Subject Teacher', 'teacher.jones@oakridge.edu', 'SUBJECT_TEACHER', 'OAK01', 'Oakridge International'),
                     _buildDemoChip('👨‍👩‍👦 Parent (Multi-Child)', 'parent.doe@gmail.com', 'PARENT', 'OAK01', 'Oakridge International'),
+                    _buildDemoChip('🎒 Student', 'student.john@oakridge.edu', 'STUDENT', 'OAK01', 'Oakridge International'),
                   ],
                 ),
               ],

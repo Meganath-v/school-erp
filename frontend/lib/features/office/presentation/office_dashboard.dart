@@ -23,6 +23,10 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
   List<dynamic> _tasks = [];
   List<dynamic> _reminders = [];
 
+  String _invoiceSearchQuery = '';
+  String _invoiceStatusFilter = 'ALL';
+  String _studentSearchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -774,6 +778,17 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
   }
 
   Widget _buildInvoicesTab() {
+    final filteredInvoices = _invoices.where((inv) {
+      final status = (inv['status'] ?? 'DUE').toString().toUpperCase();
+      final matchStatus = _invoiceStatusFilter == 'ALL' || status == _invoiceStatusFilter;
+      final q = _invoiceSearchQuery.toLowerCase();
+      final sName = '${inv['student']?['firstName'] ?? ''} ${inv['student']?['lastName'] ?? ''}'.toLowerCase();
+      final adm = (inv['student']?['admissionNo'] ?? '').toString().toLowerCase();
+      final invNum = (inv['invoiceNumber'] ?? '').toString().toLowerCase();
+      final matchSearch = q.isEmpty || sName.contains(q) || adm.contains(q) || invNum.contains(q);
+      return matchStatus && matchSearch;
+    }).toList();
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
@@ -782,155 +797,226 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Generate Invoice', style: TextStyle(color: Colors.white)),
       ),
-      body: _invoices.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.receipt, size: 48, color: AppTheme.border),
-                  const SizedBox(height: 12),
-                  Text('No fee invoices issued yet', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _invoices.length,
-              itemBuilder: (ctx, i) {
-                final inv = _invoices[i];
-                final isPaid = inv['status'] == 'PAID';
-                final isOverdue = inv['status'] == 'OVERDUE';
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppTheme.border),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: (isPaid ? AppTheme.success : (isOverdue ? AppTheme.error : Colors.amber)).withValues(alpha: 0.15),
-                          child: Icon(
-                            isPaid ? Icons.check : Icons.access_time,
-                            color: isPaid ? AppTheme.success : (isOverdue ? AppTheme.error : Colors.amber.shade800),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${inv['student']?['firstName'] ?? ''} ${inv['student']?['lastName'] ?? ''} (Adm: ${inv['student']?['admissionNo'] ?? ''})',
-                                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Invoice #${inv['invoiceNumber']} • Due: ${inv['dueDate'] != null ? inv['dueDate'].toString().split('T')[0] : ''}',
-                                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '₹${inv['totalAmount'] ?? 0}',
-                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            Text(
-                              isPaid ? 'Fully Paid' : 'Due: ₹${inv['dueAmount'] ?? 0}',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isPaid ? AppTheme.success : AppTheme.error,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        if (!isPaid)
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                            onPressed: () => _showRecordPaymentDialog(inv),
-                            child: const Text('Record Payment', style: TextStyle(color: Colors.white, fontSize: 12)),
-                          ),
-                      ],
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search by student name, admission no, or invoice #...',
+                      prefixIcon: Icon(Icons.search, size: 20),
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
+                    onChanged: (val) => setState(() => _invoiceSearchQuery = val),
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 12),
+                Wrap(
+                  spacing: 6,
+                  children: ['ALL', 'PAID', 'DUE', 'OVERDUE'].map((st) {
+                    final isSelected = _invoiceStatusFilter == st;
+                    return ChoiceChip(
+                      label: Text(st),
+                      selected: isSelected,
+                      onSelected: (sel) {
+                        if (sel) setState(() => _invoiceStatusFilter = st);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: filteredInvoices.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.receipt, size: 48, color: AppTheme.border),
+                          const SizedBox(height: 12),
+                          Text(
+                            _invoiceSearchQuery.isNotEmpty || _invoiceStatusFilter != 'ALL'
+                                ? 'No invoices match current filter criteria'
+                                : 'No fee invoices issued yet',
+                            style: GoogleFonts.outfit(color: AppTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredInvoices.length,
+                      itemBuilder: (ctx, i) {
+                        final inv = filteredInvoices[i];
+                        final isPaid = inv['status'] == 'PAID';
+                        final isOverdue = inv['status'] == 'OVERDUE';
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: AppTheme.border),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: (isPaid ? AppTheme.success : (isOverdue ? AppTheme.error : Colors.amber)).withValues(alpha: 0.15),
+                                  child: Icon(
+                                    isPaid ? Icons.check : Icons.access_time,
+                                    color: isPaid ? AppTheme.success : (isOverdue ? AppTheme.error : Colors.amber.shade800),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${inv['student']?['firstName'] ?? ''} ${inv['student']?['lastName'] ?? ''} (Adm: ${inv['student']?['admissionNo'] ?? ''})',
+                                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Invoice #${inv['invoiceNumber']} • Due: ${inv['dueDate'] != null ? inv['dueDate'].toString().split('T')[0] : ''}',
+                                        style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '₹${inv['totalAmount'] ?? 0}',
+                                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    Text(
+                                      isPaid ? 'Fully Paid' : 'Due: ₹${inv['dueAmount'] ?? 0}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isPaid ? AppTheme.success : AppTheme.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 16),
+                                if (!isPaid)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+                                    onPressed: () => _showRecordPaymentDialog(inv),
+                                    child: const Text('Record Payment', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildStudentsTab() {
-    return _students.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.people_outline, size: 48, color: AppTheme.border),
-                const SizedBox(height: 12),
-                Text('No students registered', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-              ],
-            ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _students.length,
-            itemBuilder: (ctx, i) {
-              final s = _students[i];
-              final enrollments = s['enrollments'] as List?;
-              final className = (enrollments != null && enrollments.isNotEmpty)
-                  ? (enrollments[0]['class']?['name'] ?? 'Enrolled')
-                  : 'Enrolled';
+    final filteredStudents = _students.where((s) {
+      final q = _studentSearchQuery.toLowerCase();
+      final sName = '${s['firstName'] ?? ''} ${s['lastName'] ?? ''}'.toLowerCase();
+      final adm = (s['admissionNo'] ?? '').toString().toLowerCase();
+      return q.isEmpty || sName.contains(q) || adm.contains(q);
+    }).toList();
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppTheme.border),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppTheme.primaryLight.withValues(alpha: 0.15),
-                    child: Text(
-                      (s['firstName'] ?? 'S')[0],
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.primary),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search students by candidate name or admission number...',
+              prefixIcon: Icon(Icons.search, size: 20),
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            onChanged: (val) => setState(() => _studentSearchQuery = val),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: filteredStudents.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.people_outline, size: 48, color: AppTheme.border),
+                        const SizedBox(height: 12),
+                        Text(
+                          _studentSearchQuery.isNotEmpty ? 'No students match "$_studentSearchQuery"' : 'No students registered',
+                          style: GoogleFonts.outfit(color: AppTheme.textMuted),
+                        ),
+                      ],
                     ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredStudents.length,
+                    itemBuilder: (ctx, i) {
+                      final s = filteredStudents[i];
+                      final enrollments = s['enrollments'] as List?;
+                      final className = (enrollments != null && enrollments.isNotEmpty)
+                          ? (enrollments[0]['class']?['name'] ?? 'Enrolled')
+                          : 'Enrolled';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: AppTheme.border),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.primaryLight.withValues(alpha: 0.15),
+                            child: Text(
+                              (s['firstName'] ?? 'S')[0],
+                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.primary),
+                            ),
+                          ),
+                          title: Text(
+                            '${s['firstName']} ${s['lastName']}',
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          subtitle: Text(
+                            'Admission: ${s['admissionNo']} • Class: $className',
+                            style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.success.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              s['status'] ?? 'ACTIVE',
+                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.success),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  title: Text(
-                    '${s['firstName']} ${s['lastName']}',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  subtitle: Text(
-                    'Admission: ${s['admissionNo']} • Class: $className',
-                    style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                  ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      s['status'] ?? 'ACTIVE',
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.success),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCircularsTab() {

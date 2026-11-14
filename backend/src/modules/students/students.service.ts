@@ -261,7 +261,7 @@ export class StudentsService {
     }
 
     const totalAttendance = student.attendanceRecords.length;
-    const presentAttendance = student.attendanceRecords.filter((r) => r.status === 'PRESENT').length;
+    const presentAttendance = student.attendanceRecords.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
     const attendancePercentage = totalAttendance > 0 ? Math.round((presentAttendance / totalAttendance) * 100) : 100;
 
     return {
@@ -276,8 +276,8 @@ export class StudentsService {
         academicYear: student.enrollments[0]?.academicYear?.name || '2026-2027',
       },
       attendancePercentage,
-      totalWorkingDays: totalAttendance || 65,
-      daysPresent: presentAttendance || 62,
+      totalWorkingDays: totalAttendance,
+      daysPresent: presentAttendance,
       exams: Object.values(marksByExam),
     };
   }
