@@ -13,6 +13,13 @@ import 'features/parent/presentation/parent_portal_screen.dart';
 import 'features/office/presentation/office_dashboard.dart';
 import 'features/student/presentation/student_portal_screen.dart';
 import 'features/audit/presentation/audit_logs_screen.dart';
+import 'features/students/presentation/student_management_screen.dart';
+import 'features/staff/presentation/staff_management_screen.dart';
+import 'features/attendance/presentation/attendance_management_screen.dart';
+import 'features/examination/presentation/examination_management_screen.dart';
+import 'features/fees/presentation/fee_management_screen.dart';
+import 'features/timetable/presentation/timetable_management_screen.dart';
+import 'features/circulars/presentation/circular_management_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,9 +83,29 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
       case 'PRINCIPAL':
         destinations = const [
           NavigationDestinationItem(
-            label: 'Executive & Approvals',
+            label: 'Executive Cockpit',
             icon: Icons.dashboard_outlined,
             selectedIcon: Icons.dashboard,
+          ),
+          NavigationDestinationItem(
+            label: 'Attendance Register',
+            icon: Icons.fact_check_outlined,
+            selectedIcon: Icons.fact_check,
+          ),
+          NavigationDestinationItem(
+            label: 'Examinations & Results',
+            icon: Icons.grade_outlined,
+            selectedIcon: Icons.grade,
+          ),
+          NavigationDestinationItem(
+            label: 'Master Timetable',
+            icon: Icons.schedule_outlined,
+            selectedIcon: Icons.schedule,
+          ),
+          NavigationDestinationItem(
+            label: 'School Circulars',
+            icon: Icons.campaign_outlined,
+            selectedIcon: Icons.campaign,
           ),
           NavigationDestinationItem(
             label: 'Compliance Audit',
@@ -88,6 +115,10 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         pages = const [
           PrincipalDashboard(),
+          AttendanceManagementScreen(),
+          ExaminationManagementScreen(),
+          TimetableManagementScreen(),
+          CircularManagementScreen(),
           AuditLogsScreen(),
         ];
         break;
@@ -99,9 +130,33 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
             icon: Icons.fact_check_outlined,
             selectedIcon: Icons.fact_check,
           ),
+          NavigationDestinationItem(
+            label: 'Attendance Register',
+            icon: Icons.calendar_month_outlined,
+            selectedIcon: Icons.calendar_month,
+          ),
+          NavigationDestinationItem(
+            label: 'Marks & Broadsheet',
+            icon: Icons.grade_outlined,
+            selectedIcon: Icons.grade,
+          ),
+          NavigationDestinationItem(
+            label: 'Class Timetable',
+            icon: Icons.schedule_outlined,
+            selectedIcon: Icons.schedule,
+          ),
+          NavigationDestinationItem(
+            label: 'Notices & Circulars',
+            icon: Icons.campaign_outlined,
+            selectedIcon: Icons.campaign,
+          ),
         ];
         pages = const [
           ClassTeacherDashboard(),
+          AttendanceManagementScreen(),
+          ExaminationManagementScreen(),
+          TimetableManagementScreen(),
+          CircularManagementScreen(),
         ];
         break;
 
@@ -112,16 +167,34 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
             icon: Icons.assignment_outlined,
             selectedIcon: Icons.assignment,
           ),
+          NavigationDestinationItem(
+            label: 'Period Attendance',
+            icon: Icons.fact_check_outlined,
+            selectedIcon: Icons.fact_check,
+          ),
+          NavigationDestinationItem(
+            label: 'Marks Entry',
+            icon: Icons.grade_outlined,
+            selectedIcon: Icons.grade,
+          ),
+          NavigationDestinationItem(
+            label: 'Faculty Timetable',
+            icon: Icons.schedule_outlined,
+            selectedIcon: Icons.schedule,
+          ),
         ];
         pages = const [
           SubjectTeacherDashboard(),
+          AttendanceManagementScreen(),
+          ExaminationManagementScreen(),
+          TimetableManagementScreen(),
         ];
         break;
 
       case 'PARENT':
         destinations = const [
           NavigationDestinationItem(
-            label: 'Parent & Student Portal',
+            label: 'Parent & Ward Portal',
             icon: Icons.family_restroom_outlined,
             selectedIcon: Icons.family_restroom,
           ),
@@ -134,13 +207,37 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
       case 'OFFICE':
         destinations = const [
           NavigationDestinationItem(
-            label: 'Office Operations & Fees',
+            label: 'Office Operations',
+            icon: Icons.dashboard_outlined,
+            selectedIcon: Icons.dashboard,
+          ),
+          NavigationDestinationItem(
+            label: 'Fee Billing & Receipts',
             icon: Icons.receipt_long_outlined,
             selectedIcon: Icons.receipt_long,
+          ),
+          NavigationDestinationItem(
+            label: 'Admissions & Students',
+            icon: Icons.school_outlined,
+            selectedIcon: Icons.school,
+          ),
+          NavigationDestinationItem(
+            label: 'Circulars & Notices',
+            icon: Icons.campaign_outlined,
+            selectedIcon: Icons.campaign,
+          ),
+          NavigationDestinationItem(
+            label: 'Audit Records',
+            icon: Icons.history_outlined,
+            selectedIcon: Icons.history,
           ),
         ];
         pages = const [
           OfficeDashboard(),
+          FeeManagementScreen(),
+          StudentManagementScreen(),
+          CircularManagementScreen(),
+          AuditLogsScreen(),
         ];
         break;
 
@@ -161,9 +258,44 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
       default:
         destinations = const [
           NavigationDestinationItem(
-            label: 'Campus Administration',
+            label: 'Campus Dashboard',
             icon: Icons.dashboard_outlined,
             selectedIcon: Icons.dashboard,
+          ),
+          NavigationDestinationItem(
+            label: 'Learners Directory',
+            icon: Icons.school_outlined,
+            selectedIcon: Icons.school,
+          ),
+          NavigationDestinationItem(
+            label: 'Faculty & Staff',
+            icon: Icons.badge_outlined,
+            selectedIcon: Icons.badge,
+          ),
+          NavigationDestinationItem(
+            label: 'Attendance Register',
+            icon: Icons.fact_check_outlined,
+            selectedIcon: Icons.fact_check,
+          ),
+          NavigationDestinationItem(
+            label: 'Examinations & Results',
+            icon: Icons.grade_outlined,
+            selectedIcon: Icons.grade,
+          ),
+          NavigationDestinationItem(
+            label: 'Fee Billing & Ledger',
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+          ),
+          NavigationDestinationItem(
+            label: 'Master Timetable',
+            icon: Icons.schedule_outlined,
+            selectedIcon: Icons.schedule,
+          ),
+          NavigationDestinationItem(
+            label: 'Notices & Circulars',
+            icon: Icons.campaign_outlined,
+            selectedIcon: Icons.campaign,
           ),
           NavigationDestinationItem(
             label: 'System Audit Logs',
@@ -173,6 +305,13 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         pages = const [
           SchoolAdminDashboard(),
+          StudentManagementScreen(),
+          StaffManagementScreen(),
+          AttendanceManagementScreen(),
+          ExaminationManagementScreen(),
+          FeeManagementScreen(),
+          TimetableManagementScreen(),
+          CircularManagementScreen(),
           AuditLogsScreen(),
         ];
         break;
