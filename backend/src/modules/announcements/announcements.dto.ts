@@ -32,3 +32,4 @@ export class CreateAnnouncementDto {
   @IsString()
   authorName?: string;
 }
+

@@ -69,3 +69,4 @@ export class CreateAssignmentDto {
   @IsBoolean()
   isClassTeacher?: boolean;
 }
+

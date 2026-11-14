@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, UseGuards, ForbiddenException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, ForbiddenException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PlatformService } from './platform.service';
-import { CreateSchoolDto } from './platform.dto';
+import { CreateSchoolDto, UpdateSchoolStatusDto, CreateSubscriptionPlanDto } from './platform.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, PLATFORM_ADMINS } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -40,6 +40,21 @@ export class PlatformController {
   }
 
   @Roles(...PLATFORM_ADMINS)
+  @ApiOperation({ summary: 'Suspend or activate a school tenant' })
+  @ApiParam({ name: 'id', description: 'School UUID' })
+  @ApiResponse({ status: 200, description: 'School status updated' })
+  @Patch('schools/:id/status')
+  async updateSchoolStatus(
+    @CurrentUser('role') role: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateSchoolStatusDto,
+  ) {
+    this.assertSuperAdmin(role);
+    const data = await this.platformService.updateSchoolStatus(id, dto.status);
+    return { data };
+  }
+
+  @Roles(...PLATFORM_ADMINS)
   @ApiOperation({ summary: 'Platform-wide metrics (total schools, students, ARR minor, faculty)' })
   @ApiResponse({ status: 200, description: 'SaaS metrics retrieved' })
   @Get('stats')
@@ -56,6 +71,16 @@ export class PlatformController {
   async getPlans(@CurrentUser('role') role: string) {
     this.assertSuperAdmin(role);
     const data = await this.platformService.getPlans();
+    return { data };
+  }
+
+  @Roles(...PLATFORM_ADMINS)
+  @ApiOperation({ summary: 'Configure a new SaaS subscription plan' })
+  @ApiResponse({ status: 201, description: 'Subscription plan configured' })
+  @Post('plans')
+  async createPlan(@CurrentUser('role') role: string, @Body() dto: CreateSubscriptionPlanDto) {
+    this.assertSuperAdmin(role);
+    const data = await this.platformService.createPlan(dto);
     return { data };
   }
 }

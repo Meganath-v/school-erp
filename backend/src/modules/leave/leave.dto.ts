@@ -35,3 +35,4 @@ export class DecideLeaveDto {
   @MaxLength(500)
   remarks?: string;
 }
+

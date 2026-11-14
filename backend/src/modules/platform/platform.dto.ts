@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSchoolDto {
@@ -51,4 +51,55 @@ export class CreateSchoolDto {
   @IsOptional()
   @IsString()
   planCode?: string;
+}
+
+export class UpdateSchoolStatusDto {
+  @ApiProperty({ example: 'SUSPENDED', enum: ['ACTIVE', 'SUSPENDED', 'TRIAL'] })
+  @IsIn(['ACTIVE', 'SUSPENDED', 'TRIAL'])
+  status: 'ACTIVE' | 'SUSPENDED' | 'TRIAL';
+}
+
+export class CreateSubscriptionPlanDto {
+  @ApiProperty({ example: 'ENTERPRISE', description: 'Unique plan code' })
+  @IsNotEmpty()
+  @IsString()
+  code: string;
+
+  @ApiProperty({ example: 'Enterprise Multi-Campus Plan' })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @ApiPropertyOptional({ example: 4999900, description: 'Price in minor currency units (e.g. paise)' })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  priceMinor?: number;
+
+  @ApiPropertyOptional({ example: 'INR', default: 'INR' })
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 'YEARLY', enum: ['MONTHLY', 'YEARLY'], default: 'YEARLY' })
+  @IsOptional()
+  @IsIn(['MONTHLY', 'YEARLY'])
+  billingInterval?: string;
+
+  @ApiPropertyOptional({ example: 2500, default: 500 })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  studentLimit?: number;
+
+  @ApiPropertyOptional({ example: 250, default: 50 })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  staffLimit?: number;
+
+  @ApiPropertyOptional({ example: 30, default: 30 })
+  @IsOptional()
+  @IsInt()
+  trialDays?: number;
 }

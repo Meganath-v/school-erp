@@ -142,3 +142,4 @@ export class CreateCourseMaterialDto {
   @IsString()
   fileUrl: string;
 }
+

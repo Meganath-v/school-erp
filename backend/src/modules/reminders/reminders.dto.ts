@@ -48,3 +48,4 @@ export class UpdateReminderStatusDto {
   @IsIn(['PENDING', 'SENT', 'DISMISSED', 'COMPLETED'])
   status: string;
 }
+

@@ -44,3 +44,4 @@ export class AcknowledgeCircularDto {
   @IsString()
   remarks?: string;
 }
+

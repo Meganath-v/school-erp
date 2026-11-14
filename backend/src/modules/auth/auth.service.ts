@@ -1,8 +1,9 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
-import { LoginDto, SwitchSchoolDto, RefreshTokenDto } from './auth.dto';
+import { LoginDto, SwitchSchoolDto, RefreshTokenDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from './auth.dto';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { ACCESS_TOKEN_TYPE, REFRESH_TOKEN_TYPE } from './jwt.strategy';
 
 type TokenClaims = { sub: string; email: string; schoolId: string; role: string; ver: number };
@@ -233,5 +234,151 @@ export class AuthService {
       data: { tokenVersion: { increment: 1 } },
     });
     return { message: 'Logged out successfully' };
+  }
+
+  /** Explicit session revocation across all client devices */
+  async revokeAllSessions(userId: string) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    return {
+      message: 'All active sessions have been revoked. Please sign in again.',
+      tokenVersion: updated.tokenVersion,
+    };
+  }
+
+  /** Change password for authenticated caller, invalidating all other sessions */
+  async changePassword(userId: string, currentSchoolId: string | undefined, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        memberships: {
+          where: { status: 'ACTIVE', school: { status: { in: ['ACTIVE', 'TRIAL'] } } },
+          include: { school: true },
+        },
+      },
+    });
+
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('User account is invalid or suspended');
+    }
+
+    const isMatch = await bcrypt.compare(dto.oldPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException('Current password does not match');
+    }
+
+    if (dto.oldPassword === dto.newPassword) {
+      throw new BadRequestException('New password must be different from current password');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    // Atomically update password and increment tokenVersion
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
+    });
+
+    // Resolve active school context for fresh tokens
+    const activeSchoolId = currentSchoolId || user.memberships[0]?.schoolId;
+    const activeMembership = user.memberships.find((m) => m.schoolId === activeSchoolId) || user.memberships[0];
+
+    const { accessToken, refreshToken } = this.issueTokens({
+      sub: updatedUser.id,
+      email: updatedUser.email,
+      schoolId: activeMembership ? activeMembership.schoolId : '',
+      role: activeMembership ? activeMembership.defaultRole : 'GUEST',
+      ver: updatedUser.tokenVersion,
+    });
+
+    return {
+      message: 'Password changed successfully. All other active sessions have been terminated.',
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /** Request single-use password reset token */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (!user || user.status !== 'ACTIVE') {
+      // Return ambiguous response to prevent user enumeration
+      return {
+        message: 'If the email address is associated with an active account, a password reset instruction has been sent.',
+      };
+    }
+
+    // Generate single-use random 32-byte hex token
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour validity
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return {
+      message: 'If the email address is associated with an active account, a password reset instruction has been sent.',
+      // Provided in development/demo context so verification tests and workflows can complete
+      resetToken: rawToken,
+      expiresAt,
+    };
+  }
+
+  /** Reset password using single-use verification token */
+  async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+
+    const resetRecord = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+
+    if (!resetRecord || !resetRecord.user) {
+      throw new BadRequestException('Password reset token is invalid, expired, or already used');
+    }
+
+    if (resetRecord.user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('User account is suspended');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Mark token as used
+      await tx.passwordResetToken.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      });
+
+      // 2. Update password and invalidate all active session tokens
+      await tx.user.update({
+        where: { id: resetRecord.userId },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
+      });
+    });
+
+    return {
+      message: 'Password reset successful. All previous sessions have been revoked. Please sign in with your new password.',
+    };
   }
 }

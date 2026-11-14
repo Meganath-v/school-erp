@@ -31,7 +31,18 @@ export class SchoolsService {
       throw new NotFoundException('School not found');
     }
 
-    return school;
+    return {
+      ...school,
+      subscriptions: school.subscriptions.map((s) => ({
+        ...s,
+        plan: s.plan
+          ? {
+              ...s.plan,
+              storageLimitBytes: Number(s.plan.storageLimitBytes),
+            }
+          : null,
+      })),
+    };
   }
 
   async updateSchool(schoolId: string, data: UpdateSchoolDto) {

@@ -61,3 +61,4 @@ export class TimetableFilterDto {
   @IsString()
   classId?: string;
 }
+

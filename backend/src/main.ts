@@ -1,5 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+
+// Support BigInt serialization in JSON (e.g. Prisma BigInt fields)
+(BigInt.prototype as any).toJSON = function () {
+  return Number(this);
+};
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';

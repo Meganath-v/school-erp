@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateSchoolDto } from './platform.dto';
+import { CreateSchoolDto, CreateSubscriptionPlanDto } from './platform.dto';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
@@ -71,6 +71,38 @@ export class PlatformService {
 
   async getPlans() {
     return this.prisma.subscriptionPlan.findMany();
+  }
+
+  async createPlan(dto: CreateSubscriptionPlanDto) {
+    const existing = await this.prisma.subscriptionPlan.findUnique({
+      where: { code: dto.code.toUpperCase() },
+    });
+    if (existing) {
+      throw new BadRequestException('A subscription plan with this code already exists');
+    }
+    return this.prisma.subscriptionPlan.create({
+      data: {
+        code: dto.code.toUpperCase(),
+        name: dto.name,
+        priceMinor: dto.priceMinor || 0,
+        currency: dto.currency || 'INR',
+        billingInterval: dto.billingInterval || 'YEARLY',
+        studentLimit: dto.studentLimit || 500,
+        staffLimit: dto.staffLimit || 50,
+        trialDays: dto.trialDays || 30,
+      },
+    });
+  }
+
+  async updateSchoolStatus(schoolId: string, status: 'ACTIVE' | 'SUSPENDED' | 'TRIAL') {
+    const school = await this.prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) {
+      throw new NotFoundException('School tenant not found');
+    }
+    return this.prisma.school.update({
+      where: { id: schoolId },
+      data: { status },
+    });
   }
 
   async createSchool(dto: CreateSchoolDto) {

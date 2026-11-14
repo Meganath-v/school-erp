@@ -121,3 +121,4 @@ export class ImportMarksDto {
   @Type(() => ImportMarksRowDto)
   rows: ImportMarksRowDto[];
 }
+

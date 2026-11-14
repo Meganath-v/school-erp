@@ -70,6 +70,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // The token's school is only honoured while the user still has an ACTIVE membership there.
     const activeMembership = user.memberships.find((m) => m.schoolId === payload.schoolId);
 
+    // If the school is suspended and caller is not a platform superadmin, immediately reject
+    const isPlatformAdmin =
+      activeMembership?.defaultRole === 'PLATFORM_OWNER' || activeMembership?.defaultRole === 'SUPER_ADMIN';
+    if (activeMembership && activeMembership.school && activeMembership.school.status === 'SUSPENDED' && !isPlatformAdmin) {
+      throw new UnauthorizedException('School account has been suspended by the platform administrator');
+    }
+
     return {
       userId: user.id,
       email: user.email,

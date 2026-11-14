@@ -32,3 +32,4 @@ export class UpdateNotificationPreferencesDto {
   @IsBoolean()
   examAlerts?: boolean;
 }
+

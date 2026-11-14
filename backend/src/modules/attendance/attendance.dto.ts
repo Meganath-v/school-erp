@@ -59,3 +59,4 @@ export class AttendanceFilterDto {
   @Max(2100)
   year?: number;
 }
+
