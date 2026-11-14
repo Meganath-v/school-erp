@@ -20,6 +20,7 @@ import 'features/examination/presentation/examination_management_screen.dart';
 import 'features/fees/presentation/fee_management_screen.dart';
 import 'features/timetable/presentation/timetable_management_screen.dart';
 import 'features/circulars/presentation/circular_management_screen.dart';
+import 'features/reports/presentation/reports_analytics_screen.dart';
 import 'core/widgets/omni_search_dialog.dart';
 
 void main() {
@@ -101,6 +102,14 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
       targetIndex = destinations.indexWhere((d) =>
           d.label.toLowerCase().contains('circular') ||
           d.label.toLowerCase().contains('notice'));
+    } else if (target.contains('REPORT') ||
+        target.contains('ANALYTIC') ||
+        target.contains('DEFAULTER') ||
+        target.contains('STRENGTH') ||
+        target.contains('EXPORT')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('report') ||
+          d.label.toLowerCase().contains('analytic'));
     }
 
     if (targetIndex != -1) {
@@ -144,6 +153,11 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
             selectedIcon: Icons.dashboard,
           ),
           NavigationDestinationItem(
+            label: 'Institutional Reports',
+            icon: Icons.analytics_outlined,
+            selectedIcon: Icons.analytics,
+          ),
+          NavigationDestinationItem(
             label: 'Attendance Register',
             icon: Icons.fact_check_outlined,
             selectedIcon: Icons.fact_check,
@@ -171,6 +185,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         pages = const [
           PrincipalDashboard(),
+          ReportsAnalyticsScreen(),
           AttendanceManagementScreen(),
           ExaminationManagementScreen(),
           TimetableManagementScreen(),
@@ -268,6 +283,11 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
             selectedIcon: Icons.dashboard,
           ),
           NavigationDestinationItem(
+            label: 'Institutional Reports',
+            icon: Icons.analytics_outlined,
+            selectedIcon: Icons.analytics,
+          ),
+          NavigationDestinationItem(
             label: 'Fee Billing & Receipts',
             icon: Icons.receipt_long_outlined,
             selectedIcon: Icons.receipt_long,
@@ -290,6 +310,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         pages = const [
           OfficeDashboard(),
+          ReportsAnalyticsScreen(),
           FeeManagementScreen(),
           StudentManagementScreen(),
           CircularManagementScreen(),
@@ -317,6 +338,11 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
             label: 'Campus Dashboard',
             icon: Icons.dashboard_outlined,
             selectedIcon: Icons.dashboard,
+          ),
+          NavigationDestinationItem(
+            label: 'Institutional Reports',
+            icon: Icons.analytics_outlined,
+            selectedIcon: Icons.analytics,
           ),
           NavigationDestinationItem(
             label: 'Learners Directory',
@@ -361,6 +387,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
         ];
         pages = const [
           SchoolAdminDashboard(),
+          ReportsAnalyticsScreen(),
           StudentManagementScreen(),
           StaffManagementScreen(),
           AttendanceManagementScreen(),
