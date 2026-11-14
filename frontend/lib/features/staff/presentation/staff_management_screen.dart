@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -32,6 +33,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
   bool _sortAscending = true;
   int _currentPage = 1;
   final int _pageSize = 8;
+  Timer? _searchDebounce;
 
   // Selected Staff Profile
   Map<String, dynamic>? _selectedStaff;
@@ -64,6 +66,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     _nameCtrl.dispose();
     _emailCtrl.dispose();
@@ -72,6 +75,26 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
     _departmentCtrl.dispose();
     _designationCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchStaff() async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (_searchQuery.trim().isNotEmpty) {
+        queryParams['search'] = _searchQuery.trim();
+      }
+      final res = await ApiClient().dio.get('/staff', queryParameters: queryParams);
+      if (mounted) {
+        setState(() {
+          _staffList = res.data['data'] as List? ?? [];
+          if (_staffList.isNotEmpty && (_selectedStaff == null || !_staffList.any((s) => s['id'] == _selectedStaff!['id']))) {
+            _selectedStaff = _staffList[0];
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching staff: $e');
+    }
   }
 
   Future<void> _loadAllStaffData() async {
@@ -323,10 +346,16 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
             SearchFilterBar(
               searchHint: 'Search staff by name, email, or department...',
               searchQuery: _searchQuery,
-              onSearchChanged: (val) => setState(() {
-                _searchQuery = val;
-                _currentPage = 1;
-              }),
+              onSearchChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _currentPage = 1;
+                });
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                  _fetchStaff();
+                });
+              },
               totalCount: totalCount,
               countLabel: 'Staff Members Listed',
               filters: [

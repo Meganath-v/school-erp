@@ -5,8 +5,24 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class CircularsService {
   constructor(private prisma: PrismaService) {}
 
-  async getCirculars(schoolId: string, userId: string, role: string, classId?: string) {
+  async getCirculars(schoolId: string, userId: string, role: string, classId?: string, filters?: { search?: string; priority?: string }) {
     const where: any = { schoolId, status: 'PUBLISHED' };
+
+    if (classId) {
+      where.classId = classId;
+    }
+    if (filters?.priority && filters.priority !== 'ALL') {
+      where.priority = filters.priority;
+    }
+    if (filters?.search && filters.search.trim()) {
+      const s = filters.search.trim();
+      where.OR = [
+        { title: { contains: s } },
+        { circularNumber: { contains: s } },
+        { content: { contains: s } },
+        { senderName: { contains: s } },
+      ];
+    }
 
     // Determine target audiences this role can see
     if (role === 'PARENT') {

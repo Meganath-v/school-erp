@@ -25,6 +25,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CircularsModule } from './modules/circulars/circulars.module';
 import { FilesModule } from './modules/files/files.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { FilesModule } from './modules/files/files.module';
     FeedbackModule,
     CircularsModule,
     FilesModule,
+    SearchModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

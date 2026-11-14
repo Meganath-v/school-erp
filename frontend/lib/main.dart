@@ -20,6 +20,7 @@ import 'features/examination/presentation/examination_management_screen.dart';
 import 'features/fees/presentation/fee_management_screen.dart';
 import 'features/timetable/presentation/timetable_management_screen.dart';
 import 'features/circulars/presentation/circular_management_screen.dart';
+import 'core/widgets/omni_search_dialog.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +52,61 @@ class AppShellScreen extends ConsumerStatefulWidget {
 
 class _AppShellScreenState extends ConsumerState<AppShellScreen> {
   int _selectedIndex = 0;
+  final List<int> _history = [0];
+
+  void _navigateToIndex(int index) {
+    if (_selectedIndex == index) return;
+    setState(() {
+      _history.add(index);
+      _selectedIndex = index;
+    });
+  }
+
+  void _navigateBack() {
+    if (_history.length > 1) {
+      setState(() {
+        _history.removeLast();
+        _selectedIndex = _history.last;
+      });
+    }
+  }
+
+  void _handleSearchResult(OmniSearchResult result, List<NavigationDestinationItem> destinations) {
+    int targetIndex = -1;
+    final target = result.routeTarget.toUpperCase();
+
+    if (target.contains('STUDENT')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('learner') ||
+          d.label.toLowerCase().contains('student') ||
+          d.label.toLowerCase().contains('admission'));
+    } else if (target.contains('STAFF')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('staff') ||
+          d.label.toLowerCase().contains('faculty'));
+    } else if (target.contains('ATTENDANCE')) {
+      targetIndex = destinations.indexWhere((d) => d.label.toLowerCase().contains('attendance'));
+    } else if (target.contains('EXAM')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('exam') ||
+          d.label.toLowerCase().contains('broadsheet') ||
+          d.label.toLowerCase().contains('mark'));
+    } else if (target.contains('FEE') || target.contains('INVOICE') || target.contains('RECEIPT')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('fee') ||
+          d.label.toLowerCase().contains('billing'));
+    } else if (target.contains('TIMETABLE')) {
+      targetIndex = destinations.indexWhere((d) => d.label.toLowerCase().contains('timetable'));
+    } else if (target.contains('CIRCULAR')) {
+      targetIndex = destinations.indexWhere((d) =>
+          d.label.toLowerCase().contains('circular') ||
+          d.label.toLowerCase().contains('notice'));
+    }
+
+    if (targetIndex != -1) {
+      _navigateToIndex(targetIndex);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -318,13 +374,18 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
     }
 
     final safeIndex = _selectedIndex < pages.length ? _selectedIndex : 0;
+    final schoolName = authState.activeSchool?.name ?? 'Oakridge International';
+    final activeLabel = destinations[safeIndex].label;
+    final breadcrumbs = [schoolName, 'Academic Suite', activeLabel];
 
     return ShellLayout(
       selectedIndex: safeIndex,
-      onDestinationSelected: (index) {
-        setState(() => _selectedIndex = index);
-      },
+      onDestinationSelected: _navigateToIndex,
       destinations: destinations,
+      canNavigateBack: _history.length > 1,
+      onBack: _navigateBack,
+      breadcrumbs: breadcrumbs,
+      onSearchNavigate: (res) => _handleSearchResult(res, destinations),
       child: pages[safeIndex],
     );
   }

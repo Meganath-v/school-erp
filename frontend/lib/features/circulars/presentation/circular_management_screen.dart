@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -26,6 +27,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
   String _searchQuery = '';
   String _selectedAudienceFilter = 'ALL';
   String _selectedPriorityFilter = 'ALL';
+  Timer? _searchDebounce;
 
   // Create Form State
   final _createFormKey = GlobalKey<FormState>();
@@ -52,11 +54,33 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     _titleController.dispose();
     _contentController.dispose();
     _fileUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchCirculars() async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (_searchQuery.trim().isNotEmpty) {
+        queryParams['search'] = _searchQuery.trim();
+      }
+      if (_selectedPriorityFilter != 'ALL') {
+        queryParams['priority'] = _selectedPriorityFilter;
+      }
+      final res = await ApiClient().dio.get('/circulars', queryParameters: queryParams);
+      if (mounted) {
+        final list = (res.data['data'] ?? res.data) as List<dynamic>? ?? [];
+        setState(() {
+          _circulars = list;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching circulars with filters: $e');
+    }
   }
 
   Future<void> _loadInitialData() async {
@@ -304,7 +328,13 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
         SearchFilterBar(
           searchHint: 'Search circulars by number, title, or dispatcher...',
           searchQuery: _searchQuery,
-          onSearchChanged: (val) => setState(() => _searchQuery = val),
+          onSearchChanged: (val) {
+            setState(() => _searchQuery = val);
+            _searchDebounce?.cancel();
+            _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+              _fetchCirculars();
+            });
+          },
           filters: [
             DropdownButton<String>(
               value: _selectedAudienceFilter,
@@ -329,7 +359,10 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
                 DropdownMenuItem(value: 'URGENT', child: Text('Urgent Only')),
               ],
               onChanged: (val) {
-                if (val != null) setState(() => _selectedPriorityFilter = val);
+                if (val != null) {
+                  setState(() => _selectedPriorityFilter = val);
+                  _fetchCirculars();
+                }
               },
             ),
           ],

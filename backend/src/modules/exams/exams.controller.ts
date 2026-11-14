@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ExamsService } from './exams.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -15,10 +15,15 @@ export class ExamsController {
 
   @Roles(...ALL_STAFF)
   @Get()
-  @ApiOperation({ summary: 'List all examinations scheduled or published for this school' })
+  @ApiOperation({ summary: 'List all examinations scheduled or published for this school with optional server-side filtering' })
   @ApiResponse({ status: 200, description: 'List of exams' })
-  async getExams(@CurrentSchoolId() schoolId: string) {
-    const data = await this.examsService.getExams(schoolId);
+  async getExams(
+    @CurrentSchoolId() schoolId: string,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('term') term?: string,
+    @Query('search') search?: string,
+  ) {
+    const data = await this.examsService.getExams(schoolId, { academicYearId, term, search });
     return { data };
   }
 

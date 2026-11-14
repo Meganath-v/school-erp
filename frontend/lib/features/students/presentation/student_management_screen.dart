@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -31,6 +32,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
   bool _sortAscending = true;
   int _currentPage = 1;
   final int _pageSize = 8;
+  Timer? _searchDebounce;
 
   // Selected Student Profile State
   Map<String, dynamic>? _selectedStudent;
@@ -64,6 +66,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
@@ -79,6 +82,33 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
     super.dispose();
   }
 
+  Future<void> _fetchStudents() async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (_searchQuery.trim().isNotEmpty) {
+        queryParams['search'] = _searchQuery.trim();
+      }
+      if (_selectedClassFilter != null && _selectedClassFilter!.isNotEmpty) {
+        queryParams['classId'] = _selectedClassFilter;
+      }
+      if (_selectedSectionFilter != null && _selectedSectionFilter!.isNotEmpty) {
+        queryParams['sectionId'] = _selectedSectionFilter;
+      }
+
+      final res = await ApiClient().dio.get('/students', queryParameters: queryParams);
+      if (mounted) {
+        setState(() {
+          _students = res.data['data'] as List? ?? [];
+          if (_students.isNotEmpty && (_selectedStudent == null || !_students.any((s) => s['id'] == _selectedStudent!['id']))) {
+            _selectStudent(_students[0]['id']);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error filtering students from backend: $e');
+    }
+  }
+
   Future<void> _loadInitialData() async {
     setState(() {
       _isLoading = true;
@@ -86,8 +116,13 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
     });
 
     try {
+      final queryParams = <String, dynamic>{};
+      if (_searchQuery.trim().isNotEmpty) queryParams['search'] = _searchQuery.trim();
+      if (_selectedClassFilter != null && _selectedClassFilter!.isNotEmpty) queryParams['classId'] = _selectedClassFilter;
+      if (_selectedSectionFilter != null && _selectedSectionFilter!.isNotEmpty) queryParams['sectionId'] = _selectedSectionFilter;
+
       final results = await Future.wait([
-        ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/students', queryParameters: queryParams).then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
       ]);
 
@@ -501,8 +536,8 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
       final matchesSearch = _searchQuery.isEmpty ||
           (s['fullName'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (s['admissionNo'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesClass = _selectedClassFilter == null || s['currentClass'] == _selectedClassFilter;
-      final matchesSection = _selectedSectionFilter == null || s['currentSection'] == _selectedSectionFilter;
+      final matchesClass = _selectedClassFilter == null || s['classId'] == _selectedClassFilter || s['currentClass'] == _selectedClassFilter;
+      final matchesSection = _selectedSectionFilter == null || s['sectionId'] == _selectedSectionFilter || s['currentSection'] == _selectedSectionFilter;
       return matchesSearch && matchesClass && matchesSection;
     }).toList();
 
@@ -590,10 +625,16 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
             SearchFilterBar(
               searchHint: 'Search by student name or admission number...',
               searchQuery: _searchQuery,
-              onSearchChanged: (val) => setState(() {
-                _searchQuery = val;
-                _currentPage = 1;
-              }),
+              onSearchChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _currentPage = 1;
+                });
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                  _fetchStudents();
+                });
+              },
               totalCount: totalCount,
               countLabel: 'Learners Found',
               filters: [
@@ -603,14 +644,47 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                     hint: const Text('All Classes'),
                     items: [
                       const DropdownMenuItem(value: null, child: Text('All Classes')),
-                      ..._classes.map<DropdownMenuItem<String?>>((c) => DropdownMenuItem(value: c['name'] as String, child: Text(c['name']))),
+                      ..._classes.map<DropdownMenuItem<String?>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name'] as String))),
                     ],
-                    onChanged: (val) => setState(() {
-                      _selectedClassFilter = val;
-                      _currentPage = 1;
-                    }),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedClassFilter = val;
+                        _selectedSectionFilter = null;
+                        _currentPage = 1;
+                      });
+                      _fetchStudents();
+                    },
                   ),
                 ),
+                if (_selectedClassFilter != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Builder(
+                    builder: (context) {
+                      final selectedClassObj = _classes.firstWhere(
+                        (c) => c['id'] == _selectedClassFilter,
+                        orElse: () => null,
+                      );
+                      final sections = selectedClassObj != null ? (selectedClassObj['sections'] as List? ?? []) : [];
+                      return DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          value: _selectedSectionFilter,
+                          hint: const Text('All Sections'),
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('All Sections')),
+                            ...sections.map<DropdownMenuItem<String?>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text('Sec ${s['name']}'))),
+                          ],
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedSectionFilter = val;
+                              _currentPage = 1;
+                            });
+                            _fetchStudents();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: AppSpacing.lg),

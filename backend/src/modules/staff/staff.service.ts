@@ -5,9 +5,29 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class StaffService {
   constructor(private prisma: PrismaService) {}
 
-  async getStaff(schoolId: string) {
+  async getStaff(schoolId: string, query?: { search?: string; department?: string; status?: string }) {
+    const where: any = { schoolId };
+
+    if (query?.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+    if (query?.department && query.department !== 'ALL') {
+      where.department = query.department;
+    }
+    if (query?.search && query.search.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { firstName: { contains: s } },
+        { lastName: { contains: s } },
+        { employeeNo: { contains: s } },
+        { email: { contains: s } },
+        { department: { contains: s } },
+        { designation: { contains: s } },
+      ];
+    }
+
     const staff = await this.prisma.staff.findMany({
-      where: { schoolId },
+      where,
       include: {
         teacherAssignments: {
           include: {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -15,10 +15,15 @@ export class StaffController {
 
   @Roles(...ALL_STAFF)
   @Get()
-  @ApiOperation({ summary: 'List all staff members and their active class/subject assignments' })
+  @ApiOperation({ summary: 'List all staff members with optional server-side filtering' })
   @ApiResponse({ status: 200, description: 'List of staff members retrieved successfully' })
-  async getStaff(@CurrentSchoolId() schoolId: string) {
-    const data = await this.staffService.getStaff(schoolId);
+  async getStaff(
+    @CurrentSchoolId() schoolId: string,
+    @Query('search') search?: string,
+    @Query('department') department?: string,
+    @Query('status') status?: string,
+  ) {
+    const data = await this.staffService.getStaff(schoolId, { search, department, status });
     return { data };
   }
 

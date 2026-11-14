@@ -14,16 +14,20 @@ export class CircularsController {
   constructor(private circularsService: CircularsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List published circulars matching the caller role and class filters' })
+  @ApiOperation({ summary: 'List published circulars matching the caller role and filters' })
   @ApiQuery({ name: 'classId', required: false, description: 'Class UUID' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search keyword' })
+  @ApiQuery({ name: 'priority', required: false, description: 'Priority level (NORMAL, URGENT)' })
   @ApiResponse({ status: 200, description: 'List of circulars' })
   async getCirculars(
     @CurrentSchoolId() schoolId: string,
     @CurrentUser('userId') userId: string,
     @CurrentUser('role') role: string,
     @Query('classId') classId?: string,
+    @Query('search') search?: string,
+    @Query('priority') priority?: string,
   ) {
-    const data = await this.circularsService.getCirculars(schoolId, userId, role, classId);
+    const data = await this.circularsService.getCirculars(schoolId, userId, role, classId, { search, priority });
     return { data };
   }
 

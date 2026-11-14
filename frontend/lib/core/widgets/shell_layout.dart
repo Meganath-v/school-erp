@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_typography.dart';
 import '../auth/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'notification_center.dart';
 import 'status_badge.dart';
+import 'omni_search_dialog.dart';
 
 class NavigationDestinationItem {
   final String label;
@@ -25,6 +27,10 @@ class ShellLayout extends ConsumerStatefulWidget {
   final int selectedIndex;
   final Function(int) onDestinationSelected;
   final List<NavigationDestinationItem> destinations;
+  final bool canNavigateBack;
+  final VoidCallback? onBack;
+  final List<String>? breadcrumbs;
+  final Function(OmniSearchResult)? onSearchNavigate;
 
   const ShellLayout({
     super.key,
@@ -32,6 +38,10 @@ class ShellLayout extends ConsumerStatefulWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.destinations,
+    this.canNavigateBack = false,
+    this.onBack,
+    this.breadcrumbs,
+    this.onSearchNavigate,
   });
 
   @override
@@ -42,6 +52,10 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isSidebarCollapsed = false;
 
+  void _openSearchDialog() {
+    OmniSearchDialog.show(context, onNavigate: widget.onSearchNavigate);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -50,22 +64,31 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
     final isTablet = width >= 768 && width < 1024;
     final isMobile = width < 768;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: AppColors.background,
-      appBar: _buildTopAppBar(context, authState, isDesktop, isTablet, isMobile),
-      drawer: !isDesktop ? _buildDrawer(context, authState) : null,
-      bottomNavigationBar: (isMobile && widget.destinations.length <= 4)
-          ? _buildBottomNavBar()
-          : null,
-      body: Row(
-        children: [
-          if (isDesktop) _buildDesktopSidebar(context, authState),
-          if (isTablet && !_isSidebarCollapsed) _buildTabletRail(context, authState),
-          Expanded(
-            child: widget.child,
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _openSearchDialog,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _openSearchDialog,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: AppColors.background,
+          appBar: _buildTopAppBar(context, authState, isDesktop, isTablet, isMobile),
+          drawer: !isDesktop ? _buildDrawer(context, authState) : null,
+          bottomNavigationBar: (isMobile && widget.destinations.length <= 4)
+              ? _buildBottomNavBar()
+              : null,
+          body: Row(
+            children: [
+              if (isDesktop) _buildDesktopSidebar(context, authState),
+              if (isTablet && !_isSidebarCollapsed) _buildTabletRail(context, authState),
+              Expanded(
+                child: widget.child,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -85,13 +108,19 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 1,
-      automaticallyImplyLeading: !isDesktop,
-      leading: !isDesktop
+      automaticallyImplyLeading: false,
+      leading: widget.canNavigateBack && widget.onBack != null
           ? IconButton(
-              icon: const Icon(Icons.menu, color: AppColors.textDark, size: 22),
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              icon: const Icon(Icons.arrow_back, color: AppColors.textDark, size: 20),
+              tooltip: 'Back to previous page',
+              onPressed: widget.onBack,
             )
-          : null,
+          : (!isDesktop
+              ? IconButton(
+                  icon: const Icon(Icons.menu, color: AppColors.textDark, size: 22),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                )
+              : null),
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, color: AppColors.border),
@@ -102,20 +131,51 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
           if (isDesktop) ...[
             // Collapse / Expand Sidebar Toggle
             IconButton(
-              icon: const Icon(Icons.menu_open, size: 20, color: AppColors.textMuted),
-              tooltip: 'Toggle Sidebar',
+              icon: Icon(
+                _isSidebarCollapsed ? Icons.menu : Icons.menu_open,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+              tooltip: _isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar',
               onPressed: () {
                 setState(() => _isSidebarCollapsed = !_isSidebarCollapsed);
               },
             ),
             const SizedBox(width: 8),
           ],
-          // Active Module / Breadcrumb Title
+
+          // Active Module / Breadcrumb Hierarchy
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (widget.breadcrumbs != null && widget.breadcrumbs!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (int i = 0; i < widget.breadcrumbs!.length; i++) ...[
+                            if (i > 0)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.chevron_right, size: 12, color: AppColors.textSubtle),
+                              ),
+                            Text(
+                              widget.breadcrumbs![i],
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: i == widget.breadcrumbs!.length - 1 ? FontWeight.w600 : FontWeight.w400,
+                                color: i == widget.breadcrumbs!.length - 1 ? AppColors.textDark : AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -148,21 +208,52 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                     ),
                   ],
                 ),
-                if (!isMobile)
-                  Text(
-                    '${school?.name ?? "Institution"} • Linways-Grade ERP Workspace',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
               ],
             ),
           ),
         ],
       ),
       actions: [
+        // Global Omni-Search Palette Trigger
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InkWell(
+            onTap: _openSearchDialog,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.search, size: 16, color: AppColors.primaryAccent),
+                  if (isDesktop) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Search ERP...',
+                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Text('Ctrl+K', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+
         // Multi-Tenant School Switcher
         if (memberships.length > 1)
           Padding(
@@ -276,10 +367,23 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                       style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
                     ),
                     const SizedBox(height: 6),
-                    StatusBadge(
-                      label: authState.activeRole ?? 'GUEST',
-                      isSmall: true,
-                      variant: BadgeVariant.info,
+                    Row(
+                      children: [
+                        StatusBadge(
+                          label: authState.activeRole ?? 'GUEST',
+                          isSmall: true,
+                          variant: BadgeVariant.info,
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.successBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('JWT Active', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -339,7 +443,8 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
     final school = authState.activeSchool;
     final user = authState.user;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       width: _isSidebarCollapsed ? 72 : 256,
       decoration: const BoxDecoration(
         color: AppColors.primary,
@@ -404,10 +509,10 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
             ),
           ),
 
-          // Role Navigation List
+          // Role Navigation List with active highlighting
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               itemCount: widget.destinations.length,
               separatorBuilder: (ctx, i) => const SizedBox(height: 4),
               itemBuilder: (context, index) {
@@ -425,7 +530,12 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                     decoration: BoxDecoration(
                       color: isSelected ? const Color(0xFF1E293B) : Colors.transparent,
                       borderRadius: AppRadius.mdBorderRadius,
-                      border: isSelected ? Border.all(color: const Color(0xFF334155), width: 1) : null,
+                      border: Border(
+                        left: BorderSide(
+                          color: isSelected ? AppColors.primaryAccentLight : Colors.transparent,
+                          width: 3.5,
+                        ),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: _isSidebarCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
@@ -442,7 +552,7 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                               item.label,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
                               ),
                               maxLines: 1,

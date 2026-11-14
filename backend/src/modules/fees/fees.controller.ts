@@ -23,16 +23,22 @@ export class FeesController {
 
   @Roles(...OFFICE_STAFF, 'PARENT')
   @Get('invoices')
-  @ApiOperation({ summary: 'List invoices filtered by student or linked parent wards' })
+  @ApiOperation({ summary: 'List invoices filtered by student or linked parent wards with server-side filters' })
   @ApiQuery({ name: 'studentId', required: false, description: 'Student UUID' })
+  @ApiQuery({ name: 'status', required: false, description: 'Invoice status (e.g. PAID, PENDING, OVERDUE)' })
+  @ApiQuery({ name: 'category', required: false, description: 'Fee category (e.g. SCHOOL, HOSTEL, TRANSPORT)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search keyword for invoice or student' })
   @ApiResponse({ status: 200, description: 'Invoices list' })
   async getInvoices(
     @CurrentSchoolId() schoolId: string,
     @CurrentUser('userId') userId: string,
     @CurrentUser('role') role: string,
     @Query('studentId') studentId?: string,
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
   ) {
-    const data = await this.feesService.getInvoices(schoolId, { studentId, userId, role });
+    const data = await this.feesService.getInvoices(schoolId, { studentId, userId, role, status, category, search });
     return { data };
   }
 

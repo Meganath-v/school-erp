@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -29,8 +30,10 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
   // Invoices Table State
   String _invoiceSearchQuery = '';
   String _invoiceStatusFilter = 'ALL';
+  String _invoiceCategoryFilter = 'ALL';
   int _currentPage = 1;
   final int _pageSize = 8;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -41,8 +44,27 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInvoicesOnly() async {
+    try {
+      final invoiceParams = <String, dynamic>{};
+      if (_invoiceSearchQuery.trim().isNotEmpty) invoiceParams['search'] = _invoiceSearchQuery.trim();
+      if (_invoiceStatusFilter != 'ALL') invoiceParams['status'] = _invoiceStatusFilter;
+      if (_invoiceCategoryFilter != 'ALL') invoiceParams['category'] = _invoiceCategoryFilter;
+
+      final res = await ApiClient().dio.get('/fees/invoices', queryParameters: invoiceParams);
+      if (mounted) {
+        setState(() {
+          _invoices = res.data['data'] as List? ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error reloading invoices with filters: $e');
+    }
   }
 
   Future<void> _loadAllFeeData() async {
@@ -52,8 +74,13 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
     });
 
     try {
+      final invoiceParams = <String, dynamic>{};
+      if (_invoiceSearchQuery.trim().isNotEmpty) invoiceParams['search'] = _invoiceSearchQuery.trim();
+      if (_invoiceStatusFilter != 'ALL') invoiceParams['status'] = _invoiceStatusFilter;
+      if (_invoiceCategoryFilter != 'ALL') invoiceParams['category'] = _invoiceCategoryFilter;
+
       final results = await Future.wait([
-        ApiClient().dio.get('/fees/invoices').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/fees/invoices', queryParameters: invoiceParams).then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/receipts').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/fees/plans').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
@@ -514,10 +541,16 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
             SearchFilterBar(
               searchHint: 'Search invoice by student name, invoice number, or billing title...',
               searchQuery: _invoiceSearchQuery,
-              onSearchChanged: (val) => setState(() {
-                _invoiceSearchQuery = val;
-                _currentPage = 1;
-              }),
+              onSearchChanged: (val) {
+                setState(() {
+                  _invoiceSearchQuery = val;
+                  _currentPage = 1;
+                });
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                  _loadInvoicesOnly();
+                });
+              },
               totalCount: totalCount,
               countLabel: 'Invoices Found',
               filters: [
@@ -536,6 +569,28 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                           _invoiceStatusFilter = val;
                           _currentPage = 1;
                         });
+                        _loadInvoicesOnly();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _invoiceCategoryFilter,
+                    items: const [
+                      DropdownMenuItem(value: 'ALL', child: Text('All Categories')),
+                      DropdownMenuItem(value: 'SCHOOL', child: Text('Tuition & School')),
+                      DropdownMenuItem(value: 'HOSTEL', child: Text('Hostel & Boarding')),
+                      DropdownMenuItem(value: 'TRANSPORT', child: Text('Transport & Fleet')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _invoiceCategoryFilter = val;
+                          _currentPage = 1;
+                        });
+                        _loadInvoicesOnly();
                       }
                     },
                   ),

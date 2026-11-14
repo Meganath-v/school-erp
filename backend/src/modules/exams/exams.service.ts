@@ -5,9 +5,25 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ExamsService {
   constructor(private prisma: PrismaService) {}
 
-  async getExams(schoolId: string) {
+  async getExams(schoolId: string, query?: { academicYearId?: string; term?: string; search?: string }) {
+    const where: any = { schoolId };
+
+    if (query?.academicYearId && query.academicYearId !== 'ALL') {
+      where.academicYearId = query.academicYearId;
+    }
+    if (query?.term && query.term !== 'ALL') {
+      where.term = query.term;
+    }
+    if (query?.search && query.search.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { name: { contains: s } },
+        { term: { contains: s } },
+      ];
+    }
+
     const exams = await this.prisma.exam.findMany({
-      where: { schoolId },
+      where,
       include: {
         academicYear: true,
         subjects: {

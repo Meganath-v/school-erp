@@ -24,7 +24,7 @@ export class FeesService {
     return { plans, heads };
   }
 
-  async getInvoices(schoolId: string, query: { studentId?: string; role?: string; userId?: string }) {
+  async getInvoices(schoolId: string, query: { studentId?: string; role?: string; userId?: string; status?: string; category?: string; search?: string }) {
     const where: any = { schoolId };
 
     if (query.role === 'PARENT') {
@@ -35,6 +35,25 @@ export class FeesService {
         : { in: studentIds };
     } else if (query.studentId) {
       where.studentId = query.studentId;
+    }
+
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    if (query.category && query.category !== 'ALL') {
+      where.category = query.category;
+    }
+
+    if (query.search && query.search.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { invoiceNo: { contains: s } },
+        { title: { contains: s } },
+        { student: { firstName: { contains: s } } },
+        { student: { lastName: { contains: s } } },
+        { student: { admissionNo: { contains: s } } },
+      ];
     }
 
     const invoices = await this.prisma.invoice.findMany({

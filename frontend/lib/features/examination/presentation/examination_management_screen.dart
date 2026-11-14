@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
 
 class ExaminationManagementScreen extends ConsumerStatefulWidget {
@@ -21,6 +23,11 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
   List<dynamic> _exams = [];
   List<dynamic> _classes = [];
   List<dynamic> _subjects = [];
+
+  // Examination Directory Filters
+  String _examSearchQuery = '';
+  String _examTermFilter = 'ALL';
+  Timer? _examSearchDebounce;
 
   // Selected Exam & Subject for Marks Entry
   dynamic _selectedExam;
@@ -57,6 +64,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
 
   @override
   void dispose() {
+    _examSearchDebounce?.cancel();
     _tabController.dispose();
     _excelImportTextCtrl.dispose();
     _examNameCtrl.dispose();
@@ -69,6 +77,30 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
     super.dispose();
   }
 
+  Future<void> _fetchExams() async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (_examSearchQuery.trim().isNotEmpty) {
+        queryParams['search'] = _examSearchQuery.trim();
+      }
+      if (_examTermFilter != 'ALL') {
+        queryParams['term'] = _examTermFilter;
+      }
+      final res = await ApiClient().dio.get('/exams', queryParameters: queryParams);
+      if (mounted) {
+        final list = (res.data['data'] ?? res.data) as List<dynamic>? ?? [];
+        setState(() {
+          _exams = list;
+          if (_exams.isNotEmpty && (_selectedExam == null || !_exams.any((e) => e['id'] == _selectedExam['id']))) {
+            _selectedExam = _exams[0];
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching exams with filters: $e');
+    }
+  }
+
   Future<void> _loadAllExamData() async {
     setState(() {
       _isLoading = true;
@@ -76,8 +108,12 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
     });
 
     try {
+      final queryParams = <String, dynamic>{};
+      if (_examSearchQuery.trim().isNotEmpty) queryParams['search'] = _examSearchQuery.trim();
+      if (_examTermFilter != 'ALL') queryParams['term'] = _examTermFilter;
+
       final results = await Future.wait([
-        ApiClient().dio.get('/exams').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/exams', queryParameters: queryParams).then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/subjects').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
       ]);
@@ -484,6 +520,40 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
+
+          SearchFilterBar(
+            searchHint: 'Search examination terms or series name...',
+            searchQuery: _examSearchQuery,
+            onSearchChanged: (val) {
+              setState(() => _examSearchQuery = val);
+              _examSearchDebounce?.cancel();
+              _examSearchDebounce = Timer(const Duration(milliseconds: 300), () {
+                _fetchExams();
+              });
+            },
+            filters: [
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _examTermFilter,
+                  items: const [
+                    DropdownMenuItem(value: 'ALL', child: Text('All Terms')),
+                    DropdownMenuItem(value: 'FIRST_TERM', child: Text('First Term')),
+                    DropdownMenuItem(value: 'MID_TERM', child: Text('Mid Term')),
+                    DropdownMenuItem(value: 'FINAL_TERM', child: Text('Final Term')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _examTermFilter = val);
+                      _fetchExams();
+                    }
+                  },
+                ),
+              ),
+            ],
+            totalCount: _exams.length,
+            countLabel: 'Examinations Found',
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           if (_exams.isEmpty)
             const EmptyStateView(
