@@ -71,7 +71,33 @@ export class ExamsService {
     });
   }
 
-  async addExamSubject(examId: string, data: any) {
+  /** Loads an exam subject only if its exam belongs to the given school. */
+  private async findExamSubjectInSchool(schoolId: string, examSubjectId: string) {
+    const examSubject = await this.prisma.examSubject.findFirst({
+      where: { id: examSubjectId, exam: { schoolId } },
+      include: { exam: true },
+    });
+    if (!examSubject) {
+      throw new NotFoundException('Exam subject not found');
+    }
+    return examSubject;
+  }
+
+  private assertMarksEditable(exam: { status: string }) {
+    if (exam.status === 'PUBLISHED') {
+      throw new BadRequestException('Results for this exam are already published; marks can no longer be changed.');
+    }
+  }
+
+  async addExamSubject(schoolId: string, examId: string, data: any) {
+    const [exam, cls, subject] = await Promise.all([
+      this.prisma.exam.findFirst({ where: { id: examId, schoolId } }),
+      this.prisma.class.findFirst({ where: { id: data.classId, schoolId } }),
+      this.prisma.subject.findFirst({ where: { id: data.subjectId, schoolId } }),
+    ]);
+    if (!exam) throw new NotFoundException('Exam not found');
+    if (!cls || !subject) throw new BadRequestException('Class or subject not found in this school');
+
     return this.prisma.examSubject.create({
       data: {
         examId,
@@ -84,9 +110,9 @@ export class ExamsService {
     });
   }
 
-  async getExamSubjectDetails(examSubjectId: string) {
-    const examSubject = await this.prisma.examSubject.findUnique({
-      where: { id: examSubjectId },
+  async getExamSubjectDetails(schoolId: string, examSubjectId: string) {
+    const examSubject = await this.prisma.examSubject.findFirst({
+      where: { id: examSubjectId, exam: { schoolId } },
       include: {
         exam: true,
         class: true,
@@ -104,6 +130,7 @@ export class ExamsService {
     // Fetch all active students enrolled in this class
     const enrollments = await this.prisma.enrollment.findMany({
       where: {
+        schoolId,
         classId: examSubject.classId,
         status: 'ACTIVE',
       },
@@ -196,60 +223,60 @@ export class ExamsService {
   }
 
   async enterMarks(
+    schoolId: string,
     examSubjectId: string,
     marks: { studentId: string; marksObtained: number; isAbsent?: boolean; remarks?: string }[],
   ) {
-    const examSubject = await this.prisma.examSubject.findUnique({
-      where: { id: examSubjectId },
+    if (!Array.isArray(marks) || marks.length === 0) {
+      throw new BadRequestException('marks must be a non-empty array');
+    }
+
+    const examSubject = await this.findExamSubjectInSchool(schoolId, examSubjectId);
+    this.assertMarksEditable(examSubject.exam);
+
+    // Only students actively enrolled in this class (and school) may receive marks.
+    const enrolled = await this.prisma.enrollment.findMany({
+      where: { schoolId, classId: examSubject.classId, status: 'ACTIVE' },
+      select: { studentId: true },
+    });
+    const enrolledIds = new Set(enrolled.map((e) => e.studentId));
+
+    // Validate every row before writing anything.
+    const rows = marks.map((m) => {
+      if (!m || typeof m.studentId !== 'string' || !enrolledIds.has(m.studentId)) {
+        throw new BadRequestException(`Student ${m?.studentId} is not enrolled in this class.`);
+      }
+      const isAbsent = !!m.isAbsent;
+      let score: number | null = isAbsent ? null : m.marksObtained ?? null;
+      if (score !== null) {
+        if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > examSubject.maxMarks) {
+          throw new BadRequestException(
+            `Marks obtained (${score}) must be a number between 0 and the maximum marks (${examSubject.maxMarks}).`,
+          );
+        }
+        score = Math.round(score);
+      }
+      return { studentId: m.studentId, score, isAbsent, remarks: m.remarks };
     });
 
-    if (!examSubject) {
-      throw new NotFoundException('Exam subject not found');
-    }
+    await this.prisma.$transaction(
+      rows.map((r) =>
+        this.prisma.mark.upsert({
+          where: { examSubjectId_studentId: { examSubjectId, studentId: r.studentId } },
+          update: { marksObtained: r.score, isAbsent: r.isAbsent, remarks: r.remarks },
+          create: { examSubjectId, studentId: r.studentId, marksObtained: r.score, isAbsent: r.isAbsent, remarks: r.remarks },
+        }),
+      ),
+    );
 
-    for (const m of marks) {
-      // Validate marksObtained range
-      const isAbsent = !!m.isAbsent;
-      let score: number | null = m.marksObtained;
-
-      if (isAbsent) {
-        score = null;
-      } else if (score !== null && (score < 0 || score > examSubject.maxMarks)) {
-        throw new BadRequestException(
-          `Marks obtained (${score}) cannot be negative or exceed maximum marks (${examSubject.maxMarks}).`,
-        );
-      }
-
-      await this.prisma.mark.upsert({
-        where: {
-          examSubjectId_studentId: {
-            examSubjectId,
-            studentId: m.studentId,
-          },
-        },
-        update: {
-          marksObtained: score,
-          isAbsent,
-          remarks: m.remarks,
-        },
-        create: {
-          examSubjectId,
-          studentId: m.studentId,
-          marksObtained: score,
-          isAbsent,
-          remarks: m.remarks,
-        },
-      });
-    }
-
-    return { message: 'Marks updated successfully', count: marks.length };
+    return { message: 'Marks updated successfully', count: rows.length };
   }
 
   /**
    * Generates a template schema for Excel/CSV export and downloads
    */
-  async exportTemplate(examSubjectId: string) {
-    const details = await this.getExamSubjectDetails(examSubjectId);
+  async exportTemplate(schoolId: string, examSubjectId: string) {
+    const details = await this.getExamSubjectDetails(schoolId, examSubjectId);
 
     const headers = [
       'Admission No',
@@ -295,6 +322,7 @@ export class ExamsService {
    * Bulk imports marks from structured row data (parsed from Excel or CSV)
    */
   async importMarksFromData(
+    schoolId: string,
     examSubjectId: string,
     rows: Array<{
       admissionNo?: string;
@@ -304,27 +332,28 @@ export class ExamsService {
       remarks?: string;
     }>,
   ) {
-    const examSubject = await this.prisma.examSubject.findUnique({
-      where: { id: examSubjectId },
-    });
-
-    if (!examSubject) {
-      throw new NotFoundException('Exam subject not found');
+    if (!Array.isArray(rows)) {
+      throw new BadRequestException('rows must be an array');
     }
+    const examSubject = await this.findExamSubjectInSchool(schoolId, examSubjectId);
+    this.assertMarksEditable(examSubject.exam);
 
     // Map all admission numbers to student IDs
     const students = await this.prisma.student.findMany({
       where: {
+        schoolId,
         enrollments: {
-          some: { classId: examSubject.classId, status: 'ACTIVE' },
+          some: { schoolId, classId: examSubject.classId, status: 'ACTIVE' },
         },
       },
       select: { id: true, admissionNo: true, firstName: true, lastName: true },
     });
 
     const admissionMap = new Map<string, string>();
+    const classStudentIds = new Set<string>();
     for (const s of students) {
       admissionMap.set(s.admissionNo.trim().toUpperCase(), s.id);
+      classStudentIds.add(s.id);
     }
 
     const errors: Array<{ row: number; error: string; data: any }> = [];
@@ -340,7 +369,7 @@ export class ExamsService {
         studentId = admissionMap.get(adm);
       }
 
-      if (!studentId) {
+      if (!studentId || !classStudentIds.has(studentId)) {
         errors.push({
           row: rowIndex,
           error: `Student with Admission No "${r.admissionNo}" not found in this class.`,
@@ -382,9 +411,10 @@ export class ExamsService {
       });
     }
 
-    // Execute bulk upserts for all valid records
-    for (const item of validBatch) {
-      await this.prisma.mark.upsert({
+    // Execute bulk upserts for all valid records atomically
+    await this.prisma.$transaction(
+      validBatch.map((item) =>
+        this.prisma.mark.upsert({
         where: {
           examSubjectId_studentId: {
             examSubjectId,
@@ -403,8 +433,9 @@ export class ExamsService {
           isAbsent: item.isAbsent,
           remarks: item.remarks,
         },
-      });
-    }
+      }),
+      ),
+    );
 
     return {
       message: `Import completed: ${validBatch.length} marks saved successfully.`,
@@ -418,8 +449,8 @@ export class ExamsService {
    * Generates a consolidated class broadsheet across all subjects for a class
    */
   async getClassBroadsheet(schoolId: string, examId: string, classId: string) {
-    const exam = await this.prisma.exam.findUnique({
-      where: { id: examId },
+    const exam = await this.prisma.exam.findFirst({
+      where: { id: examId, schoolId },
     });
 
     if (!exam) {
@@ -532,7 +563,11 @@ export class ExamsService {
     };
   }
 
-  async publishExam(examId: string, schoolId: string, userName?: string) {
+  async publishExam(examId: string, schoolId: string, userName?: string, userId?: string) {
+    const existing = await this.prisma.exam.findFirst({ where: { id: examId, schoolId } });
+    if (!existing) {
+      throw new NotFoundException('Exam not found');
+    }
     const exam = await this.prisma.exam.update({
       where: { id: examId },
       data: { status: 'PUBLISHED' },
@@ -541,7 +576,7 @@ export class ExamsService {
     await this.prisma.auditLog.create({
       data: {
         schoolId,
-        actorId: userName || 'Principal',
+        actorId: userId || 'unknown',
         actorName: userName || 'Principal',
         action: 'MARKS_PUBLISHED',
         entity: 'Exam',

@@ -1,5 +1,6 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ACADEMIC_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -8,6 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class TeacherController {
   constructor(private prisma: PrismaService) {}
 
+  @Roles(...ACADEMIC_STAFF)
   @Get('my-classes')
   async getMyClasses(@CurrentSchoolId() schoolId: string, @CurrentUser('userId') userId: string) {
     const staff = await this.prisma.staff.findFirst({

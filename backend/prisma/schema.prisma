@@ -106,6 +106,7 @@ model User {
   lastName     String
   avatarUrl    String?
   status       String   @default("ACTIVE") // ACTIVE, SUSPENDED
+  tokenVersion Int      @default(0) // bumped on logout / password change to revoke issued tokens
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -613,6 +614,8 @@ model Payment {
 
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, receiptNo])
 }
 
 // ----------------------------------------------------

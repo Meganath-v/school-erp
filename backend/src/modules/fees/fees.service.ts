@@ -1,5 +1,15 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertStudentAccess, getLinkedStudentIds } from '../../common/access/student-access';
+import { RecordPaymentDto, GenerateInvoiceDto, CheckoutDto } from './fees.dto';
+
+type Caller = { userId: string; role: string; name?: string };
+
+function toMinor(amountMinor?: number, amount?: number): number | undefined {
+  if (amountMinor !== undefined && amountMinor !== null) return amountMinor;
+  if (amount !== undefined && amount !== null) return Math.round(amount * 100);
+  return undefined;
+}
 
 @Injectable()
 export class FeesService {
@@ -17,14 +27,12 @@ export class FeesService {
   async getInvoices(schoolId: string, query: { studentId?: string; role?: string; userId?: string }) {
     const where: any = { schoolId };
 
-    if (query.role === 'PARENT' && query.userId) {
-      const guardian = await this.prisma.guardian.findFirst({
-        where: { schoolId, userId: query.userId },
-        include: { students: true },
-      });
-      if (!guardian) return [];
-      const studentIds = guardian.students.map((s) => s.studentId);
-      where.studentId = { in: studentIds };
+    if (query.role === 'PARENT') {
+      const studentIds = await getLinkedStudentIds(this.prisma, schoolId, query.userId);
+      if (studentIds.length === 0) return [];
+      where.studentId = query.studentId
+        ? { in: studentIds.filter((id) => id === query.studentId) }
+        : { in: studentIds };
     } else if (query.studentId) {
       where.studentId = query.studentId;
     }
@@ -73,10 +81,17 @@ export class FeesService {
     }));
   }
 
-  async generateInvoice(schoolId: string, data: any) {
+  async generateInvoice(schoolId: string, data: GenerateInvoiceDto) {
+    const student = await this.prisma.student.findFirst({ where: { id: data.studentId, schoolId } });
+    if (!student) {
+      throw new BadRequestException('Student not found in this school');
+    }
+    const amountMinor = toMinor(data.amountMinor, data.amount);
+    if (!amountMinor || amountMinor <= 0) {
+      throw new BadRequestException('Invoice amount must be greater than zero');
+    }
     const count = await this.prisma.invoice.count({ where: { schoolId } });
-    const invoiceNo = `INV-2026-${String(count + 1).padStart(3, '0')}`;
-    const amountMinor = data.amountMinor || data.amount * 100;
+    const invoiceNo = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
     return this.prisma.invoice.create({
       data: {
@@ -94,7 +109,7 @@ export class FeesService {
     });
   }
 
-  async createCheckoutOrder(schoolId: string, data: { invoiceId: string; method?: string }) {
+  async createCheckoutOrder(schoolId: string, user: Caller, data: CheckoutDto) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: data.invoiceId, schoolId },
       include: { student: true, school: true },
@@ -103,6 +118,7 @@ export class FeesService {
     if (!invoice) {
       throw new BadRequestException('Invoice not found (FEE-02)');
     }
+    await assertStudentAccess(this.prisma, schoolId, user, invoice.studentId);
 
     if (invoice.dueAmountMinor <= 0) {
       throw new BadRequestException('Invoice is already settled in full');
@@ -130,7 +146,7 @@ export class FeesService {
     };
   }
 
-  async getPaymentStatus(schoolId: string, paymentId: string) {
+  async getPaymentStatus(schoolId: string, user: Caller, paymentId: string) {
     const payment = await this.prisma.payment.findFirst({
       where: { id: paymentId, schoolId },
       include: { invoice: true },
@@ -139,6 +155,7 @@ export class FeesService {
     if (!payment) {
       throw new BadRequestException('Payment not found');
     }
+    await assertStudentAccess(this.prisma, schoolId, user, payment.invoice.studentId);
 
     return {
       paymentId: payment.id,
@@ -150,7 +167,7 @@ export class FeesService {
     };
   }
 
-  async getReceiptById(schoolId: string, receiptQuery: string) {
+  async getReceiptById(schoolId: string, user: Caller, receiptQuery: string) {
     const payment = await this.prisma.payment.findFirst({
       where: {
         schoolId,
@@ -176,6 +193,7 @@ export class FeesService {
     if (!payment) {
       throw new BadRequestException('Receipt not found');
     }
+    await assertStudentAccess(this.prisma, schoolId, user, payment.invoice.studentId);
 
     const inv = payment.invoice;
     const stu = inv.student;
@@ -214,7 +232,7 @@ export class FeesService {
     };
   }
 
-  async payInvoice(schoolId: string, data: { invoiceId: string; amountMinor?: number; amount?: number; method?: string; notes?: string }) {
+  async payInvoice(schoolId: string, actor: { userId: string; name?: string }, data: RecordPaymentDto) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: data.invoiceId, schoolId },
     });
@@ -222,57 +240,78 @@ export class FeesService {
     if (!invoice) {
       throw new BadRequestException('Invoice not found');
     }
+    if (invoice.status === 'CANCELLED') {
+      throw new BadRequestException('Invoice is cancelled');
+    }
+    if (invoice.dueAmountMinor <= 0 || invoice.status === 'PAID') {
+      throw new BadRequestException('Invoice is already settled in full');
+    }
 
-    const payAmountMinor = data.amountMinor || (data.amount ? data.amount * 100 : invoice.dueAmountMinor);
+    const payAmountMinor = toMinor(data.amountMinor, data.amount) ?? invoice.dueAmountMinor;
+    if (!Number.isInteger(payAmountMinor) || payAmountMinor <= 0) {
+      throw new BadRequestException('Payment amount must be a positive amount');
+    }
+    if (payAmountMinor > invoice.dueAmountMinor) {
+      throw new BadRequestException(
+        `Payment amount (${payAmountMinor / 100}) exceeds the outstanding balance (${invoice.dueAmountMinor / 100})`,
+      );
+    }
+
     const newPaidAmountMinor = invoice.paidAmountMinor + payAmountMinor;
-    const newDueAmountMinor = Math.max(0, invoice.amountMinor - newPaidAmountMinor);
+    const newDueAmountMinor = invoice.amountMinor - newPaidAmountMinor;
     const newStatus = newDueAmountMinor === 0 ? 'PAID' : 'PARTIAL';
+    const method = data.method || 'CASH';
 
-    const count = await this.prisma.payment.count({ where: { schoolId } });
-    const receiptNo = `REC-2026-${String(count + 1).padStart(5, '0')}`;
+    return this.prisma.$transaction(async (tx) => {
+      // Optimistic concurrency: only apply if nobody else recorded a payment in the meantime.
+      const applied = await tx.invoice.updateMany({
+        where: { id: invoice.id, schoolId, paidAmountMinor: invoice.paidAmountMinor },
+        data: {
+          paidAmountMinor: newPaidAmountMinor,
+          dueAmountMinor: newDueAmountMinor,
+          status: newStatus,
+        },
+      });
+      if (applied.count !== 1) {
+        throw new ConflictException('Invoice was updated by another payment. Reload and try again.');
+      }
 
-    // Create payment
-    const payment = await this.prisma.payment.create({
-      data: {
-        schoolId,
-        invoiceId: invoice.id,
-        amountMinor: payAmountMinor,
-        method: data.method || 'ONLINE',
-        status: 'SUCCESS',
-        transactionRef: `TXN_${Date.now()}`,
+      const count = await tx.payment.count({ where: { schoolId } });
+      const receiptNo = `REC-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+
+      const payment = await tx.payment.create({
+        data: {
+          schoolId,
+          invoiceId: invoice.id,
+          amountMinor: payAmountMinor,
+          method,
+          status: 'SUCCESS',
+          transactionRef: `OFFICE_${Date.now()}`,
+          receiptNo,
+          notes: data.notes || `Recorded at office (${method})`,
+        },
+      });
+
+      const updatedInvoice = await tx.invoice.findUnique({ where: { id: invoice.id } });
+
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor.userId,
+          actorName: actor.name || 'Office Staff',
+          action: 'INVOICE_PAYMENT_RECORDED',
+          entity: 'Invoice',
+          entityId: invoice.id,
+          details: JSON.stringify({ receiptNo, amountPaid: payAmountMinor / 100, method, status: newStatus }),
+        },
+      });
+
+      return {
+        message: 'Payment recorded successfully',
         receiptNo,
-        notes: data.notes || 'Online payment processed',
-      },
+        invoice: updatedInvoice,
+        payment,
+      };
     });
-
-    // Update invoice
-    const updatedInvoice = await this.prisma.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        paidAmountMinor: newPaidAmountMinor,
-        dueAmountMinor: newDueAmountMinor,
-        status: newStatus,
-      },
-    });
-
-    // Audit log
-    await this.prisma.auditLog.create({
-      data: {
-        schoolId,
-        actorId: 'Parent/Office',
-        actorName: 'Payer',
-        action: 'INVOICE_PAID',
-        entity: 'Invoice',
-        entityId: invoice.id,
-        details: JSON.stringify({ receiptNo, amountPaid: payAmountMinor / 100, status: newStatus }),
-      },
-    });
-
-    return {
-      message: 'Payment completed successfully',
-      receiptNo,
-      invoice: updatedInvoice,
-      payment,
-    };
   }
 }

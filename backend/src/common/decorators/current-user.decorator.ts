@@ -8,9 +8,13 @@ export const CurrentUser = createParamDecorator(
   },
 );
 
+/**
+ * The school the caller is acting in. Always taken from the verified token;
+ * client-supplied headers (e.g. x-school-id) are never trusted.
+ */
 export const CurrentSchoolId = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user?.schoolId || request.headers['x-school-id'];
+    return request.user?.schoolId;
   },
 );

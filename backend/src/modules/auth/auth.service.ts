@@ -3,6 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto, SwitchSchoolDto, RefreshTokenDto } from './auth.dto';
 import * as bcrypt from 'bcryptjs';
+import { ACCESS_TOKEN_TYPE, REFRESH_TOKEN_TYPE } from './jwt.strategy';
+
+type TokenClaims = { sub: string; email: string; schoolId: string; role: string; ver: number };
 
 @Injectable()
 export class AuthService {
@@ -10,6 +13,12 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  private issueTokens(claims: TokenClaims) {
+    const accessToken = this.jwtService.sign({ ...claims, typ: ACCESS_TOKEN_TYPE }, { expiresIn: '1d' });
+    const refreshToken = this.jwtService.sign({ ...claims, typ: REFRESH_TOKEN_TYPE }, { expiresIn: '7d' });
+    return { accessToken, refreshToken };
+  }
 
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findFirst({
@@ -22,6 +31,8 @@ export class AuthService {
       },
       include: {
         memberships: {
+          where: { status: 'ACTIVE', school: { status: { in: ['ACTIVE', 'TRIAL'] } } },
+          orderBy: { createdAt: 'asc' }, // deterministic default school
           include: {
             school: true,
           },
@@ -52,20 +63,19 @@ export class AuthService {
       const match = user.memberships.find(
         (m) => m.school.code.toLowerCase() === dto.schoolCode?.toLowerCase(),
       );
-      if (match) {
-        activeMembership = match;
+      if (!match) {
+        throw new UnauthorizedException('You do not have an active membership in this school');
       }
+      activeMembership = match;
     }
 
-    const payload = {
+    const { accessToken, refreshToken } = this.issueTokens({
       sub: user.id,
       email: user.email,
       schoolId: activeMembership.schoolId,
       role: activeMembership.defaultRole,
-    };
-
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+      ver: user.tokenVersion,
+    });
 
     return {
       accessToken,
@@ -156,19 +166,17 @@ export class AuthService {
       },
     });
 
-    if (!membership) {
+    if (!membership || membership.status !== 'ACTIVE' || !['ACTIVE', 'TRIAL'].includes(membership.school.status)) {
       throw new BadRequestException('You do not have a verified membership in this school');
     }
 
-    const payload = {
+    const { accessToken, refreshToken } = this.issueTokens({
       sub: userId,
       email: membership.user.email,
       schoolId: membership.schoolId,
       role: membership.defaultRole,
-    };
-
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+      ver: membership.user.tokenVersion,
+    });
 
     return {
       accessToken,
@@ -184,18 +192,46 @@ export class AuthService {
   }
 
   async refreshToken(dto: RefreshTokenDto) {
+    let decoded: any;
     try {
-      const decoded = this.jwtService.verify(dto.refreshToken);
-      const payload = {
-        sub: decoded.sub,
-        email: decoded.email,
-        schoolId: decoded.schoolId,
-        role: decoded.role,
-      };
-      const accessToken = this.jwtService.sign(payload, { expiresIn: '1d' });
-      return { accessToken };
+      decoded = this.jwtService.verify(dto.refreshToken);
     } catch (e) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+    if (decoded.typ !== REFRESH_TOKEN_TYPE) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Re-check the account and membership so suspended users / revoked sessions cannot refresh.
+    const membership = await this.prisma.userSchoolMembership.findUnique({
+      where: { userId_schoolId: { userId: decoded.sub, schoolId: decoded.schoolId } },
+      include: { user: true },
+    });
+    if (
+      !membership ||
+      membership.status !== 'ACTIVE' ||
+      membership.user.status !== 'ACTIVE' ||
+      membership.user.tokenVersion !== decoded.ver
+    ) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const { accessToken } = this.issueTokens({
+      sub: membership.userId,
+      email: membership.user.email,
+      schoolId: membership.schoolId,
+      role: membership.defaultRole,
+      ver: membership.user.tokenVersion,
+    });
+    return { accessToken };
+  }
+
+  /** Revokes every access and refresh token issued to the user so far. */
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    return { message: 'Logged out successfully' };
   }
 }

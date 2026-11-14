@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { FeedbackService } from './feedback.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('feedback')
@@ -30,6 +31,7 @@ export class FeedbackController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Post(':id/respond')
   async respondToFeedback(
     @CurrentSchoolId() schoolId: string,
@@ -50,6 +52,7 @@ export class FeedbackController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Patch(':id/status')
   async updateStatus(
     @CurrentSchoolId() schoolId: string,

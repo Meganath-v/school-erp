@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { FeesService } from './fees.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, OFFICE_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CheckoutDto, GenerateInvoiceDto, RecordPaymentDto } from './fees.dto';
 
 @Controller('fees')
 @UseGuards(JwtAuthGuard)
@@ -14,6 +16,7 @@ export class FeesController {
     return { data };
   }
 
+  @Roles(...OFFICE_STAFF, 'PARENT')
   @Get('invoices')
   async getInvoices(
     @CurrentSchoolId() schoolId: string,
@@ -25,15 +28,21 @@ export class FeesController {
     return { data };
   }
 
+  @Roles(...OFFICE_STAFF)
   @Post('invoices/generate')
-  async generateInvoice(@CurrentSchoolId() schoolId: string, @Body() body: any) {
+  async generateInvoice(@CurrentSchoolId() schoolId: string, @Body() body: GenerateInvoiceDto) {
     const data = await this.feesService.generateInvoice(schoolId, body);
     return { data };
   }
 
+  /**
+   * Records a payment received at the school office (cash, cheque, bank transfer).
+   * Online payments must be confirmed by a payment gateway, never by the client.
+   */
+  @Roles(...OFFICE_STAFF)
   @Post('pay')
-  async payInvoice(@CurrentSchoolId() schoolId: string, @Body() body: any) {
-    const data = await this.feesService.payInvoice(schoolId, body);
+  async payInvoice(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Body() body: RecordPaymentDto) {
+    const data = await this.feesService.payInvoice(schoolId, { userId: user.userId, name: user.name }, body);
     return { data };
   }
 }
@@ -43,15 +52,17 @@ export class FeesController {
 export class PaymentsController {
   constructor(private feesService: FeesService) {}
 
+  @Roles(...OFFICE_STAFF, 'PARENT')
   @Post('checkout')
-  async checkoutOrder(@CurrentSchoolId() schoolId: string, @Body() body: any) {
-    const data = await this.feesService.createCheckoutOrder(schoolId, body);
+  async checkoutOrder(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Body() body: CheckoutDto) {
+    const data = await this.feesService.createCheckoutOrder(schoolId, user, body);
     return { data };
   }
 
+  @Roles(...OFFICE_STAFF, 'PARENT')
   @Get(':id/status')
-  async getPaymentStatus(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
-    const data = await this.feesService.getPaymentStatus(schoolId, id);
+  async getPaymentStatus(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    const data = await this.feesService.getPaymentStatus(schoolId, user, id);
     return { data };
   }
 }
@@ -61,9 +72,10 @@ export class PaymentsController {
 export class ReceiptsController {
   constructor(private feesService: FeesService) {}
 
+  @Roles(...OFFICE_STAFF, 'PARENT')
   @Get(':id')
-  async getReceipt(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
-    const data = await this.feesService.getReceiptById(schoolId, id);
+  async getReceipt(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    const data = await this.feesService.getReceiptById(schoolId, user, id);
     return { data };
   }
 }

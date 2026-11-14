@@ -4,6 +4,10 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // The seed creates demo accounts with a shared, publicly known password.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Refusing to seed demo accounts (password123) with NODE_ENV=production.');
+  }
   console.log('🌱 Seeding database...');
 
   // 0. Clean slate for idempotent re-seeding

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { AnnouncementsService } from './announcements.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('announcements')
@@ -14,6 +15,7 @@ export class AnnouncementsController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Post()
   async createAnnouncement(
     @CurrentSchoolId() schoolId: string,

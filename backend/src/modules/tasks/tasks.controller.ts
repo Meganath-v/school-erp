@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('tasks')
@@ -28,6 +29,7 @@ export class TasksController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Post()
   async createTask(
     @CurrentSchoolId() schoolId: string,

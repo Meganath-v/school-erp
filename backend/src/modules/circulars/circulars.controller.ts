@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { CircularsService } from './circulars.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('circulars')
@@ -19,6 +20,7 @@ export class CircularsController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Post()
   async createCircular(
     @CurrentSchoolId() schoolId: string,
@@ -55,6 +57,7 @@ export class CircularsController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF)
   @Get(':id/acknowledgements')
   async getAcknowledgements(
     @CurrentSchoolId() schoolId: string,

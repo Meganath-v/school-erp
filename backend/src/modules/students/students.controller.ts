@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Roles, ALL_STAFF, OFFICE_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('students')
@@ -8,6 +9,7 @@ import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-us
 export class StudentsController {
   constructor(private studentsService: StudentsService) {}
 
+  @Roles(...ALL_STAFF, 'PARENT')
   @Get()
   async getStudents(
     @CurrentSchoolId() schoolId: string,
@@ -27,21 +29,24 @@ export class StudentsController {
     return { data };
   }
 
+  @Roles(...ALL_STAFF, 'PARENT')
   @Get(':id')
-  async getStudentById(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
-    const data = await this.studentsService.getStudentById(schoolId, id);
+  async getStudentById(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    const data = await this.studentsService.getStudentById(schoolId, id, user);
     return { data };
   }
 
+  @Roles(...OFFICE_STAFF)
   @Post()
   async createStudent(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.studentsService.createStudentAdmission(schoolId, body);
     return { data };
   }
 
+  @Roles(...ALL_STAFF, 'PARENT')
   @Get(':id/report-card')
-  async getReportCard(@CurrentSchoolId() schoolId: string, @Param('id') id: string) {
-    const data = await this.studentsService.getReportCard(schoolId, id);
+  async getReportCard(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    const data = await this.studentsService.getReportCard(schoolId, id, user);
     return { data };
   }
 }
@@ -51,6 +56,7 @@ export class StudentsController {
 export class AdmissionsController {
   constructor(private studentsService: StudentsService) {}
 
+  @Roles(...OFFICE_STAFF)
   @Post()
   async createAdmission(@CurrentSchoolId() schoolId: string, @Body() body: any) {
     const data = await this.studentsService.createStudentAdmission(schoolId, body);
