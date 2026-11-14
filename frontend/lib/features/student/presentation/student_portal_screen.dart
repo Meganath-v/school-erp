@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/state_views.dart';
 
 class StudentPortalScreen extends ConsumerStatefulWidget {
   const StudentPortalScreen({super.key});
@@ -85,10 +88,9 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Notice successfully acknowledged & signed'),
-          backgroundColor: AppTheme.success,
+          backgroundColor: AppColors.success,
         ),
       );
-      // Reload circulars
       final circRes = await ApiClient().dio.get('/circulars');
       setState(() {
         _circulars = circRes.data as List? ?? [];
@@ -96,7 +98,7 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sign circular: $e'), backgroundColor: AppTheme.error),
+        SnackBar(content: Text('Failed to sign circular: $e'), backgroundColor: AppColors.error),
       );
     }
   }
@@ -104,7 +106,7 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
   void _showNewFeedbackDialog() {
     final titleCtrl = TextEditingController();
     final contentCtrl = TextEditingController();
-    String category = 'ACADEMIC';
+    String category = 'ACADEMICS';
     int rating = 5;
 
     showDialog(
@@ -113,62 +115,47 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              title: Text('Submit Query / Grievance', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              title: const Text('Submit Query / Grievance'),
               content: SizedBox(
-                width: 450,
+                width: 480,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Category', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         value: category,
-                        decoration: const InputDecoration(border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'Category'),
                         items: const [
-                          DropdownMenuItem(value: 'ACADEMIC', child: Text('Academic & Syllabus')),
-                          DropdownMenuItem(value: 'INFRASTRUCTURE', child: Text('Campus & Facility')),
-                          DropdownMenuItem(value: 'EXAMINATIONS', child: Text('Exams & Grading')),
+                          DropdownMenuItem(value: 'ACADEMICS', child: Text('Academic & Syllabus')),
+                          DropdownMenuItem(value: 'FACILITIES', child: Text('Campus & Facility')),
                           DropdownMenuItem(value: 'TRANSPORT', child: Text('School Transport')),
-                          DropdownMenuItem(value: 'GENERAL', child: Text('General Grievance')),
+                          DropdownMenuItem(value: 'CANTEEN', child: Text('Canteen & Mess')),
+                          DropdownMenuItem(value: 'GENERAL', child: Text('General Query')),
                         ],
                         onChanged: (val) {
                           if (val != null) setDialogState(() => category = val);
                         },
                       ),
-                      const SizedBox(height: 14),
-                      Text('Subject / Title', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.md),
                       TextField(
                         controller: titleCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'Brief summary of query',
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(labelText: 'Subject / Title', hintText: 'Brief summary of issue'),
                       ),
-                      const SizedBox(height: 14),
-                      Text('Details & Remarks', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.md),
                       TextField(
                         controller: contentCtrl,
                         maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText: 'Describe your query or feedback in detail...',
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(labelText: 'Details & Remarks', hintText: 'Explain the issue or feedback clearly...'),
                       ),
-                      const SizedBox(height: 14),
-                      Text('Rating / Satisfaction', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text('Satisfaction Rating', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      const SizedBox(height: AppSpacing.xs),
                       Row(
                         children: List.generate(5, (index) {
                           final star = index + 1;
                           return IconButton(
-                            icon: Icon(
-                              star <= rating ? Icons.star : Icons.star_border,
-                              color: Colors.amber,
-                            ),
+                            icon: Icon(star <= rating ? Icons.star : Icons.star_border, color: Colors.amber),
                             onPressed: () => setDialogState(() => rating = star),
                           );
                         }),
@@ -180,12 +167,9 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
                   onPressed: () async {
                     if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please fill all fields')),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
                       return;
                     }
                     try {
@@ -203,21 +187,16 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
                       _loadAllStudentData();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Feedback successfully logged with administration'),
-                            backgroundColor: AppTheme.success,
-                          ),
+                          const SnackBar(content: Text('Feedback successfully logged with administration'), backgroundColor: AppColors.success),
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
                       }
                     }
                   },
-                  child: const Text('Submit Feedback', style: TextStyle(color: Colors.white)),
+                  child: const Text('Submit Feedback'),
                 ),
               ],
             );
@@ -235,26 +214,26 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Submit Homework: ${a['title']}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
+          title: Text('Submit Homework: ${a['title']}'),
           content: SizedBox(
             width: 500,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Enter your homework notes or solution summary:', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
+                const Text('Solution Summary / Notes:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: AppSpacing.xs),
                 TextField(
                   controller: notesCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Solved exercises 1 through 10...'),
+                  decoration: const InputDecoration(hintText: 'Solved exercises 1 through 10...'),
                 ),
-                const SizedBox(height: 12),
-                Text('Attachment URL / Cloud Document Link (Optional):', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.md),
+                const Text('Attachment URL / Cloud Document Link:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: AppSpacing.xs),
                 TextField(
                   controller: fileUrlCtrl,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'https://...'),
+                  decoration: const InputDecoration(hintText: 'https://...'),
                 ),
               ],
             ),
@@ -262,7 +241,6 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
               onPressed: () async {
                 if (notesCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter solution notes')));
@@ -277,19 +255,17 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Homework solution submitted successfully!'), backgroundColor: AppTheme.success),
+                      const SnackBar(content: Text('Homework solution submitted successfully!'), backgroundColor: AppColors.success),
                     );
                     _loadAllStudentData();
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Submission failed: $e'), backgroundColor: AppTheme.error),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Submission failed: $e'), backgroundColor: AppColors.error));
                   }
                 }
               },
-              child: const Text('Submit Solution', style: TextStyle(color: Colors.white)),
+              child: const Text('Submit Solution'),
             ),
           ],
         );
@@ -300,147 +276,131 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateView(message: 'Loading student academic workspace, schedule, and broadsheets...');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
-              const SizedBox(height: 12),
-              Text('Unable to load student data', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textMuted)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadAllStudentData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorStateView(
+        title: 'Unable to Load Student Portal',
+        message: _errorMessage,
+        onRetry: _loadAllStudentData,
       );
     }
 
     final p = _studentProfile ?? {};
+    final attendancePct = _reportCard?['attendancePercentage'] ?? 100;
+    final isShortage = attendancePct < 75;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner / Profile Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppTheme.border)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppTheme.primaryLight.withValues(alpha: 0.15),
-                  child: Text(
-                    (p['firstName'] ?? 'S')[0],
-                    style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.bold, color: AppTheme.primary),
-                  ),
+          PageHeader(
+            breadcrumbs: const ['Student Portal', 'My Workspace'],
+            title: '${p['fullName'] ?? 'Student Profile'} (${p['className'] ?? ''} - ${p['sectionName'] ?? ''})',
+            subtitle: 'Admission ID: ${p['admissionNo'] ?? 'N/A'} • Roll No: ${p['rollNo'] ?? 'N/A'} • Blood Group: ${p['bloodGroup'] ?? 'O+'}',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: _showNewFeedbackDialog,
+                icon: const Icon(Icons.help_outline, size: 16),
+                label: const Text('Helpdesk / Query'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: _loadAllStudentData,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+
+          // Student KPI Summary Cards
+          Row(
+            children: [
+              Expanded(
+                child: MetricCard(
+                  title: 'Term Attendance',
+                  value: '$attendancePct%',
+                  icon: isShortage ? Icons.warning_amber : Icons.check_circle_outline,
+                  subtitle: isShortage ? '⚠️ Shortage Risk (<75%)' : 'Consistent attendance',
+                  color: isShortage ? AppColors.error : AppColors.success,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: MetricCard(
+                  title: 'Daily Periods',
+                  value: '${_timetable.length}',
+                  icon: Icons.schedule_outlined,
+                  subtitle: 'Lectures scheduled',
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: MetricCard(
+                  title: 'Course Homework',
+                  value: '${_assignments.length}',
+                  icon: Icons.assignment_outlined,
+                  subtitle: 'Pending & active tasks',
+                  color: AppColors.secondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: MetricCard(
+                  title: 'Study Materials',
+                  value: '${_courseMaterials.length}',
+                  icon: Icons.menu_book_outlined,
+                  subtitle: 'Uploaded documents',
+                  color: AppColors.info,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          // Tabs Card
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppShadows.subtle,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  tabs: const [
+                    Tab(icon: Icon(Icons.schedule_outlined, size: 18), text: 'Timetable Schedule'),
+                    Tab(icon: Icon(Icons.assignment_outlined, size: 18), text: 'Homework & Tasks'),
+                    Tab(icon: Icon(Icons.menu_book_outlined, size: 18), text: 'Course Materials'),
+                    Tab(icon: Icon(Icons.grade_outlined, size: 18), text: 'Examinations & Marks'),
+                    Tab(icon: Icon(Icons.campaign_outlined, size: 18), text: 'School Circulars'),
+                    Tab(icon: Icon(Icons.chat_bubble_outline, size: 18), text: 'Feedback Desk'),
+                  ],
+                ),
+                const Divider(height: 1, color: AppColors.borderLight),
+                SizedBox(
+                  height: 480,
+                  child: TabBarView(
+                    controller: _tabController,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            p['fullName'] ?? 'Student Profile',
-                            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryLight.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${p['className'] ?? ''} - ${p['sectionName'] ?? ''}',
-                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'Admission: ${p['admissionNo'] ?? 'N/A'}',
-                            style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                          ),
-                          const SizedBox(width: 14),
-                          Text(
-                            'Roll No: ${p['rollNo'] ?? 'N/A'}',
-                            style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                          ),
-                          if (p['bloodGroup'] != null) ...[
-                            const SizedBox(width: 14),
-                            Text(
-                              'Blood Group: ${p['bloodGroup']}',
-                              style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                            ),
-                          ],
-                        ],
-                      ),
+                      _buildTimetableTab(),
+                      _buildAssignmentsTab(),
+                      _buildCourseMaterialsTab(),
+                      _buildExaminationsTab(),
+                      _buildCircularsTab(),
+                      _buildFeedbackTab(),
                     ],
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _showNewFeedbackDialog,
-                  icon: const Icon(Icons.help_outline, size: 16),
-                  label: const Text('Helpdesk / Feedback'),
-                ),
-              ],
-            ),
-          ),
-
-          // Tabs Navigation
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              labelColor: AppTheme.primary,
-              unselectedLabelColor: AppTheme.textMuted,
-              indicatorColor: AppTheme.primary,
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
-              unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.normal, fontSize: 13),
-              tabs: const [
-                Tab(icon: Icon(Icons.schedule, size: 18), text: 'Timetable'),
-                Tab(icon: Icon(Icons.assignment, size: 18), text: 'Assignments'),
-                Tab(icon: Icon(Icons.menu_book, size: 18), text: 'Course Materials'),
-                Tab(icon: Icon(Icons.grade, size: 18), text: 'Examinations'),
-                Tab(icon: Icon(Icons.campaign, size: 18), text: 'Circulars'),
-                Tab(icon: Icon(Icons.chat_bubble_outline, size: 18), text: 'Feedback Desk'),
-              ],
-            ),
-          ),
-
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTimetableTab(),
-                _buildAssignmentsTab(),
-                _buildCourseMaterialsTab(),
-                _buildExaminationsTab(),
-                _buildCircularsTab(),
-                _buildFeedbackTab(),
               ],
             ),
           ),
@@ -451,67 +411,38 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
 
   Widget _buildTimetableTab() {
     if (_timetable.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.calendar_today, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No timetable schedules logged yet', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-          ],
-        ),
+      return const EmptyStateView(
+        icon: Icons.schedule_outlined,
+        title: 'No Timetable Periods Configured',
+        description: 'Your class timetable schedule has not been issued yet.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       itemCount: _timetable.length,
       itemBuilder: (ctx, i) {
         final item = _timetable[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.borderLight),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Period ${item['period'] ?? (i + 1)}',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.primary),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['subject']?['name'] ?? item['subjectName'] ?? 'Course Lecture',
-                        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Faculty: ${item['teacher']?['firstName'] ?? 'Assigned Instructor'} • Room: ${item['room'] ?? 'Hall 101'}',
-                        style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '${item['startTime'] ?? '09:00'} - ${item['endTime'] ?? '09:45'}',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textDark),
-                ),
-              ],
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+            leading: Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(color: AppColors.primarySubtle, borderRadius: BorderRadius.circular(AppRadius.sm)),
+              child: Text('Period ${item['period'] ?? (i + 1)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+            ),
+            title: Text(item['subject']?['name'] ?? item['subjectName'] ?? 'Course Lecture', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('Instructor: ${item['teacher']?['firstName'] ?? 'Assigned Instructor'} • Room: ${item['room'] ?? 'Hall 101'}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            trailing: StatusBadge(
+              label: '${item['startTime'] ?? '09:00'} - ${item['endTime'] ?? '09:45'}',
+              variant: BadgeVariant.neutral,
             ),
           ),
         );
@@ -521,79 +452,57 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
 
   Widget _buildAssignmentsTab() {
     if (_assignments.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.task_alt, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No assignments or tasks currently pending', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-          ],
-        ),
+      return const EmptyStateView(
+        icon: Icons.task_alt,
+        title: 'All Homework Completed',
+        description: 'No assignments or problem sets are currently pending for submission.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       itemCount: _assignments.length,
       itemBuilder: (ctx, i) {
         final a = _assignments[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
+        final due = a['dueDate'] != null ? a['dueDate'].toString().split('T')[0] : 'N/A';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.borderLight),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryLight.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        a['subject']?['name'] ?? 'General',
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
-                      ),
-                    ),
-                    Text(
-                      'Due: ${a['dueDate'] != null ? a['dueDate'].toString().split('T')[0] : 'N/A'}',
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.error),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(a['title'] ?? 'Assignment Task', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                if (a['description'] != null) ...[
-                  const SizedBox(height: 4),
-                  Text(a['description'], style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  StatusBadge(label: a['subject']?['name'] ?? 'General', variant: BadgeVariant.info),
+                  StatusBadge(label: 'Due: $due', variant: BadgeVariant.warning),
                 ],
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Max Marks: ${a['maxMarks'] ?? 100}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textDark)),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      ),
-                      onPressed: () => _showSubmitAssignmentDialog(a),
-                      icon: const Icon(Icons.upload, size: 16, color: Colors.white),
-                      label: const Text('Submit Homework', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ),
-                  ],
-                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(a['title'] ?? 'Assignment Task', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              if (a['description'] != null) ...[
+                const SizedBox(height: 4),
+                Text(a['description'], style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
-            ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Max Marks: ${a['maxMarks'] ?? 100}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  ElevatedButton.icon(
+                    onPressed: () => _showSubmitAssignmentDialog(a),
+                    icon: const Icon(Icons.upload, size: 14),
+                    label: const Text('Submit Homework', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       },
@@ -602,46 +511,40 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
 
   Widget _buildCourseMaterialsTab() {
     if (_courseMaterials.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.folder_open, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No digital study materials or lecture notes uploaded yet', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-          ],
-        ),
+      return const EmptyStateView(
+        icon: Icons.folder_open,
+        title: 'No Digital Study Guides Found',
+        description: 'Faculty lecture notes, question banks, and slides will appear here.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       itemCount: _courseMaterials.length,
       itemBuilder: (ctx, i) {
         final m = _courseMaterials[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.borderLight),
           ),
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFEEF2FF),
-              child: Icon(Icons.picture_as_pdf, color: AppTheme.primary, size: 20),
+            leading: CircleAvatar(
+              backgroundColor: AppColors.primarySubtle,
+              child: const Icon(Icons.picture_as_pdf, color: AppColors.primary, size: 20),
             ),
-            title: Text(m['title'] ?? 'Study Guide', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15)),
+            title: Text(m['title'] ?? 'Study Guide', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             subtitle: Text(
               '${m['subject']?['name'] ?? m['subjectName'] ?? 'General'} • Uploaded by ${m['uploadedBy'] ?? 'Faculty'}',
-              style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.download, color: AppTheme.primary),
+            trailing: OutlinedButton.icon(
+              icon: const Icon(Icons.download, size: 16),
+              label: const Text('Download'),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Downloading "${m['title']}"...')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Downloading "${m['title']}"...')));
               },
             ),
           ),
@@ -652,132 +555,79 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
 
   Widget _buildExaminationsTab() {
     if (_reportCard == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.analytics_outlined, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No examination records or report cards found', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-          ],
-        ),
+      return const EmptyStateView(
+        icon: Icons.grade_outlined,
+        title: 'No Examination Records Found',
+        description: 'Published report cards and broadsheet scores will be displayed here.',
       );
     }
 
     final exams = _reportCard!['exams'] as List? ?? [];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        // Overall Academic Stats Card
-        Card(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryStat(
-                  'Attendance',
-                  '${_reportCard!['attendancePercentage'] ?? 100}%',
-                  Icons.how_to_reg,
-                  AppTheme.primary,
-                ),
-                _buildSummaryStat(
-                  'Days Present',
-                  '${_reportCard!['daysPresent'] ?? 0} / ${_reportCard!['totalWorkingDays'] ?? 0}',
-                  Icons.calendar_month,
-                  AppTheme.secondary,
-                ),
-                _buildSummaryStat(
-                  'Total Exams',
-                  '${exams.length}',
-                  Icons.assignment_turned_in,
-                  AppTheme.accent,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        Text('Term Examination Broadsheets', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-
         if (exams.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Center(child: Text('No term examination marks published yet.')),
+          const EmptyStateView(
+            icon: Icons.grade_outlined,
+            title: 'No Term Marks Published',
+            description: 'Examination evaluation marks are pending moderation.',
           )
         else
           ...exams.map((exam) {
             final subjects = exam['subjects'] as List? ?? [];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppTheme.border),
+            return Container(
+              margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderLight),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(exam['examName'] ?? 'Examination', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Score: ${exam['totalMarksObtained'] ?? 0} / ${exam['totalMaxMarks'] ?? 0} (${exam['percentage'] ?? 0}%)',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.primary),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(3),
-                        1: FlexColumnWidth(1.5),
-                        2: FlexColumnWidth(1.5),
-                        3: FlexColumnWidth(1.5),
-                      },
-                      children: [
-                        TableRow(
-                          decoration: const BoxDecoration(color: Color(0xFFF1F5F9)),
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(exam['examName'] ?? 'Examination', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      StatusBadge(
+                        label: 'Score: ${exam['totalMarksObtained'] ?? 0} / ${exam['totalMaxMarks'] ?? 0} (${exam['percentage'] ?? 0}%)',
+                        variant: BadgeVariant.success,
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24, color: AppColors.borderLight),
+                  Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(3),
+                      1: FlexColumnWidth(1.5),
+                      2: FlexColumnWidth(1.5),
+                      3: FlexColumnWidth(1.5),
+                    },
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.xs)),
+                        children: const [
+                          Padding(padding: EdgeInsets.all(8.0), child: Text('Subject', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          Padding(padding: EdgeInsets.all(8.0), child: Text('Max Marks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          Padding(padding: EdgeInsets.all(8.0), child: Text('Scored', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          Padding(padding: EdgeInsets.all(8.0), child: Text('Grade', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                        ],
+                      ),
+                      ...subjects.map((sub) {
+                        return TableRow(
                           children: [
-                            Padding(padding: const EdgeInsets.all(8.0), child: Text('Subject', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12))),
-                            Padding(padding: const EdgeInsets.all(8.0), child: Text('Max Marks', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12))),
-                            Padding(padding: const EdgeInsets.all(8.0), child: Text('Scored', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12))),
-                            Padding(padding: const EdgeInsets.all(8.0), child: Text('Grade', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Padding(padding: const EdgeInsets.all(8.0), child: Text(sub['subjectName'] ?? '', style: const TextStyle(fontSize: 12))),
+                            Padding(padding: const EdgeInsets.all(8.0), child: Text('${sub['maxMarks'] ?? 100}', style: const TextStyle(fontSize: 12))),
+                            Padding(padding: const EdgeInsets.all(8.0), child: Text('${sub['marksObtained'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Padding(padding: const EdgeInsets.all(8.0), child: Text(sub['grade'] ?? 'A', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12))),
                           ],
-                        ),
-                        ...subjects.map((sub) {
-                          return TableRow(
-                            children: [
-                              Padding(padding: const EdgeInsets.all(8.0), child: Text(sub['subjectName'] ?? '', style: GoogleFonts.inter(fontSize: 12))),
-                              Padding(padding: const EdgeInsets.all(8.0), child: Text('${sub['maxMarks'] ?? 100}', style: GoogleFonts.inter(fontSize: 12))),
-                              Padding(padding: const EdgeInsets.all(8.0), child: Text('${sub['marksObtained'] ?? 0}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12))),
-                              Padding(padding: const EdgeInsets.all(8.0), child: Text(sub['grade'] ?? 'A', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 12))),
-                            ],
-                          );
-                        }),
-                      ],
-                    ),
-                  ],
-                ),
+                        );
+                      }),
+                    ],
+                  ),
+                ],
               ),
             );
           }),
@@ -785,111 +635,54 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
     );
   }
 
-  Widget _buildSummaryStat(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: color.withValues(alpha: 0.15),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(value, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildCircularsTab() {
     if (_circulars.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.campaign_outlined, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No active school or class circulars posted', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-          ],
-        ),
+      return const EmptyStateView(
+        icon: Icons.campaign_outlined,
+        title: 'No Circulars Active',
+        description: 'All official notices dispatched to students will appear here.',
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       itemCount: _circulars.length,
       itemBuilder: (ctx, i) {
         final c = _circulars[i];
         final requiresAck = c['requiresAck'] == true;
         final isSigned = c['hasAcknowledged'] == true;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.borderLight),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        c['circularNumber'] ?? 'CIR/2026/001',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.primary),
-                      ),
-                    ),
-                    Text(
-                      c['publishedAt'] != null ? c['publishedAt'].toString().split('T')[0] : '',
-                      style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(c['title'] ?? 'Announcement', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(c['content'] ?? '', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
-                const Divider(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Dispatched by: ${c['senderName'] ?? 'School Office'}', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                    if (requiresAck)
-                      isSigned
-                          ? const Row(
-                              children: [
-                                Icon(Icons.check_circle, color: AppTheme.success, size: 16),
-                                SizedBox(width: 4),
-                                Text('Acknowledged & Signed', style: TextStyle(color: AppTheme.success, fontSize: 12, fontWeight: FontWeight.bold)),
-                              ],
-                            )
-                          : ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primary,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              ),
-                              onPressed: () => _acknowledgeCircular(c['id']),
-                              icon: const Icon(Icons.done, size: 14, color: Colors.white),
-                              label: const Text('Sign Notice', style: TextStyle(color: Colors.white, fontSize: 12)),
-                            ),
-                  ],
-                ),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  StatusBadge(label: c['priority'] ?? 'STANDARD', variant: c['priority'] == 'URGENT' ? BadgeVariant.error : BadgeVariant.info),
+                  if (requiresAck)
+                    isSigned
+                        ? const StatusBadge(label: 'DIGITALLY SIGNED', variant: BadgeVariant.success)
+                        : ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                            onPressed: () => _acknowledgeCircular(c['id']),
+                            icon: const Icon(Icons.draw, size: 14),
+                            label: const Text('Sign Notice', style: TextStyle(fontSize: 11)),
+                          ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(c['title'] ?? 'Notice', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(c['content'] ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            ],
           ),
         );
       },
@@ -897,95 +690,69 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
   }
 
   Widget _buildFeedbackTab() {
-    if (_feedbacks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chat_bubble_outline, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No grievance or inquiries logged yet', style: GoogleFonts.outfit(color: AppTheme.textMuted)),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _showNewFeedbackDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Submit New Query'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _feedbacks.length,
-      itemBuilder: (ctx, i) {
-        final f = _feedbacks[i];
-        final isResolved = f['status'] == 'RESOLVED';
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.border),
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('My Logged Queries (${_feedbacks.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ElevatedButton.icon(
+                onPressed: _showNewFeedbackDialog,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('New Query'),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isResolved ? AppTheme.success.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        f['status'] ?? 'PENDING',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          color: isResolved ? AppTheme.success : Colors.amber.shade800,
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: _feedbacks.isEmpty
+                ? const EmptyStateView(
+                    icon: Icons.chat_bubble_outline,
+                    title: 'No Queries Logged',
+                    description: 'Submit academic or institutional queries directly to administrators.',
+                  )
+                : ListView.builder(
+                    itemCount: _feedbacks.length,
+                    itemBuilder: (ctx, i) {
+                      final f = _feedbacks[i];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          border: Border.all(color: AppColors.borderLight),
                         ),
-                      ),
-                    ),
-                    Text(
-                      f['createdAt'] != null ? f['createdAt'].toString().split('T')[0] : '',
-                      style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(f['title'] ?? 'Inquiry', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(f['content'] ?? '', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
-                if (f['resolution'] != null) ...[
-                  const Divider(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Administrative Response:', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text(f['resolution'], style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textDark)),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.sm),
+                              decoration: BoxDecoration(color: AppColors.primarySubtle, borderRadius: BorderRadius.circular(AppRadius.xs)),
+                              child: const Icon(Icons.help_center_outlined, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(f['title'] ?? 'Query', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  if (f['content'] != null)
+                                    Text(f['content'], style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                            StatusBadge.fromStatus(f['status'] ?? 'SUBMITTED'),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ],
-            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

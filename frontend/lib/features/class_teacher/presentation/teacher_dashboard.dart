@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/search_filter_bar.dart';
+import '../../../core/widgets/state_views.dart';
 
 class ClassTeacherDashboard extends ConsumerStatefulWidget {
   const ClassTeacherDashboard({super.key});
@@ -20,7 +24,7 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
   String _sectionName = 'Section A';
   String _className = 'Grade 10';
   List<dynamic> _students = [];
-  Map<String, String> _attendanceMap = {}; // studentId -> status (PRESENT, ABSENT, LATE)
+  Map<String, String> _attendanceMap = {};
   List<dynamic> _leaveRequests = [];
   String _searchQuery = '';
   String? _errorMessage;
@@ -32,26 +36,31 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
     _loadTeacherData();
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadTeacherData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     try {
-      // 1. Fetch today's attendance session & roster
       final attRes = await ApiClient().dio.get('/attendance/today');
       final attData = attRes.data['data'];
       final studentsList = attData['students'] as List? ?? [];
 
       _sectionId = attData['section']?['id'];
       _sectionName = attData['section']?['name'] ?? 'Section A';
+      _className = attData['section']?['className'] ?? 'Grade 10';
 
       final Map<String, String> newMap = {};
       for (final s in studentsList) {
         newMap[s['studentId']] = s['status'] ?? 'PRESENT';
       }
 
-      // 2. Fetch leave requests
       final leaveRes = await ApiClient().dio.get('/leave-requests');
 
       setState(() {
@@ -97,7 +106,7 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Attendance submitted and locked successfully! Notifications queued for parents.'),
-            backgroundColor: AppTheme.success,
+            backgroundColor: AppColors.success,
           ),
         );
         _loadTeacherData();
@@ -105,7 +114,7 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to submit attendance'), backgroundColor: AppTheme.error),
+          const SnackBar(content: Text('Failed to submit attendance'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -122,13 +131,13 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
       _loadTeacherData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Leave request $status successfully'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('Leave request $status successfully'), backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update leave: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('Failed to update leave: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -137,30 +146,14 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateView(message: 'Loading classroom roster and attendance sessions...');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
-              const SizedBox(height: 12),
-              Text('Unable to load attendance roster', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textMuted)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadTeacherData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorStateView(
+        title: 'Unable to Load Roster',
+        message: _errorMessage,
+        onRetry: _loadTeacherData,
       );
     }
 
@@ -172,19 +165,30 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
       children: [
         // Tab Header
         Container(
-          color: Colors.white,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: AppTheme.primary,
-            unselectedLabelColor: AppTheme.textMuted,
-            indicatorColor: AppTheme.primary,
-            tabs: const [
-              Tab(icon: Icon(Icons.fact_check, size: 18), text: 'Daily Class Attendance'),
-              Tab(icon: Icon(Icons.event_busy, size: 18), text: 'Student Leave Requests'),
+          color: AppColors.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+          child: Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  tabs: const [
+                    Tab(icon: Icon(Icons.fact_check_outlined, size: 18), text: 'Daily Class Attendance'),
+                    Tab(icon: Icon(Icons.event_busy_outlined, size: 18), text: 'Student Leave Applications'),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: 'Refresh Roster',
+                onPressed: _loadTeacherData,
+              ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, color: AppColors.borderLight),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -207,172 +211,193 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
       return name.contains(q) || adm.contains(q);
     }).toList();
 
+    final total = _students.length;
+    final attendanceRate = total > 0 ? ((present / total) * 100).toStringAsFixed(1) : '0';
+
     return RefreshIndicator(
       onRefresh: _loadTeacherData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Banner & Quick Action
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Class Attendance: $_className - $_sectionName',
-                      style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Mark individual attendance status below. Parent alert notifications are automatically dispatched upon submission.',
-                      style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted),
-                    ),
-                  ],
+            PageHeader(
+              breadcrumbs: const ['Classroom', 'Class Teacher', 'Daily Session'],
+              title: 'Class Attendance: $_className - $_sectionName',
+              subtitle: 'Mark individual daily attendance. Dispatches real-time SMS & app alerts to parents upon locking.',
+              actions: [
+                OutlinedButton.icon(
+                  onPressed: _markAllPresent,
+                  icon: const Icon(Icons.done_all, size: 16),
+                  label: const Text('Mark All Present'),
                 ),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _markAllPresent,
-                      icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Mark All Present'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _isSaving ? null : _submitAttendance,
-                      icon: _isSaving
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.save, size: 16),
-                      label: const Text('Submit & Lock Attendance'),
-                    ),
-                  ],
+                const SizedBox(width: AppSpacing.sm),
+                ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _submitAttendance,
+                  icon: _isSaving
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.lock_clock, size: 16),
+                  label: const Text('Submit & Lock Attendance'),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // Metric Summary Pills
+            const SizedBox(height: AppSpacing.xl),
+
+            // Summary Metric Cards
             Row(
               children: [
-                _buildPill('Total Roster', '${_students.length}', const Color(0xFFF1F5F9), AppTheme.textDark),
-                const SizedBox(width: 12),
-                _buildPill('Present', '$present', AppTheme.success.withValues(alpha: 0.12), AppTheme.success),
-                const SizedBox(width: 12),
-                _buildPill('Absent', '$absent', AppTheme.error.withValues(alpha: 0.12), AppTheme.error),
-                const SizedBox(width: 12),
-                _buildPill('Late / Tardy', '$late', AppTheme.warning.withValues(alpha: 0.12), AppTheme.warning),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Search Input
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Search student by name or admission number...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () => setState(() => _searchQuery = ''),
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.border)),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              onChanged: (val) => setState(() => _searchQuery = val),
-            ),
-            const SizedBox(height: 16),
-            // Student Attendance Table
-            if (filteredStudents.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Center(
-                    child: Text(
-                      _students.isEmpty ? 'No students enrolled in this section' : 'No students matching "$_searchQuery"',
-                      style: GoogleFonts.inter(color: AppTheme.textMuted),
-                    ),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Total Class Roster',
+                    value: '$total',
+                    icon: Icons.groups_outlined,
+                    subtitle: 'Enrolled in section',
+                    color: AppColors.primary,
                   ),
                 ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Present Today',
+                    value: '$present',
+                    icon: Icons.check_circle_outline,
+                    subtitle: 'Attending learners',
+                    color: AppColors.success,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Absent Learners',
+                    value: '$absent',
+                    icon: Icons.cancel_outlined,
+                    subtitle: 'Unexcused / Absent',
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Late / Tardy',
+                    value: '$late',
+                    icon: Icons.schedule_outlined,
+                    subtitle: 'Late arrival',
+                    color: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Section Fulfillment',
+                    value: '$attendanceRate%',
+                    icon: Icons.analytics_outlined,
+                    subtitle: 'Presence ratio',
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+
+            SearchFilterBar(
+              searchHint: 'Search student by name or admission number...',
+              searchQuery: _searchQuery,
+              onSearchChanged: (val) => setState(() => _searchQuery = val),
+              totalCount: filteredStudents.length,
+              countLabel: 'Students Listed',
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            if (filteredStudents.isEmpty)
+              EmptyStateView(
+                icon: Icons.people_outline,
+                title: _searchQuery.isNotEmpty ? 'No Matching Students' : 'No Students Enrolled',
+                description: _searchQuery.isNotEmpty ? 'No student matches "$_searchQuery".' : 'No students found in this assigned classroom.',
               )
             else
-              Card(
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: AppShadows.subtle,
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: filteredStudents.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (ctx, i) => const Divider(height: 1, color: AppColors.borderLight),
                   itemBuilder: (context, index) {
                     final s = filteredStudents[index];
                     final studentId = s['studentId'];
                     final currentStatus = _attendanceMap[studentId] ?? 'PRESENT';
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 18,
-                            backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                            radius: 16,
+                            backgroundColor: AppColors.primarySubtle,
                             child: Text(
                               '${s['rollNo'] ?? index + 1}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 13),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
-                                    Text(s['fullName'], style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15)),
+                                    Text(s['fullName'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                     if (s['isShortageRisk'] == true) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                                        child: Text(
-                                          '⚠️ Condonation Risk (${s['attendancePercentage']}%)',
-                                          style: const TextStyle(color: AppTheme.error, fontSize: 10, fontWeight: FontWeight.bold),
-                                        ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      StatusBadge(
+                                        label: '⚠️ Shortage Risk (${s['attendancePercentage']}%)',
+                                        variant: BadgeVariant.error,
                                       ),
                                     ],
                                   ],
                                 ),
-                                Text('Admission ID: ${s['admissionNo']}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Admission ID: ${s['admissionNo'] ?? 'N/A'}',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
                               ],
                             ),
                           ),
-                          // Status Toggle Buttons
+                          // Status Buttons
                           Row(
                             children: [
-                              _buildStatusButton(
+                              _buildStatusToggle(
                                 studentId: studentId,
                                 label: 'Present',
                                 statusKey: 'PRESENT',
                                 currentStatus: currentStatus,
-                                color: AppTheme.success,
+                                activeColor: AppColors.success,
                                 icon: Icons.check,
                               ),
-                              const SizedBox(width: 8),
-                              _buildStatusButton(
+                              const SizedBox(width: AppSpacing.sm),
+                              _buildStatusToggle(
                                 studentId: studentId,
                                 label: 'Absent',
                                 statusKey: 'ABSENT',
                                 currentStatus: currentStatus,
-                                color: AppTheme.error,
+                                activeColor: AppColors.error,
                                 icon: Icons.close,
                               ),
-                              const SizedBox(width: 8),
-                              _buildStatusButton(
+                              const SizedBox(width: AppSpacing.sm),
+                              _buildStatusToggle(
                                 studentId: studentId,
                                 label: 'Late',
                                 statusKey: 'LATE',
                                 currentStatus: currentStatus,
-                                color: AppTheme.warning,
+                                activeColor: AppColors.warning,
                                 icon: Icons.schedule,
                               ),
                             ],
@@ -389,12 +414,12 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
     );
   }
 
-  Widget _buildStatusButton({
+  Widget _buildStatusToggle({
     required String studentId,
     required String label,
     required String statusKey,
     required String currentStatus,
-    required Color color,
+    required Color activeColor,
     required IconData icon,
   }) {
     final isSelected = currentStatus == statusKey;
@@ -405,25 +430,25 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
           _attendanceMap[studentId] = statusKey;
         });
       },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color : color.withValues(alpha: 0.08),
-          border: Border.all(color: color, width: isSelected ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? activeColor : AppColors.surfaceMuted,
+          border: Border.all(color: isSelected ? activeColor : AppColors.borderLight),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: isSelected ? Colors.white : color),
-            const SizedBox(width: 6),
+            Icon(icon, size: 14, color: isSelected ? Colors.white : AppColors.textSecondary),
+            const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : color,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
               ),
             ),
           ],
@@ -434,101 +459,95 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
 
   Widget _buildLeaveRequestsView() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Leave Applications Pending Review (${_leaveRequests.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          if (_leaveRequests.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(child: Text('No leave applications recorded.')),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: _leaveRequests.length,
-                itemBuilder: (context, index) {
-                  final req = _leaveRequests[index];
-                  final isPending = req['status'] == 'PENDING';
+          PageHeader(
+            breadcrumbs: const ['Classroom', 'Leave Requests'],
+            title: 'Assigned Student Leave Applications',
+            subtitle: 'Review medical and personal leave requests submitted by guardians for this section.',
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.event_note, color: AppTheme.primary, size: 28),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${req['studentName']} (${req['className']} - ${req['sectionName']})',
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-                                const SizedBox(height: 4),
-                                Text('Applicant: ${req['applicantName']} • Reason: ${req['reason']}',
-                                    style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
-                                Text('Duration: ${req['startDate']} to ${req['endDate']}',
-                                    style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
-                              ],
-                            ),
-                          ),
-                          if (isPending) ...[
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(foregroundColor: AppTheme.error),
-                              onPressed: () => _decideLeave(req['id'], 'REJECTED'),
-                              child: const Text('Reject'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                              onPressed: () => _decideLeave(req['id'], 'APPROVED'),
-                              child: const Text('Approve'),
-                            ),
-                          ] else
+          Expanded(
+            child: _leaveRequests.isEmpty
+                ? const EmptyStateView(
+                    icon: Icons.event_available_outlined,
+                    title: 'No Pending Leave Requests',
+                    description: 'All submitted student leave requests for your section have been reviewed.',
+                  )
+                : ListView.builder(
+                    itemCount: _leaveRequests.length,
+                    itemBuilder: (context, index) {
+                      final l = _leaveRequests[index];
+                      final student = l['student'] ?? {};
+                      final sName = student['fullName'] ?? '${student['firstName'] ?? ''} ${student['lastName'] ?? ''}'.trim();
+                      final dates = '${l['startDate']?.toString().split('T')[0]} to ${l['endDate']?.toString().split('T')[0]}';
+                      final status = l['status'] ?? 'PENDING';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: AppShadows.subtle,
+                        ),
+                        child: Row(
+                          children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: req['status'] == 'APPROVED' ? AppTheme.success.withValues(alpha: 0.12) : AppTheme.error.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
+                                color: AppColors.primarySubtle,
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
                               ),
-                              child: Text(
-                                req['status'],
-                                style: TextStyle(
-                                  color: req['status'] == 'APPROVED' ? AppTheme.success : AppTheme.error,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                              child: const Icon(Icons.event_note, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(sName.isNotEmpty ? sName : 'Student Leave', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      StatusBadge.fromStatus(status),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text('Reason: ${l['reason'] ?? 'Personal'}', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                                  const SizedBox(height: 2),
+                                  Text('Duration: $dates', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPill(String title, String val, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$title: ', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
-          Text(val, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: textColor)),
+                            if (status == 'PENDING')
+                              Row(
+                                children: [
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                                    onPressed: () => _decideLeave(l['id'], 'APPROVED'),
+                                    icon: const Icon(Icons.check, size: 14),
+                                    label: const Text('Approve'),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                                    onPressed: () => _decideLeave(l['id'], 'REJECTED'),
+                                    icon: const Icon(Icons.close, size: 14),
+                                    label: const Text('Reject'),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );

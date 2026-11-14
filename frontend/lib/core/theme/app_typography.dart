@@ -6,6 +6,7 @@ class GoogleFonts {
     FontWeight? fontWeight,
     Color? color,
     double? height,
+    double? letterSpacing,
     FontStyle? fontStyle,
     TextDecoration? decoration,
   }) {
@@ -16,6 +17,7 @@ class GoogleFonts {
       fontWeight: fontWeight,
       color: color,
       height: height,
+      letterSpacing: letterSpacing,
       fontStyle: fontStyle,
       decoration: decoration,
     );
@@ -26,6 +28,7 @@ class GoogleFonts {
     FontWeight? fontWeight,
     Color? color,
     double? height,
+    double? letterSpacing,
     FontStyle? fontStyle,
     TextDecoration? decoration,
   }) {
@@ -36,6 +39,7 @@ class GoogleFonts {
       fontWeight: fontWeight,
       color: color,
       height: height,
+      letterSpacing: letterSpacing,
       fontStyle: fontStyle,
       decoration: decoration,
     );

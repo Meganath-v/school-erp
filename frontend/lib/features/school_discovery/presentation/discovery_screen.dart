@@ -4,6 +4,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/status_badge.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -26,6 +27,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   void initState() {
     super.initState();
     _fetchSchools();
+  }
+
+  @override
+  void dispose() {
+    _loginController.dispose();
+    _passwordController.dispose();
+    _schoolCodeController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchSchools([String query = '']) async {
@@ -70,8 +80,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       final error = ref.read(authProvider).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error ?? 'Login failed'),
-          backgroundColor: AppTheme.error,
+          content: Text(error ?? 'Authentication failed'),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -80,15 +90,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 960;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: AppColors.background,
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xxl),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: const BoxConstraints(maxWidth: 1140),
             child: isDesktop ? _buildDesktopLayout(authState) : _buildMobileLayout(authState),
           ),
         ),
@@ -100,13 +111,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left Column: Branding & Tenant Search
         Expanded(
           flex: 5,
           child: _buildBrandingAndDiscoveryPanel(),
         ),
-        const SizedBox(width: 32),
-        // Right Column: Sign In Card & 1-Click Demo Profiles
+        const SizedBox(width: AppSpacing.xxxl),
         Expanded(
           flex: 6,
           child: _buildLoginAndDemoPanel(authState),
@@ -119,7 +128,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       children: [
         _buildBrandingAndDiscoveryPanel(),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         _buildLoginAndDemoPanel(authState),
       ],
     );
@@ -129,78 +138,113 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.verified, size: 16, color: AppTheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'SaaS Enterprise Release 2.0',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primary,
-                ),
+        // Top System Monogram & Badge
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: AppRadius.mdBorderRadius,
               ),
-            ],
-          ),
+              child: const Center(
+                child: Icon(Icons.school, color: Colors.white, size: 22),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Linways-Grade ERP',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  'Academic & Institutional Management',
+                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.xxl),
         Text(
-          'Multi-Tenant\nSchool ERP Platform',
+          'Unified Campus\nOperating System',
           style: GoogleFonts.outfit(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textDark,
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
             height: 1.15,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Text(
-          'Complete campus operating system for platform owners, school administrators, principals, teachers, and parents.',
+          'A reliable multi-tenant platform delivering outcome-based education (OBE), fee billing, period attendance, examination broadsheets, and stakeholder portals.',
           style: GoogleFonts.inter(
-            fontSize: 15,
-            color: AppTheme.textMuted,
+            fontSize: 14,
+            color: AppColors.textMedium,
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 24),
-        // Tenant Directory Search
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.school, color: AppTheme.primary, size: 22),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Find Your School',
-                      style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
+        const SizedBox(height: AppSpacing.xxl),
+
+        // Institutional Directory Card
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdBorderRadius,
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.apartment_outlined, size: 18, color: AppColors.primaryAccent),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Institution Directory',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${_discoveredSchools.length} verified campuses',
+                    style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                height: 38,
+                child: TextField(
                   controller: _searchController,
+                  style: GoogleFonts.inter(fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Search by school name, city, or code...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    hintText: 'Search by institution name or code...',
+                    prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     suffixIcon: _isSearching
                         ? const Padding(
-                            padding: EdgeInsets.all(12),
+                            padding: EdgeInsets.all(10),
                             child: SizedBox(
-                              width: 16,
-                              height: 16,
+                              width: 14,
+                              height: 14,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
@@ -208,74 +252,90 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   ),
                   onChanged: (val) => _fetchSchools(val),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Available School Campuses:',
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
-                ),
-                const SizedBox(height: 8),
-                if (_discoveredSchools.isEmpty && !_isSearching)
-                  Text('No schools found matching query.', style: GoogleFonts.inter(color: AppTheme.textMuted))
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _discoveredSchools.map((s) {
-                      final isSelected = _schoolCodeController.text == s['code'];
-                      return InkWell(
-                        onTap: () => _selectSchool(s),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppTheme.primary.withOpacity(0.08) : Colors.white,
-                            border: Border.all(
-                              color: isSelected ? AppTheme.primary : AppTheme.border,
-                              width: isSelected ? 1.8 : 1,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (_discoveredSchools.isEmpty && !_isSearching)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  child: Center(
+                    child: Text('No schools match your search query', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _discoveredSchools.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (context, idx) {
+                    final s = _discoveredSchools[idx];
+                    final isSelected = _schoolCodeController.text == s['code'];
+
+                    return InkWell(
+                      onTap: () => _selectSchool(s),
+                      borderRadius: AppRadius.smBorderRadius,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryAccentSubtle : AppColors.surfaceVariant,
+                          borderRadius: AppRadius.smBorderRadius,
+                          border: Border.all(
+                            color: isSelected ? AppColors.primaryAccent : AppColors.border,
+                            width: 1,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: isSelected ? AppTheme.primary : const Color(0xFFE2E8F0),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primaryAccent : Colors.white,
+                                borderRadius: AppRadius.xsBorderRadius,
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Center(
                                 child: Text(
                                   (s['code'] as String).substring(0, 2),
-                                  style: TextStyle(
+                                  style: GoogleFonts.inter(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.white : AppTheme.textDark,
+                                    color: isSelected ? Colors.white : AppColors.textDark,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Column(
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     s['name'],
                                     style: GoogleFonts.inter(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: isSelected ? AppTheme.primary : AppTheme.textDark,
+                                      color: isSelected ? AppColors.primaryAccent : AppColors.textDark,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    'Code: ${s['code']}',
-                                    style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
+                                    'Code: ${s['code']} • Status: ${s['status'] ?? "ACTIVE"}',
+                                    style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            if (isSelected)
+                              const Icon(Icons.check_circle, size: 16, color: AppColors.primaryAccent),
+                          ],
                         ),
-                      );
-                    }).toList(),
-                  ),
-              ],
-            ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ),
       ],
@@ -285,148 +345,156 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget _buildLoginAndDemoPanel(AuthState authState) {
     return Column(
       children: [
-        // Main Login Card
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Account Sign In',
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textDark,
+        // Main Sign In Card
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdBorderRadius,
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Workstation Sign In',
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark,
+                        ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Access institutional records, grading, and portal',
+                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                  if (_schoolCodeController.text.isNotEmpty)
+                    StatusBadge(
+                      label: _selectedSchoolName != null ? '$_selectedSchoolName (${_schoolCodeController.text})' : _schoolCodeController.text,
+                      variant: BadgeVariant.info,
                     ),
-                    if (_schoolCodeController.text.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          _schoolCodeController.text,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (_selectedSchoolName != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Campus: $_selectedSchoolName',
-                    style: GoogleFonts.inter(fontSize: 13, color: AppTheme.primary, fontWeight: FontWeight.w500),
-                  ),
                 ],
-                const SizedBox(height: 20),
-                Text('Email, Username or Phone', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _loginController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person_outline, size: 20),
-                    hintText: 'e.g. admin@oakridge.edu',
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: AppSpacing.lg),
+
+              Text('Email or Username', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _loginController,
+                style: GoogleFonts.inter(fontSize: 13),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.person_outline, size: 18),
+                  hintText: 'admin@oakridge.edu',
                 ),
-                const SizedBox(height: 16),
-                Text('Password', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.lock_outline, size: 20),
-                    hintText: '••••••••',
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              Text('Password', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: GoogleFonts.inter(fontSize: 13),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.lock_outline, size: 18),
+                  hintText: '••••••••',
                 ),
-                const SizedBox(height: 16),
-                Text('School Code (Optional)', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _schoolCodeController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.tag, size: 20),
-                    hintText: 'e.g. OAK01 or STX02',
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              Text('Campus Code (Optional for Superadmin)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _schoolCodeController,
+                style: GoogleFonts.inter(fontSize: 13),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.tag, size: 18),
+                  hintText: 'e.g. OAK01 or STX02',
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: authState.isLoading ? null : _handleLogin,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(
-                            'Sign In to ERP Portal',
-                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  onPressed: authState.isLoading ? null : _handleLogin,
+                  child: authState.isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          'Authenticate & Launch Workspace',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 20),
-        // 1-Click Demo Roles Card
-        Card(
-          color: const Color(0xFFF8FAFC),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.bolt, color: AppTheme.warning, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      '1-Click Demo Evaluation Profiles',
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textDark,
-                      ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        // Quick Role Evaluation Profiles
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdBorderRadius,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.bolt, color: AppColors.warning, size: 18),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Pre-Configured Role Workstations',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Select any role below to pre-populate credentials and test end-to-end workflows:',
-                  style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildDemoChip('👑 Platform Owner', 'superadmin@erp.com', 'PLATFORM_OWNER', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('🏫 School Admin', 'admin@oakridge.edu', 'SCHOOL_ADMIN', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('🏢 Office Staff', 'office@oakridge.edu', 'OFFICE', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('🎓 Principal', 'principal@oakridge.edu', 'PRINCIPAL', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('👩‍🏫 Class Teacher', 'teacher.smith@oakridge.edu', 'CLASS_TEACHER', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('🔬 Subject Teacher', 'teacher.jones@oakridge.edu', 'SUBJECT_TEACHER', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('👨‍👩‍👦 Parent (Multi-Child)', 'parent.doe@gmail.com', 'PARENT', 'OAK01', 'Oakridge International'),
-                    _buildDemoChip('🎒 Student', 'student.john@oakridge.edu', 'STUDENT', 'OAK01', 'Oakridge International'),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Select any of the 8 enterprise roles below to load verified database credentials:',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildDemoChip('Platform Owner', 'superadmin@erp.com', 'PLATFORM_OWNER', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('School Admin', 'admin@oakridge.edu', 'SCHOOL_ADMIN', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Principal', 'principal@oakridge.edu', 'PRINCIPAL', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Office Staff', 'office@oakridge.edu', 'OFFICE', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Class Teacher', 'teacher.smith@oakridge.edu', 'CLASS_TEACHER', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Subject Teacher', 'teacher.jones@oakridge.edu', 'SUBJECT_TEACHER', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Parent', 'parent.doe@gmail.com', 'PARENT', 'OAK01', 'Oakridge International'),
+                  _buildDemoChip('Student', 'student.john@oakridge.edu', 'STUDENT', 'OAK01', 'Oakridge International'),
+                ],
+              ),
+            ],
           ),
         ),
       ],
@@ -435,19 +503,37 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Widget _buildDemoChip(String title, String email, String role, String code, String schoolName) {
     final isCurrent = _loginController.text == email;
-    return ActionChip(
-      avatar: isCurrent ? const Icon(Icons.check, size: 16, color: AppTheme.primary) : null,
-      label: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-          color: isCurrent ? AppTheme.primary : AppTheme.textDark,
+    return InkWell(
+      onTap: () => _fillDemoCredentials(email, role, code, schoolName),
+      borderRadius: AppRadius.smBorderRadius,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isCurrent ? AppColors.primaryAccentSubtle : AppColors.surfaceVariant,
+          borderRadius: AppRadius.smBorderRadius,
+          border: Border.all(
+            color: isCurrent ? AppColors.primaryAccent : AppColors.border,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isCurrent) ...[
+              const Icon(Icons.check, size: 12, color: AppColors.primaryAccent),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
+                color: isCurrent ? AppColors.primaryAccent : AppColors.textDark,
+              ),
+            ),
+          ],
         ),
       ),
-      backgroundColor: isCurrent ? AppTheme.primary.withOpacity(0.12) : Colors.white,
-      side: BorderSide(color: isCurrent ? AppTheme.primary : AppTheme.border),
-      onPressed: () => _fillDemoCredentials(email, role, code, schoolName),
     );
   }
 }

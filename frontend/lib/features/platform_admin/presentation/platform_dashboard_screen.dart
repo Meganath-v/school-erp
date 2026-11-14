@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/search_filter_bar.dart';
+import '../../../core/widgets/state_views.dart';
 
 class PlatformDashboardScreen extends ConsumerStatefulWidget {
   const PlatformDashboardScreen({super.key});
@@ -14,8 +18,10 @@ class PlatformDashboardScreen extends ConsumerStatefulWidget {
 class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScreen> {
   Map<String, dynamic>? _stats;
   List<dynamic> _schools = [];
-  List<dynamic> _plans = [];
   bool _isLoading = true;
+  String? _errorMessage;
+  String _searchQuery = '';
+  String _selectedStatusFilter = 'ALL';
 
   @override
   void initState() {
@@ -24,20 +30,26 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
   }
 
   Future<void> _fetchPlatformData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
-      final statsRes = await ApiClient().dio.get('/platform/stats');
-      final schoolsRes = await ApiClient().dio.get('/platform/schools');
-      final plansRes = await ApiClient().dio.get('/platform/plans');
+      final results = await Future.wait([
+        ApiClient().dio.get('/platform/stats'),
+        ApiClient().dio.get('/platform/schools'),
+      ]);
 
       setState(() {
-        _stats = statsRes.data['data'];
-        _schools = schoolsRes.data['data'] ?? [];
-        _plans = plansRes.data['data'] ?? [];
+        _stats = results[0].data['data'];
+        _schools = results[1].data['data'] ?? [];
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -55,46 +67,61 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
           return AlertDialog(
-            title: Text('Onboard New School Tenant', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            title: const Text('Provision Institution Tenant'),
             content: SizedBox(
-              width: 500,
+              width: 520,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('School Details', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                    const SizedBox(height: 10),
+                    Text(
+                      'Institutional Identity',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     TextField(
                       controller: nameCtrl,
-                      decoration: const InputDecoration(labelText: 'School Full Name', hintText: 'e.g. Cambridge Academy'),
+                      decoration: const InputDecoration(
+                        labelText: 'Institution Legal Name',
+                        hintText: 'e.g. Cambridge International Academy',
+                      ),
                       onChanged: (val) {
                         if (slugCtrl.text.isEmpty) {
                           slugCtrl.text = val.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
                         }
                       },
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: codeCtrl,
-                            decoration: const InputDecoration(labelText: 'School Code (Unique)', hintText: 'e.g. CAM03'),
+                            decoration: const InputDecoration(
+                              labelText: 'Unique Campus Code',
+                              hintText: 'e.g. CAM03',
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: TextField(
                             controller: slugCtrl,
-                            decoration: const InputDecoration(labelText: 'Slug / Subdomain', hintText: 'e.g. cambridge'),
+                            decoration: const InputDecoration(
+                              labelText: 'Subdomain / Slug',
+                              hintText: 'e.g. cambridge',
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Text('Initial Administrator', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Primary Administrator Account',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         Expanded(
@@ -103,7 +130,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                             decoration: const InputDecoration(labelText: 'Admin First Name'),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: TextField(
                             controller: lastNameCtrl,
@@ -112,20 +139,27 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: emailCtrl,
-                      decoration: const InputDecoration(labelText: 'Admin Work Email', hintText: 'admin@cambridge.edu'),
+                      decoration: const InputDecoration(
+                        labelText: 'Official Work Email',
+                        hintText: 'principal@institution.edu',
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    Text('Subscription Tier', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'SaaS Subscription Plan',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     DropdownButtonFormField<String>(
                       value: selectedPlan,
-                      decoration: const InputDecoration(labelText: 'Select Plan'),
+                      decoration: const InputDecoration(labelText: 'Service Tier'),
                       items: const [
                         DropdownMenuItem(value: 'STARTER', child: Text('Starter Tier (₹4,999/yr • 250 Students)')),
-                        DropdownMenuItem(value: 'GROWTH', child: Text('Growth Enterprise (₹14,999/yr • 1200 Students)')),
+                        DropdownMenuItem(value: 'GROWTH', child: Text('Growth Tier (₹14,999/yr • 1,200 Students)')),
+                        DropdownMenuItem(value: 'ENTERPRISE', child: Text('Enterprise Campus (Unlimited)')),
                       ],
                       onChanged: (val) => setDialogState(() => selectedPlan = val!),
                     ),
@@ -140,9 +174,9 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (nameCtrl.text.isEmpty || codeCtrl.text.isEmpty || emailCtrl.text.isEmpty) {
+                  if (nameCtrl.text.trim().isEmpty || codeCtrl.text.trim().isEmpty || emailCtrl.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please fill all required fields')),
+                      const SnackBar(content: Text('Please fill all required institution credentials')),
                     );
                     return;
                   }
@@ -163,16 +197,21 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     if (mounted) {
                       Navigator.pop(ctx);
                       _fetchPlatformData();
-                      // The temporary admin password is returned only once; show it so it can be handed over.
                       showDialog(
                         context: context,
                         builder: (dCtx) => AlertDialog(
-                          title: const Text('School provisioned'),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: AppColors.success),
+                              SizedBox(width: AppSpacing.sm),
+                              Text('Institution Provisioned'),
+                            ],
+                          ),
                           content: SelectableText(
                             tempPassword != null
-                                ? 'Admin: ${creds['email']}\nTemporary password: $tempPassword\n\n'
-                                    'This password is shown only once. Share it securely.'
-                                : 'Existing user ${creds?['email'] ?? ''} was made School Admin. Their password is unchanged.',
+                                ? 'School Administrator: ${creds['email']}\nTemporary Password: $tempPassword\n\n'
+                                    'This temporary credential is generated once. Securely transmit it to the school authority.'
+                                : 'Existing account ${creds?['email'] ?? ''} granted School Administrator role. Password remains unchanged.',
                           ),
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Done')),
@@ -198,190 +237,252 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateView(message: 'Loading SaaS platform management telemetry...');
     }
 
+    if (_errorMessage != null) {
+      return ErrorStateView(
+        title: 'Platform Control Plane Error',
+        message: _errorMessage,
+        onRetry: _fetchPlatformData,
+      );
+    }
+
+    final filteredSchools = _schools.where((s) {
+      final matchesStatus = _selectedStatusFilter == 'ALL' || (s['status'] ?? '').toString() == _selectedStatusFilter;
+      final q = _searchQuery.toLowerCase().trim();
+      if (q.isEmpty) return matchesStatus;
+      final name = (s['name'] ?? '').toString().toLowerCase();
+      final code = (s['code'] ?? '').toString().toLowerCase();
+      final email = (s['contactEmail'] ?? '').toString().toLowerCase();
+      return matchesStatus && (name.contains(q) || code.contains(q) || email.contains(q));
+    }).toList();
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'SaaS Platform Control Plane',
-                    style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                  ),
-                  Text(
-                    'Platform-wide multi-tenant monitoring, provisioning, and subscription management',
-                    style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textMuted),
-                  ),
-                ],
+          PageHeader(
+            breadcrumbs: const ['Platform Admin', 'Multi-Tenant Control Plane'],
+            title: 'SaaS Platform Control Plane',
+            subtitle: 'Multi-institutional tenant orchestration, provisioning, resource quotas, and ARR telemetry.',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: _fetchPlatformData,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh'),
               ),
+              const SizedBox(width: AppSpacing.sm),
               ElevatedButton.icon(
                 onPressed: _showOnboardSchoolDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Onboard New School'),
+                icon: const Icon(Icons.add_business, size: 16),
+                label: const Text('Provision Institution'),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Metric KPI Cards
-          Row(
-            children: [
-              _buildKpiCard('Total Schools', '${_stats?['totalSchools'] ?? 0}', Icons.domain, AppTheme.primary),
-              const SizedBox(width: 16),
-              _buildKpiCard('Active Tenants', '${_stats?['activeSchools'] ?? 0}', Icons.check_circle_outline, AppTheme.success),
-              const SizedBox(width: 16),
-              _buildKpiCard('Total Students', '${_stats?['totalStudents'] ?? 0}', Icons.school, AppTheme.secondary),
-              const SizedBox(width: 16),
-              _buildKpiCard('Total Faculty', '${_stats?['totalStaff'] ?? 0}', Icons.badge, AppTheme.accent),
-              const SizedBox(width: 16),
-              _buildKpiCard('Estimated ARR', '₹${((_stats?['estimatedArrMinor'] ?? 0) / 100).toStringAsFixed(0)}', Icons.payments, AppTheme.warning),
-            ],
-          ),
-          const SizedBox(height: 32),
-          // Tenants Directory Table
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.apartment, color: AppTheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Provisioned School Campuses (${_schools.length})',
-                            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh, size: 20),
-                        onPressed: _fetchPlatformData,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
-                      columns: const [
-                        DataColumn(label: Text('School Name')),
-                        DataColumn(label: Text('Code')),
-                        DataColumn(label: Text('Status')),
-                        DataColumn(label: Text('Plan')),
-                        DataColumn(label: Text('Students')),
-                        DataColumn(label: Text('Staff')),
-                        DataColumn(label: Text('Classes')),
-                        DataColumn(label: Text('Contact')),
-                      ],
-                      rows: _schools.map((s) {
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: AppTheme.primary.withOpacity(0.1),
-                                    child: Text(
-                                      (s['code'] as String).substring(0, 2),
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(s['name'], style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(s['code'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.success.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  s['status'],
-                                  style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                              ),
-                            ),
-                            DataCell(Text(s['activeSubscription']?['planName'] ?? 'Standard')),
-                            DataCell(Text('${s['studentCount']}')),
-                            DataCell(Text('${s['staffCount']}')),
-                            DataCell(Text('${s['classCount']}')),
-                            DataCell(Text(s['contactEmail'] ?? 'N/A')),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: AppSpacing.xl),
 
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(title, style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon, color: color, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                style: GoogleFonts.outfit(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textDark,
+          // Platform KPI Metric Cards
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
+              final cards = [
+                MetricCard(
+                  title: 'Total Institutions',
+                  value: '${_stats?['totalSchools'] ?? 0}',
+                  icon: Icons.domain_outlined,
+                  subtitle: 'Total registered schools',
+                  color: AppColors.primary,
+                ),
+                MetricCard(
+                  title: 'Active Tenants',
+                  value: '${_stats?['activeSchools'] ?? 0}',
+                  icon: Icons.verified_outlined,
+                  subtitle: 'Operational campuses',
+                  color: AppColors.success,
+                ),
+                MetricCard(
+                  title: 'Enrolled Students',
+                  value: '${_stats?['totalStudents'] ?? 0}',
+                  icon: Icons.school_outlined,
+                  subtitle: 'Platform-wide enrollment',
+                  color: AppColors.info,
+                ),
+                MetricCard(
+                  title: 'Academic Faculty',
+                  value: '${_stats?['totalStaff'] ?? 0}',
+                  icon: Icons.badge_outlined,
+                  subtitle: 'Active staff & teachers',
+                  color: AppColors.secondary,
+                ),
+                MetricCard(
+                  title: 'Annualized ARR',
+                  value: '₹${((_stats?['estimatedArrMinor'] ?? 0) / 100).toStringAsFixed(0)}',
+                  icon: Icons.monetization_on_outlined,
+                  subtitle: 'Contracted subscription revenue',
+                  color: AppColors.warning,
+                ),
+              ];
+
+              if (isDesktop) {
+                return Row(
+                  children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: AppSpacing.md), child: c))).toList(),
+                );
+              } else {
+                return Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: cards.map((c) => SizedBox(width: (constraints.maxWidth - AppSpacing.md) / 2, child: c)).toList(),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          SearchFilterBar(
+            searchHint: 'Search institutions by school name, campus code, or email...',
+            searchQuery: _searchQuery,
+            onSearchChanged: (val) => setState(() => _searchQuery = val),
+            totalCount: filteredSchools.length,
+            countLabel: 'Institutions Found',
+            filters: [
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedStatusFilter,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  items: const [
+                    DropdownMenuItem(value: 'ALL', child: Text('All Campus Statuses')),
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('Active Only')),
+                    DropdownMenuItem(value: 'SUSPENDED', child: Text('Suspended Only')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedStatusFilter = val);
+                  },
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.lg),
+
+          filteredSchools.isEmpty
+              ? EmptyStateView(
+                  icon: Icons.domain_disabled_outlined,
+                  title: _searchQuery.isNotEmpty ? 'No Matching Institutions' : 'No Provisioned Institutions Found',
+                  description: _searchQuery.isNotEmpty
+                      ? 'No school tenant records match your search filter.'
+                      : 'Provision your first educational institution using the button above.',
+                  actionLabel: _searchQuery.isNotEmpty ? 'Clear Filter' : 'Provision School',
+                  onAction: _searchQuery.isNotEmpty ? () => setState(() => _searchQuery = '') : _showOnboardSchoolDialog,
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.borderLight),
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 320),
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeaderBg),
+                        dataRowMinHeight: 56,
+                        dataRowMaxHeight: 68,
+                        horizontalMargin: AppSpacing.lg,
+                        columnSpacing: AppSpacing.xl,
+                        columns: const [
+                          DataColumn(label: Text('Institution Campus', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Code', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Tenant Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Subscription Tier', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Students', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Faculty', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Classes', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Contact Work Email', style: TextStyle(fontWeight: FontWeight.w600))),
+                        ],
+                        rows: filteredSchools.map((s) {
+                          final code = (s['code'] ?? 'SC').toString();
+                          final monogram = code.length >= 2 ? code.substring(0, 2) : code;
+                          final status = (s['status'] ?? 'ACTIVE').toString();
+                          final plan = s['activeSubscription']?['planName'] ?? 'Growth Enterprise';
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: AppColors.primarySubtle,
+                                      child: Text(
+                                        monogram,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          s['name'] ?? 'Institution',
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                        ),
+                                        Text(
+                                          'slug: ${s['slug'] ?? 'default'}',
+                                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceMuted,
+                                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                                    border: Border.all(color: AppColors.borderLight),
+                                  ),
+                                  child: Text(
+                                    code,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'monospace'),
+                                  ),
+                                ),
+                              ),
+                              DataCell(StatusBadge.fromStatus(status)),
+                              DataCell(
+                                StatusBadge(
+                                  label: plan,
+                                  variant: BadgeVariant.info,
+                                ),
+                              ),
+                              DataCell(Text('${s['studentCount'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))),
+                              DataCell(Text('${s['staffCount'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))),
+                              DataCell(Text('${s['classCount'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))),
+                              DataCell(
+                                Text(
+                                  s['contactEmail'] ?? 'N/A',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+        ],
       ),
     );
   }

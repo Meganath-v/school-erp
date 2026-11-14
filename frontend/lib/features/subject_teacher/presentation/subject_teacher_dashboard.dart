@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/search_filter_bar.dart';
+import '../../../core/widgets/state_views.dart';
 
 class SubjectTeacherDashboard extends ConsumerStatefulWidget {
   const SubjectTeacherDashboard({super.key});
@@ -20,12 +24,10 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
   List<dynamic> _assignments = [];
   List<dynamic> _exams = [];
 
-  // Linways Academic AMS Data
   Map<String, dynamic>? _syllabusData;
   List<dynamic> _teachingDiaries = [];
   List<dynamic> _courseMaterials = [];
 
-  // Academic metadata
   List<dynamic> _classes = [];
   List<dynamic> _subjects = [];
   List<dynamic> _staffList = [];
@@ -85,9 +87,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
 
   void _showNewTeachingDiaryDialog() {
     if (_classes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No active classes found for diary logging')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No active classes found for diary logging')));
       return;
     }
 
@@ -98,47 +98,30 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
     String selectedClassId = _classes[0]['id'];
     List<dynamic> sections = _classes[0]['sections'] as List? ?? [];
     String? selectedSectionId = sections.isNotEmpty ? sections[0]['id'] : null;
-    List<dynamic> classSubjects = _classes[0]['classSubjects'] as List? ?? [];
-    String? selectedSubjectId;
-    if (classSubjects.isNotEmpty && classSubjects[0]['subject'] != null) {
-      selectedSubjectId = classSubjects[0]['subject']['id'];
-    } else if (_subjects.isNotEmpty) {
-      selectedSubjectId = _subjects[0]['id'];
-    }
+    String? selectedSubjectId = _subjects.isNotEmpty ? _subjects[0]['id'] : null;
     String? selectedStaffId = _staffList.isNotEmpty ? _staffList[0]['id'] : null;
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
-          final currentClass = _classes.firstWhere(
-            (c) => c['id'] == selectedClassId,
-            orElse: () => _classes[0],
-          );
-          final currentSections = currentClass['sections'] as List? ?? [];
-          final currentSubjects = currentClass['classSubjects'] as List? ?? [];
+          final curClass = _classes.firstWhere((c) => c['id'] == selectedClassId, orElse: () => _classes[0]);
+          final curSections = curClass['sections'] as List? ?? [];
 
           return AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.menu_book, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text('Log Faculty Course Diary', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-              ],
-            ),
+            title: const Text('Log Teaching Diary Entry'),
             content: SizedBox(
-              width: 500,
+              width: 520,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedClassId,
-                            decoration: const InputDecoration(labelText: 'Class / Grade'),
+                            decoration: const InputDecoration(labelText: 'Class'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
                               return DropdownMenuItem(value: c['id'] as String, child: Text(c['name']));
                             }).toList(),
@@ -149,24 +132,16 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                                 final c = _classes.firstWhere((item) => item['id'] == val, orElse: () => _classes[0]);
                                 final secs = c['sections'] as List? ?? [];
                                 selectedSectionId = secs.isNotEmpty ? secs[0]['id'] : null;
-                                final subs = c['classSubjects'] as List? ?? [];
-                                if (subs.isNotEmpty && subs[0]['subject'] != null) {
-                                  selectedSubjectId = subs[0]['subject']['id'];
-                                } else if (_subjects.isNotEmpty) {
-                                  selectedSubjectId = _subjects[0]['id'];
-                                } else {
-                                  selectedSubjectId = null;
-                                }
                               });
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
-                            items: currentSections.map<DropdownMenuItem<String>>((s) {
+                            items: curSections.map<DropdownMenuItem<String>>((s) {
                               return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
                             }).toList(),
                             onChanged: (val) => setDialogState(() => selectedSectionId = val),
@@ -174,57 +149,52 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedSubjectId,
-                      decoration: const InputDecoration(labelText: 'Subject'),
-                      items: currentSubjects.isNotEmpty
-                          ? currentSubjects.map<DropdownMenuItem<String>>((cs) {
-                              final s = cs['subject'];
-                              return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
-                            }).toList()
-                          : _subjects.map<DropdownMenuItem<String>>((s) {
-                              return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
-                            }).toList(),
-                      onChanged: (val) => setDialogState(() => selectedSubjectId = val),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
                         Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedSubjectId,
+                            decoration: const InputDecoration(labelText: 'Subject'),
+                            items: _subjects.map<DropdownMenuItem<String>>((s) {
+                              return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
+                            }).toList(),
+                            onChanged: (val) => setDialogState(() => selectedSubjectId = val),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
                           child: DropdownButtonFormField<int>(
                             value: periodNumber,
-                            decoration: const InputDecoration(labelText: 'Conducted Period'),
+                            decoration: const InputDecoration(labelText: 'Period'),
                             items: [1, 2, 3, 4, 5, 6, 7, 8].map((p) => DropdownMenuItem(value: p, child: Text('Period $p'))).toList(),
                             onChanged: (val) => setDialogState(() => periodNumber = val!),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: methodology,
-                            decoration: const InputDecoration(labelText: 'Pedagogy / Method'),
-                            items: const [
-                              DropdownMenuItem(value: 'LECTURE', child: Text('Classroom Lecture')),
-                              DropdownMenuItem(value: 'LAB', child: Text('Lab Practical')),
-                              DropdownMenuItem(value: 'GROUP_DISCUSSION', child: Text('Group Discussion')),
-                              DropdownMenuItem(value: 'FLIPPED_CLASS', child: Text('Flipped Classroom')),
-                            ],
-                            onChanged: (val) => setDialogState(() => methodology = val!),
-                          ),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
+                    DropdownButtonFormField<String>(
+                      value: methodology,
+                      decoration: const InputDecoration(labelText: 'Teaching Methodology'),
+                      items: const [
+                        DropdownMenuItem(value: 'LECTURE', child: Text('Classroom Interactive Lecture')),
+                        DropdownMenuItem(value: 'LAB', child: Text('Laboratory Practical Demonstration')),
+                        DropdownMenuItem(value: 'GROUP_DISCUSSION', child: Text('Peer Group Discussion & Problem Solving')),
+                        DropdownMenuItem(value: 'FLIPPED_CLASS', child: Text('Flipped Classroom Guided Inquiry')),
+                      ],
+                      onChanged: (val) => setDialogState(() => methodology = val!),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: topicCtrl,
-                      decoration: const InputDecoration(labelText: 'Topic & Concepts Covered', hintText: 'e.g. Quadratic Roots derivation'),
+                      decoration: const InputDecoration(labelText: 'Topic & Concepts Covered', hintText: 'e.g. Quadratic Roots derivation and graph mapping'),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: remarksCtrl,
                       maxLines: 2,
-                      decoration: const InputDecoration(labelText: 'Faculty Remarks / Homework Given', hintText: 'Questions 1-5 assigned'),
+                      decoration: const InputDecoration(labelText: 'Faculty Remarks / Homework Given', hintText: 'Problem set 1 to 5 assigned'),
                     ),
                   ],
                 ),
@@ -257,13 +227,13 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Course Diary entry logged successfully!'), backgroundColor: AppTheme.success),
+                        const SnackBar(content: Text('Course Diary entry logged successfully!'), backgroundColor: AppColors.success),
                       );
                       _loadTeacherData();
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to save diary entry: $e'), backgroundColor: AppTheme.error),
+                      SnackBar(content: Text('Failed to save diary entry: $e'), backgroundColor: AppColors.error),
                     );
                   }
                 },
@@ -278,9 +248,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
 
   void _showAddMaterialDialog() {
     if (_subjects.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No subjects found')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No subjects found')));
       return;
     }
 
@@ -295,15 +263,9 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
           return AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.cloud_upload, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text('Upload Course Study Material', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-              ],
-            ),
+            title: const Text('Publish Course Study Resource'),
             content: SizedBox(
-              width: 500,
+              width: 520,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -318,9 +280,9 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         if (val != null) setDialogState(() => selectedSubjectId = val);
                       },
                     ),
-                    const SizedBox(height: 12),
-                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Material Title', hintText: 'e.g. Unit 2 Summary Notes')),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Resource Title', hintText: 'e.g. Unit 2 Comprehensive Summary')),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
                         Expanded(
@@ -331,14 +293,14 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                             onChanged: (val) => setDialogState(() => unitNumber = val!),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: fileType,
-                            decoration: const InputDecoration(labelText: 'Resource Format'),
+                            decoration: const InputDecoration(labelText: 'Document Format'),
                             items: const [
                               DropdownMenuItem(value: 'PDF', child: Text('PDF Document')),
-                              DropdownMenuItem(value: 'SLIDES', child: Text('PowerPoint Slides')),
+                              DropdownMenuItem(value: 'SLIDES', child: Text('PowerPoint Deck')),
                               DropdownMenuItem(value: 'DOC', child: Text('Word Document')),
                             ],
                             onChanged: (val) => setDialogState(() => fileType = val!),
@@ -346,8 +308,8 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'Resource URL / File Path')),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: 'Download Link / File URL')),
                   ],
                 ),
               ),
@@ -368,17 +330,17 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Study material shared with students!'), backgroundColor: AppTheme.success),
+                        const SnackBar(content: Text('Study material shared with enrolled students!'), backgroundColor: AppColors.success),
                       );
                       _loadTeacherData();
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to publish material: $e'), backgroundColor: AppTheme.error),
+                      SnackBar(content: Text('Failed to publish material: $e'), backgroundColor: AppColors.error),
                     );
                   }
                 },
-                child: const Text('Publish Material'),
+                child: const Text('Publish Resource'),
               ),
             ],
           );
@@ -389,9 +351,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
 
   void _showNewAssignmentDialog() {
     if (_classes.isEmpty || _subjects.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Classes or subjects not loaded')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Classes or subjects not loaded')));
       return;
     }
 
@@ -408,38 +368,22 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
-          final currentClass = _classes.firstWhere(
-            (c) => c['id'] == selectedClassId,
-            orElse: () => _classes[0],
-          );
-          final currentSections = currentClass['sections'] as List? ?? [];
+          final curClass = _classes.firstWhere((c) => c['id'] == selectedClassId, orElse: () => _classes[0]);
+          final curSections = curClass['sections'] as List? ?? [];
 
           return AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.assignment, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text('Create New Assignment', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-              ],
-            ),
+            title: const Text('Create Classroom Homework Assignment'),
             content: SizedBox(
-              width: 500,
+              width: 520,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      controller: titleCtrl,
-                      decoration: const InputDecoration(labelText: 'Assignment Title', hintText: 'e.g. Chapter 4 Practice Problems'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Instructions / Description', hintText: 'Complete exercises 1 to 10 on page 78'),
-                    ),
-                    const SizedBox(height: 12),
+                    TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Assignment Title', hintText: 'e.g. Chapter 4 Practice Problems')),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(controller: descCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Instructions / Assignment Brief')),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
                         Expanded(
@@ -460,12 +404,12 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
-                            items: currentSections.map<DropdownMenuItem<String>>((s) {
+                            items: curSections.map<DropdownMenuItem<String>>((s) {
                               return DropdownMenuItem(value: s['id'] as String, child: Text(s['name']));
                             }).toList(),
                             onChanged: (val) => setDialogState(() => selectedSectionId = val),
@@ -473,7 +417,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
                         Expanded(
@@ -488,7 +432,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: TextField(
                             controller: marksCtrl,
@@ -498,15 +442,15 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpacing.md),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Due Date: ${selectedDueDate.toLocal().toString().split(' ')[0]}',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('Submission Deadline: ${selectedDueDate.toLocal().toString().split(' ')[0]}',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         TextButton.icon(
                           icon: const Icon(Icons.calendar_month, size: 18),
-                          label: const Text('Pick Date'),
+                          label: const Text('Change Date'),
                           onPressed: () async {
                             final picked = await showDatePicker(
                               context: context,
@@ -546,17 +490,17 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Assignment created and assigned to students!'), backgroundColor: AppTheme.success),
+                        const SnackBar(content: Text('Assignment dispatched to student portal!'), backgroundColor: AppColors.success),
                       );
                       _loadTeacherData();
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to create assignment: $e'), backgroundColor: AppTheme.error),
+                      SnackBar(content: Text('Failed to publish assignment: $e'), backgroundColor: AppColors.error),
                     );
                   }
                 },
-                child: const Text('Publish Assignment'),
+                child: const Text('Dispatch Assignment'),
               ),
             ],
           );
@@ -570,13 +514,13 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Assignment'),
-        content: const Text('Are you sure you want to delete this assignment? All student submissions will also be removed.'),
+        content: const Text('Are you sure you want to permanently remove this assignment?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -587,14 +531,14 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
         await ApiClient().dio.delete('/assignments/$id');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Assignment deleted successfully'), backgroundColor: AppTheme.success),
+            const SnackBar(content: Text('Assignment deleted successfully'), backgroundColor: AppColors.success),
           );
           _loadTeacherData();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete assignment: $e'), backgroundColor: AppTheme.error),
+            SnackBar(content: Text('Failed to delete assignment: $e'), backgroundColor: AppColors.error),
           );
         }
       }
@@ -613,14 +557,14 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logged +1 hr for ${plan['unitTitle']} (${newHours}/${plan['plannedHours']} hrs)')),
+          SnackBar(content: Text('Logged +1 hr for ${plan['unitTitle']} ($newHours/${plan['plannedHours']} hrs)')),
         );
         _loadTeacherData();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update progress: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('Failed to update progress: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -629,53 +573,36 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateView(message: 'Loading academic teaching diary, curriculum tracker, and schedule...');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
-              const SizedBox(height: 12),
-              Text('Failed to load teacher records', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textMuted)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadTeacherData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry Connection'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorStateView(
+        title: 'Academic Records Unavailable',
+        message: _errorMessage,
+        onRetry: _loadTeacherData,
       );
     }
 
     return Column(
       children: [
-        // Linways Tab Navigation Bar
+        // Tab Header
         Container(
-          color: Colors.white,
+          color: AppColors.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: Row(
             children: [
               Expanded(
                 child: TabBar(
                   controller: _tabController,
-                  labelColor: AppTheme.primary,
-                  unselectedLabelColor: AppTheme.textMuted,
-                  indicatorColor: AppTheme.primary,
                   isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   tabs: const [
-                    Tab(icon: Icon(Icons.track_changes, size: 18), text: 'OBE Course Plan & Syllabus'),
+                    Tab(icon: Icon(Icons.track_changes_outlined, size: 18), text: 'OBE Course Plan & Syllabus'),
                     Tab(icon: Icon(Icons.book_outlined, size: 18), text: 'Faculty Teaching Diary'),
                     Tab(icon: Icon(Icons.folder_shared_outlined, size: 18), text: 'Course Study Repository'),
-                    Tab(icon: Icon(Icons.schedule, size: 18), text: 'Teaching Timetable'),
-                    Tab(icon: Icon(Icons.assignment_outlined, size: 18), text: 'Homework & Submissions'),
+                    Tab(icon: Icon(Icons.schedule_outlined, size: 18), text: 'Weekly Timetable'),
+                    Tab(icon: Icon(Icons.assignment_outlined, size: 18), text: 'Homework & Assignments'),
                   ],
                 ),
               ),
@@ -684,11 +611,10 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                 tooltip: 'Refresh Academic Data',
                 onPressed: _loadTeacherData,
               ),
-              const SizedBox(width: 8),
             ],
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, color: AppColors.borderLight),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -705,209 +631,245 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
     );
   }
 
-  // 1. Linways OBE Course Delivery Plan & Syllabus Tracker
   Widget _buildSyllabusTab() {
     final plans = _syllabusData?['plans'] as List? ?? [];
     final coverage = _syllabusData?['overallSyllabusCoverage'] ?? 0;
     final planned = _syllabusData?['totalPlannedHours'] ?? 0;
     final conducted = _syllabusData?['totalConductedHours'] ?? 0;
 
-    if (plans.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.track_changes, size: 48, color: AppTheme.border),
-            const SizedBox(height: 12),
-            Text('No OBE course lesson plans uploaded yet', style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16)),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: _loadTeacherData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Outcome-Based Course Delivery Plan (OBE)', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
-                    Text('Track planned vs conducted instructional hours and learning outcomes compliance', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
-                  ],
+            PageHeader(
+              breadcrumbs: const ['Academics', 'Outcome-Based Education'],
+              title: 'Outcome-Based Course Delivery Plan (OBE)',
+              subtitle: 'Track planned versus conducted instructional hours, Bloom’s taxonomy mapping, and course outcomes.',
+              actions: [
+                OutlinedButton.icon(
+                  onPressed: _loadTeacherData,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Refresh'),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.primary.withOpacity(0.2))),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.auto_graph, color: AppTheme.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Text('Syllabus Completion: $coverage%', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 14)),
-                    ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            Row(
+              children: [
+                Expanded(
+                  child: MetricCard(
+                    title: 'Teaching Diary Logs',
+                    value: '${_teachingDiaries.length}',
+                    icon: Icons.book_outlined,
+                    subtitle: 'Periods delivered',
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Study Materials',
+                    value: '${_courseMaterials.length}',
+                    icon: Icons.folder_shared_outlined,
+                    subtitle: 'Published resources',
+                    color: AppColors.secondary,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Active Homework',
+                    value: '${_assignments.length}',
+                    icon: Icons.assignment_outlined,
+                    subtitle: 'Course assignments',
+                    color: AppColors.info,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Scheduled Exams',
+                    value: '${_exams.length}',
+                    icon: Icons.school_outlined,
+                    subtitle: 'Term evaluations',
+                    color: AppColors.warning,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: (coverage as num) / 100,
-                minHeight: 10,
-                backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('$conducted of $planned Total Instructional Hours Completed', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
-            const SizedBox(height: 20),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: plans.length,
-              itemBuilder: (context, index) {
-                final p = plans[index];
-                final isCompleted = p['status'] == 'COMPLETED';
+            const SizedBox(height: AppSpacing.xl),
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                  child: Text('Unit ${p['unitNumber']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 12)),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(p['unitTitle'] ?? 'Unit', style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isCompleted ? AppTheme.success.withOpacity(0.1) : AppTheme.warning.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                p['status'] ?? 'PENDING',
-                                style: TextStyle(color: isCompleted ? AppTheme.success : AppTheme.warning, fontWeight: FontWeight.bold, fontSize: 11),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text('Topic: ${p['topic'] ?? 'General'}', style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textDark)),
-                        if (p['learningObjectives'] != null) ...[
-                          const SizedBox(height: 6),
-                          Text('Course Outcome: ${p['learningObjectives']}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+            // Syllabus Coverage Metric Card
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: AppShadows.subtle,
+              ),
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_graph, color: AppColors.primary, size: 22),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text('Curriculum Syllabus Fulfillment', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         ],
-                        const Divider(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Instructional Hours: ${p['conductedHours']} / ${p['plannedHours']} hrs (${p['coveragePercent']}%)',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                              onPressed: () => _logLessonProgress(p),
-                              icon: const Icon(Icons.add, size: 14),
-                              label: const Text('Log +1 Teaching Hour', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
+                      StatusBadge(
+                        label: '$coverage% Completed',
+                        variant: (coverage as num) >= 80 ? BadgeVariant.success : BadgeVariant.warning,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: LinearProgressIndicator(
+                      value: ((coverage) / 100).toDouble().clamp(0.0, 1.0),
+                      minHeight: 12,
+                      backgroundColor: AppColors.surfaceMuted,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
                     ),
                   ),
-                );
-              },
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('$conducted of $planned Planned Teaching Hours Delivered', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                ],
+              ),
             ),
+            const SizedBox(height: AppSpacing.xxl),
+
+            if (plans.isEmpty)
+              const EmptyStateView(
+                icon: Icons.track_changes_outlined,
+                title: 'No OBE Lesson Plans Uploaded',
+                description: 'Course syllabus outcome models will appear here once defined for your subjects.',
+              )
+            else
+              ...plans.map((p) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.borderLight),
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              StatusBadge(label: 'Unit ${p['unitNumber']}', variant: BadgeVariant.info),
+                              const SizedBox(width: AppSpacing.md),
+                              Text(p['unitTitle'] ?? 'Unit Title', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          StatusBadge.fromStatus(p['status'] ?? 'PENDING'),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text('Topic: ${p['topic'] ?? 'General'}', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+                      if (p['learningObjectives'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text('Course Outcome: ${p['learningObjectives']}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                      const Divider(height: 24, color: AppColors.borderLight),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Instructional Hours: ${p['conductedHours']} / ${p['plannedHours']} hrs (${p['coveragePercent']}%)',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8)),
+                            onPressed: () => _logLessonProgress(p),
+                            icon: const Icon(Icons.add, size: 14),
+                            label: const Text('Log +1 Teaching Hour', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
           ],
         ),
       ),
     );
   }
 
-  // 2. Linways Faculty Teaching Diary (Course Log)
   Widget _buildTeachingDiaryTab() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Faculty Teaching Diary / Daily Course Log', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Official institutional record of topics delivered per period', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
-                ],
-              ),
+          PageHeader(
+            breadcrumbs: const ['Academics', 'Faculty Diary'],
+            title: 'Faculty Teaching Diary & Course Log',
+            subtitle: 'Formal institutional record of syllabus topics delivered per classroom period.',
+            actions: [
               ElevatedButton.icon(
                 onPressed: _showNewTeachingDiaryDialog,
-                icon: const Icon(Icons.post_add, size: 18),
-                label: const Text('New Diary Entry'),
+                icon: const Icon(Icons.post_add, size: 16),
+                label: const Text('Log Diary Entry'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Expanded(
             child: _teachingDiaries.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.book_outlined, size: 48, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Text('No teaching diary records logged yet', style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16)),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _showNewTeachingDiaryDialog,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Log First Lecture Entry'),
-                        ),
-                      ],
-                    ),
+                ? EmptyStateView(
+                    icon: Icons.book_outlined,
+                    title: 'No Teaching Diary Entries Logged',
+                    description: 'Log your delivered classroom periods and topics using the action above.',
+                    actionLabel: 'Log First Lecture Entry',
+                    onAction: _showNewTeachingDiaryDialog,
                   )
-                : Card(
+                : Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: AppShadows.subtle,
+                    ),
+                    clipBehavior: Clip.antiAlias,
                     child: ListView.separated(
                       itemCount: _teachingDiaries.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (ctx, i) => const Divider(height: 1, color: AppColors.borderLight),
                       itemBuilder: (context, index) {
                         final d = _teachingDiaries[index];
                         return Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(AppSpacing.lg),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                                decoration: BoxDecoration(color: AppColors.primarySubtle, borderRadius: BorderRadius.circular(AppRadius.sm)),
                                 child: Column(
                                   children: [
-                                    Text('P${d['periodNumber']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 16)),
-                                    Text('${d['date']?.toString().split('T')[0]}', style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                                    Text('P${d['periodNumber']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16)),
+                                    Text('${d['date']?.toString().split('T')[0]}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: AppSpacing.lg),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -915,25 +877,21 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                                     Row(
                                       children: [
                                         Text('${d['subjectName']} • ${d['className']} (${d['sectionName']})',
-                                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
-                                          child: Text(d['methodology'] ?? 'LECTURE', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                                        ),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                        const SizedBox(width: AppSpacing.sm),
+                                        StatusBadge(label: d['methodology'] ?? 'LECTURE', variant: BadgeVariant.neutral),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(d['topicTaught'] ?? '', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
+                                    Text(d['topicTaught'] ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
                                     if (d['remarks'] != null) ...[
                                       const SizedBox(height: 4),
-                                      Text('Remarks: ${d['remarks']}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+                                      Text('Remarks: ${d['remarks']}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                     ],
                                   ],
                                 ),
                               ),
-                              Text('By: ${d['teacherName'] ?? 'Faculty'}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
+                              Text('By: ${d['teacherName'] ?? 'Faculty'}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                             ],
                           ),
                         );
@@ -946,85 +904,77 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
     );
   }
 
-  // 3. Linways Course Repository (Learning Materials)
   Widget _buildCourseRepositoryTab() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Digital Course Repository & Study Materials', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Syllabus notes, presentation decks, and revision documents available to students', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
-                ],
-              ),
+          PageHeader(
+            breadcrumbs: const ['Academics', 'Repository'],
+            title: 'Course Study Materials & Question Bank',
+            subtitle: 'Structured digital syllabus notes, presentations, and revision documents available to learners.',
+            actions: [
               ElevatedButton.icon(
                 onPressed: _showAddMaterialDialog,
-                icon: const Icon(Icons.upload_file, size: 18),
+                icon: const Icon(Icons.upload_file, size: 16),
                 label: const Text('Publish Resource'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Expanded(
             child: _courseMaterials.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.folder_shared_outlined, size: 48, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Text('No study materials uploaded for your courses yet', style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16)),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _showAddMaterialDialog,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Publish First Study Material'),
-                        ),
-                      ],
-                    ),
+                ? EmptyStateView(
+                    icon: Icons.folder_shared_outlined,
+                    title: 'No Course Materials Uploaded',
+                    description: 'Publish lecture notes, question banks, or slides for your enrolled classes.',
+                    actionLabel: 'Publish First Resource',
+                    onAction: _showAddMaterialDialog,
                   )
                 : ListView.builder(
                     itemCount: _courseMaterials.length,
                     itemBuilder: (context, index) {
                       final mat = _courseMaterials[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: AppTheme.secondary.withOpacity(0.12),
-                                child: Icon(mat['fileType'] == 'SLIDES' ? Icons.slideshow : Icons.picture_as_pdf, color: AppTheme.secondary, size: 20),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: AppShadows.subtle,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.secondarySubtle,
+                              child: Icon(mat['fileType'] == 'SLIDES' ? Icons.slideshow : Icons.picture_as_pdf, color: AppColors.secondary, size: 20),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(mat['title'] ?? 'Material', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  const SizedBox(height: 4),
+                                  Text('${mat['subjectName'] ?? 'General'} • Unit ${mat['unitNumber']} • Format: ${mat['fileType']}',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  Text('Uploaded by: ${mat['uploadedBy']} on ${mat['createdAt']?.toString().split('T')[0]}',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
                               ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(mat['title'] ?? 'Material', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    const SizedBox(height: 4),
-                                    Text('${mat['subjectName'] ?? 'General'} • Unit ${mat['unitNumber']} • Format: ${mat['fileType']}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
-                                    Text('Uploaded by: ${mat['uploadedBy']} on ${mat['createdAt']?.toString().split('T')[0]}', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opening resource: ${mat['fileUrl']}')));
-                                },
-                                icon: const Icon(Icons.download, size: 16),
-                                label: const Text('Download'),
-                              ),
-                            ],
-                          ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opening resource: ${mat['fileUrl']}')));
+                              },
+                              icon: const Icon(Icons.download, size: 16),
+                              label: const Text('Download'),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -1035,51 +985,60 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
     );
   }
 
-  // 4. Timetable
   Widget _buildTimetableView() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Weekly Teaching Timetable (${_timetable.length} Sessions)', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-              IconButton(onPressed: _loadTeacherData, icon: const Icon(Icons.refresh)),
+          PageHeader(
+            breadcrumbs: const ['Academics', 'Faculty Schedule'],
+            title: 'Weekly 8-Period Instructional Schedule',
+            subtitle: 'Official timetable matrix of allocated classroom lectures, laboratory sessions, and room numbers.',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: _loadTeacherData,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh Timetable'),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Expanded(
             child: _timetable.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.schedule, size: 48, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Text('No active timetable schedules assigned to your profile', style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16)),
-                      ],
-                    ),
+                ? const EmptyStateView(
+                    icon: Icons.schedule_outlined,
+                    title: 'No Timetable Periods Allocated',
+                    description: 'Your weekly teaching periods have not been assigned in the institutional master schedule.',
                   )
-                : Card(
+                : Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: AppShadows.subtle,
+                    ),
+                    clipBehavior: Clip.antiAlias,
                     child: ListView.separated(
                       itemCount: _timetable.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (ctx, i) => const Divider(height: 1, color: AppColors.borderLight),
                       itemBuilder: (context, index) {
                         final t = _timetable[index];
                         final dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                         final day = (t['dayOfWeek'] is int && t['dayOfWeek'] < dayNames.length) ? dayNames[t['dayOfWeek']] : 'Day ${t['dayOfWeek']}';
 
                         return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
                           leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                            child: Text('P${t['periodNumber']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                            decoration: BoxDecoration(color: AppColors.primarySubtle, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                            child: Text('P${t['periodNumber']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
                           ),
                           title: Text('${t['subjectName']} • ${t['className']} (${t['sectionName']})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('$day • ${t['startTime']} - ${t['endTime']} • Room: ${t['room'] ?? 'General'}'),
-                          trailing: Chip(label: Text('Period ${t['periodNumber']}'), backgroundColor: const Color(0xFFF1F5F9)),
+                          subtitle: Text('$day • ${t['startTime']} - ${t['endTime']} • Room: ${t['room'] ?? 'General'}',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          trailing: StatusBadge(label: 'Period ${t['periodNumber']}', variant: BadgeVariant.neutral),
                         );
                       },
                     ),
@@ -1090,7 +1049,6 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
     );
   }
 
-  // 5. Homework
   Widget _buildHomeworkView() {
     final filtered = _homeworkSearchQuery.isEmpty
         ? _assignments
@@ -1102,93 +1060,88 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
           }).toList();
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Homework & Assignments (${_assignments.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+          PageHeader(
+            breadcrumbs: const ['Academics', 'Assignments'],
+            title: 'Homework & Assignments Roster',
+            subtitle: 'Dispatch assignments, monitor student submissions, and grade submissions.',
+            actions: [
               ElevatedButton.icon(
                 onPressed: _showNewAssignmentDialog,
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Icons.add, size: 16),
                 label: const Text('Create Assignment'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search assignments by title or subject...',
-              prefixIcon: Icon(Icons.search, size: 20),
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-            onChanged: (val) => setState(() => _homeworkSearchQuery = val),
+          const SizedBox(height: AppSpacing.lg),
+
+          SearchFilterBar(
+            searchHint: 'Search assignments by title or subject...',
+            searchQuery: _homeworkSearchQuery,
+            onSearchChanged: (val) => setState(() => _homeworkSearchQuery = val),
+            totalCount: filtered.length,
+            countLabel: 'Assignments Active',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.lg),
+
           Expanded(
             child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.assignment_outlined, size: 48, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Text(
-                          _homeworkSearchQuery.isNotEmpty ? 'No assignments match "$_homeworkSearchQuery"' : 'No assignments published yet',
-                          style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16),
-                        ),
-                        if (_homeworkSearchQuery.isEmpty) ...[
-                          const SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _showNewAssignmentDialog,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create First Assignment'),
-                          ),
-                        ],
-                      ],
-                    ),
+                ? EmptyStateView(
+                    icon: Icons.assignment_outlined,
+                    title: _homeworkSearchQuery.isNotEmpty ? 'No Matching Assignments' : 'No Assignments Published',
+                    description: _homeworkSearchQuery.isNotEmpty ? 'No assignments match "$_homeworkSearchQuery".' : 'Create and assign coursework to students using the button above.',
+                    actionLabel: _homeworkSearchQuery.isNotEmpty ? 'Clear Search' : 'Create Assignment',
+                    onAction: _homeworkSearchQuery.isNotEmpty ? () => setState(() => _homeworkSearchQuery = '') : _showNewAssignmentDialog,
                   )
                 : ListView.builder(
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final hw = filtered[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.assignment, color: AppTheme.primary, size: 28),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(hw['title'] ?? 'Assignment', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    if (hw['description'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(hw['description'], style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
-                                    ],
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${hw['subjectName']} • Due: ${hw['dueDate']?.toString().split('T')[0]} • Max: ${hw['maxMarks']} marks',
-                                      style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
-                                    ),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: AppShadows.subtle,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(color: AppColors.primarySubtle, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                              child: const Icon(Icons.assignment_outlined, color: AppColors.primary, size: 24),
+                            ),
+                            const SizedBox(width: AppSpacing.lg),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(hw['title'] ?? 'Assignment', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  if (hw['description'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(hw['description'], style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
                                   ],
-                                ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${hw['subjectName']} • Due: ${hw['dueDate']?.toString().split('T')[0]} • Max Marks: ${hw['maxMarks']}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
+                                ],
                               ),
-                              Chip(label: Text('${hw['submissionsCount'] ?? 0} Submissions'), backgroundColor: const Color(0xFFF1F5F9)),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 20),
-                                tooltip: 'Delete Assignment',
-                                onPressed: () => _deleteAssignment(hw['id']),
-                              ),
-                            ],
-                          ),
+                            ),
+                            StatusBadge(label: '${hw['submissionsCount'] ?? 0} Submissions', variant: BadgeVariant.info),
+                            const SizedBox(width: AppSpacing.md),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                              tooltip: 'Delete Assignment',
+                              onPressed: () => _deleteAssignment(hw['id']),
+                            ),
+                          ],
                         ),
                       );
                     },

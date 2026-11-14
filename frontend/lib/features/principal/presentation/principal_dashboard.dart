@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/search_filter_bar.dart';
+import '../../../core/widgets/state_views.dart';
 
 class PrincipalDashboard extends ConsumerStatefulWidget {
   const PrincipalDashboard({super.key});
@@ -67,8 +71,8 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Exam results approved and published to Parent Portal!'),
-            backgroundColor: AppTheme.success,
+            content: Text('Exam marks approved and officially published to Parent & Student Portals!'),
+            backgroundColor: AppColors.success,
           ),
         );
         _loadPrincipalData();
@@ -76,7 +80,7 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to publish exam results'), backgroundColor: AppTheme.error),
+          const SnackBar(content: Text('Failed to publish examination results'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -86,13 +90,13 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
     try {
       await ApiClient().dio.post('/leave-requests/$leaveId/decision', data: {
         'decision': decision,
-        'remarks': 'Processed by Principal Office',
+        'remarks': 'Principal executive decision',
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Leave request $decision successfully'),
-            backgroundColor: decision == 'APPROVED' ? AppTheme.success : AppTheme.warning,
+            content: Text('Leave application $decision successfully'),
+            backgroundColor: decision == 'APPROVED' ? AppColors.success : AppColors.warning,
           ),
         );
         _loadPrincipalData();
@@ -100,7 +104,7 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update leave status: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('Failed to update leave status: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -110,14 +114,14 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Broadcast Notice'),
-        content: const Text('Are you sure you want to delete this notice?'),
+        title: const Text('Revoke Campus Notice'),
+        content: const Text('Are you sure you want to permanently revoke this official broadcast?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Revoke Notice'),
           ),
         ],
       ),
@@ -128,14 +132,14 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
         await ApiClient().dio.delete('/announcements/$id');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Announcement deleted successfully'), backgroundColor: AppTheme.success),
+            const SnackBar(content: Text('Announcement successfully revoked'), backgroundColor: AppColors.success),
           );
           _loadPrincipalData();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete announcement: $e'), backgroundColor: AppTheme.error),
+            SnackBar(content: Text('Failed to revoke announcement: $e'), backgroundColor: AppColors.error),
           );
         }
       }
@@ -153,16 +157,30 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setDialogState) {
           return AlertDialog(
-            title: Text('Publish School Announcement', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            title: const Text('Broadcast Official Notice'),
             content: SizedBox(
-              width: 500,
+              width: 520,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Notice Title')),
-                  const SizedBox(height: 12),
-                  TextField(controller: contentCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Notice Content / Description')),
-                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Notice Heading',
+                      hintText: 'e.g. Schedule of Term Examination Moderation',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: contentCtrl,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Broadcast Body',
+                      hintText: 'Enter formal notification details...',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
@@ -172,12 +190,12 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                           items: const [
                             DropdownMenuItem(value: 'ALL', child: Text('Entire Campus (All)')),
                             DropdownMenuItem(value: 'PARENT', child: Text('Parents Only')),
-                            DropdownMenuItem(value: 'TEACHER', child: Text('Faculty Only')),
+                            DropdownMenuItem(value: 'TEACHER', child: Text('Academic Faculty Only')),
                           ],
                           onChanged: (val) => setDialogState(() => targetRole = val!),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           value: priority,
@@ -209,11 +227,15 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                     });
                     if (mounted) {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Announcement broadcasted successfully!'), backgroundColor: AppTheme.success));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Notice broadcasted successfully!'), backgroundColor: AppColors.success),
+                      );
                       _loadPrincipalData();
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to broadcast: $e'), backgroundColor: AppTheme.error));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to broadcast: $e'), backgroundColor: AppColors.error),
+                    );
                   }
                 },
                 child: const Text('Broadcast Notice'),
@@ -228,30 +250,14 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateView(message: 'Loading institutional oversight and moderation telemetry...');
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
-              const SizedBox(height: 12),
-              Text('Unable to load principal oversight data', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textMuted)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loadPrincipalData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry Connection'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorStateView(
+        title: 'Executive Oversight Unavailable',
+        message: _errorMessage,
+        onRetry: _loadPrincipalData,
       );
     }
 
@@ -259,16 +265,17 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
 
     return Column(
       children: [
+        // Top Tab Navigation Bar
         Container(
-          color: Colors.white,
+          color: AppColors.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: Row(
             children: [
               Expanded(
                 child: TabBar(
                   controller: _tabController,
-                  labelColor: AppTheme.primary,
-                  unselectedLabelColor: AppTheme.textMuted,
-                  indicatorColor: AppTheme.primary,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   tabs: const [
                     Tab(icon: Icon(Icons.analytics_outlined, size: 18), text: 'Executive Overview'),
                     Tab(icon: Icon(Icons.verified_outlined, size: 18), text: 'Approvals & Moderation'),
@@ -278,14 +285,13 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
-                tooltip: 'Refresh Overview',
+                tooltip: 'Refresh Oversight Data',
                 onPressed: _loadPrincipalData,
               ),
-              const SizedBox(width: 8),
             ],
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, color: AppColors.borderLight),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -308,54 +314,121 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
       onRefresh: _loadPrincipalData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Academic & Institutional Oversight', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildKpiCard('Total Enrollment', '${stats['totalStudents'] ?? 0}', Icons.people, AppTheme.primary),
-                const SizedBox(width: 16),
-                _buildKpiCard('Active Faculty', '${stats['totalStaff'] ?? 0}', Icons.badge, AppTheme.secondary),
-                const SizedBox(width: 16),
-                _buildKpiCard('Today Attendance', attendanceStr, Icons.check_circle, todayRate != null ? AppTheme.success : AppTheme.textMuted),
-                const SizedBox(width: 16),
-                _buildKpiCard('Pending Leaves', '${_leaveRequests.where((l) => l['status'] == 'PENDING').length}', Icons.event_busy, AppTheme.warning),
+            PageHeader(
+              breadcrumbs: const ['Principal Office', 'Executive Oversight'],
+              title: 'Institutional Oversight & Governance',
+              subtitle: 'Academic compliance monitoring, attendance fulfillment, and institutional operations.',
+              actions: [
+                OutlinedButton.icon(
+                  onPressed: _loadPrincipalData,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Refresh'),
+                ),
               ],
             ),
-            const SizedBox(height: 24),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Recent Institutional Audit Trail', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 14),
-                    if ((_overview?['recentAuditLogs'] as List? ?? []).isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Text('No system audit events recorded yet.'),
-                      )
-                    else
-                      ...((_overview?['recentAuditLogs'] as List? ?? []).map((l) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.check_circle_outline, size: 16, color: AppTheme.success),
-                              const SizedBox(width: 10),
-                              Text('${l['action']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(width: 8),
-                              Text('by ${l['actorName'] ?? 'Staff'} • ${l['timestamp']}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-                            ],
-                          ),
-                        );
-                      }).toList()),
-                  ],
-                ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Executive KPI Cards
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 900;
+                final cards = [
+                  MetricCard(
+                    title: 'Total Enrollment',
+                    value: '${stats['totalStudents'] ?? 0}',
+                    icon: Icons.people_outline,
+                    subtitle: 'Active matriculated students',
+                    color: AppColors.primary,
+                  ),
+                  MetricCard(
+                    title: 'Academic Faculty',
+                    value: '${stats['totalStaff'] ?? 0}',
+                    icon: Icons.badge_outlined,
+                    subtitle: 'Teaching & support staff',
+                    color: AppColors.secondary,
+                  ),
+                  MetricCard(
+                    title: 'Today Attendance',
+                    value: attendanceStr,
+                    icon: Icons.check_circle_outline,
+                    subtitle: 'Campus-wide presence',
+                    color: todayRate != null ? AppColors.success : AppColors.textMuted,
+                  ),
+                  MetricCard(
+                    title: 'Pending Leaves',
+                    value: '${_leaveRequests.where((l) => l['status'] == 'PENDING').length}',
+                    icon: Icons.event_busy_outlined,
+                    subtitle: 'Awaiting moderation',
+                    color: AppColors.warning,
+                  ),
+                ];
+
+                if (isDesktop) {
+                  return Row(
+                    children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: AppSpacing.md), child: c))).toList(),
+                  );
+                } else {
+                  return Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
+                    children: cards.map((c) => SizedBox(width: (constraints.maxWidth - AppSpacing.md) / 2, child: c)).toList(),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Recent Audit Events
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: AppShadows.subtle,
+              ),
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.history_toggle_off, color: AppColors.primary, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Recent Institutional Audit Trail',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  if ((_overview?['recentAuditLogs'] as List? ?? []).isEmpty)
+                    const Text('No recent system audit events logged.', style: TextStyle(color: AppColors.textSecondary))
+                  else
+                    ...((_overview?['recentAuditLogs'] as List? ?? []).map((l) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
+                            const SizedBox(width: AppSpacing.md),
+                            Text(
+                              '${l['action']}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'by ${l['actorName'] ?? 'Staff'} • ${l['timestamp']}',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList()),
+                ],
               ),
             ),
           ],
@@ -371,132 +444,177 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
       onRefresh: _loadPrincipalData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            PageHeader(
+              breadcrumbs: const ['Principal Office', 'Moderation & Approvals'],
+              title: 'Academic Approvals & Moderation',
+              subtitle: 'Final authorization of examination marks publication and student leave approvals.',
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
             // Examination Publication Section
-            Text('Examination Publication Moderation', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
+            Text(
+              'Examination Publication Moderation',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSpacing.md),
             if (_exams.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No examinations scheduled or submitted for moderation')),
-                ),
+              const EmptyStateView(
+                icon: Icons.assignment_turned_in_outlined,
+                title: 'No Examinations Awaiting Moderation',
+                description: 'All scheduled terms are either in draft or already published.',
               )
             else
               ..._exams.map((ex) {
                 final isPublished = ex['status'] == 'PUBLISHED';
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.school, color: AppTheme.primary, size: 32),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(ex['name'], style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                              Text('Term: ${ex['term']} • Academic Year: ${ex['academicYear']}', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
-                              const SizedBox(height: 4),
-                              Text('Subjects Tested: ${(ex['subjects'] as List? ?? []).length}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500)),
-                            ],
-                          ),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.borderLight),
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySubtle,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
-                        if (!isPublished)
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                            onPressed: () => _publishExam(ex['id']),
-                            icon: const Icon(Icons.verified, size: 16),
-                            label: const Text('Approve & Publish Results'),
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                            child: const Row(
+                        child: const Icon(Icons.school_outlined, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Icon(Icons.check, size: 14, color: AppTheme.success),
-                                SizedBox(width: 4),
-                                Text('PUBLISHED TO PARENTS', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 11)),
+                                Text(
+                                  ex['name'] ?? 'Term Exam',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                StatusBadge.fromStatus(isPublished ? 'PUBLISHED' : 'PENDING'),
                               ],
                             ),
-                          ),
-                      ],
-                    ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Term: ${ex['term']} • Academic Year: ${ex['academicYear']}',
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Subjects Evaluated: ${(ex['subjects'] as List? ?? []).length} modules',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!isPublished)
+                        ElevatedButton.icon(
+                          onPressed: () => _publishExam(ex['id']),
+                          icon: const Icon(Icons.verified_outlined, size: 16),
+                          label: const Text('Approve & Publish Results'),
+                        )
+                      else
+                        const StatusBadge(label: 'PUBLISHED TO PARENTS', variant: BadgeVariant.success),
+                    ],
                   ),
                 );
               }).toList(),
 
-            const SizedBox(height: 28),
-            // Student & Staff Leave Moderation Section
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Student Leave Moderation Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Pending Leave Applications (${pendingLeaves.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text('Real-time leave authorization', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textMuted)),
+                Text(
+                  'Pending Student Leave Applications (${pendingLeaves.length})',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Text('Real-time authorization', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             if (pendingLeaves.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No pending leave requests awaiting approval')),
-                ),
+              const EmptyStateView(
+                icon: Icons.event_available_outlined,
+                title: 'No Pending Leave Requests',
+                description: 'All submitted student and faculty leave requests have been addressed.',
               )
             else
               ...pendingLeaves.map((l) {
                 final student = l['student'] ?? {};
                 final sName = student['fullName'] ?? '${student['firstName'] ?? ''} ${student['lastName'] ?? ''}'.trim();
+                final dates = '${l['startDate']?.toString().split('T')[0]} to ${l['endDate']?.toString().split('T')[0]}';
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          backgroundColor: Color(0xFFFEF3C7),
-                          child: Icon(Icons.event_busy, color: Colors.amber, size: 20),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.borderLight),
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.warningSubtle,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(sName.isNotEmpty ? sName : 'Student Leave', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-                              const SizedBox(height: 2),
-                              Text('Reason: ${l['reason'] ?? 'Medical / Personal'}', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
-                              const SizedBox(height: 2),
-                              Text('Dates: ${l['startDate']?.toString().split('T')[0]} to ${l['endDate']?.toString().split('T')[0]}',
-                                  style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                            ],
-                          ),
-                        ),
-                        Row(
+                        child: const Icon(Icons.event_busy_outlined, color: AppColors.warning, size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                              onPressed: () => _decideLeave(l['id'], 'APPROVED'),
-                              icon: const Icon(Icons.check, size: 14),
-                              label: const Text('Approve', style: TextStyle(fontSize: 12)),
+                            Text(
+                              sName.isNotEmpty ? sName : 'Student Leave Application',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                             ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(foregroundColor: AppTheme.error, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                              onPressed: () => _decideLeave(l['id'], 'REJECTED'),
-                              icon: const Icon(Icons.close, size: 14),
-                              label: const Text('Reject', style: TextStyle(fontSize: 12)),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Reason: ${l['reason'] ?? 'Medical / Family emergency'}',
+                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Duration: $dates',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                            onPressed: () => _decideLeave(l['id'], 'APPROVED'),
+                            icon: const Icon(Icons.check, size: 14),
+                            label: const Text('Approve'),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                            onPressed: () => _decideLeave(l['id'], 'REJECTED'),
+                            icon: const Icon(Icons.close, size: 14),
+                            label: const Text('Reject'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -518,127 +636,106 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
           }).toList();
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('School-Wide Official Broadcasts (${allNotices.length})', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+          PageHeader(
+            breadcrumbs: const ['Principal Office', 'Official Broadcasts'],
+            title: 'School-Wide Official Broadcasts',
+            subtitle: 'Formal institutional announcements dispatched to students, parents, and faculty.',
+            actions: [
               ElevatedButton.icon(
                 onPressed: _showNewAnnouncementDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Compose Broadcast'),
+                icon: const Icon(Icons.campaign, size: 16),
+                label: const Text('Broadcast Notice'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search broadcasts by title or content...',
-              prefixIcon: Icon(Icons.search, size: 20),
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-            onChanged: (val) => setState(() => _noticeSearchQuery = val),
+          const SizedBox(height: AppSpacing.lg),
+
+          SearchFilterBar(
+            searchHint: 'Search official notices by title or content...',
+            searchQuery: _noticeSearchQuery,
+            onSearchChanged: (val) => setState(() => _noticeSearchQuery = val),
+            totalCount: filtered.length,
+            countLabel: 'Notices Broadcasted',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Expanded(
             child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.campaign_outlined, size: 48, color: AppTheme.border),
-                        const SizedBox(height: 12),
-                        Text(
-                          _noticeSearchQuery.isNotEmpty ? 'No notices match "$_noticeSearchQuery"' : 'No official announcements issued yet',
-                          style: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 16),
-                        ),
-                      ],
-                    ),
+                ? EmptyStateView(
+                    icon: Icons.campaign_outlined,
+                    title: _noticeSearchQuery.isNotEmpty ? 'No Matching Broadcasts' : 'No Official Notices Issued',
+                    description: _noticeSearchQuery.isNotEmpty
+                        ? 'No announcements match your search.'
+                        : 'Broadcast your first campus announcement using the button above.',
+                    actionLabel: _noticeSearchQuery.isNotEmpty ? 'Clear Search' : 'Broadcast Notice',
+                    onAction: _noticeSearchQuery.isNotEmpty ? () => setState(() => _noticeSearchQuery = '') : _showNewAnnouncementDialog,
                   )
                 : ListView.builder(
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final n = filtered[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(n['title'] ?? 'Notice', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
-                                      const SizedBox(width: 8),
-                                      if (n['priority'] == 'URGENT')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                          child: const Text('URGENT', style: TextStyle(color: AppTheme.error, fontSize: 10, fontWeight: FontWeight.bold)),
-                                        ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text('Target: ${n['targetRole'] ?? 'ALL'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.primary)),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18),
-                                        tooltip: 'Delete Announcement',
-                                        onPressed: () => _deleteAnnouncement(n['id']),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(n['content'] ?? '', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textDark)),
-                              const SizedBox(height: 6),
-                              Text('Issued by: ${n['authorName'] ?? 'Principal'} • ${n['publishedAt']?.toString().split('T')[0]}',
-                                  style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                            ],
-                          ),
+                      final isUrgent = n['priority'] == 'URGENT';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: AppShadows.subtle,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      n['title'] ?? 'Official Notice',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    if (isUrgent)
+                                      const StatusBadge(label: 'URGENT', variant: BadgeVariant.error)
+                                    else
+                                      const StatusBadge(label: 'OFFICIAL', variant: BadgeVariant.info),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    StatusBadge(
+                                      label: 'Audience: ${n['targetRole'] ?? 'ALL'}',
+                                      variant: BadgeVariant.neutral,
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                      tooltip: 'Revoke Notice',
+                                      onPressed: () => _deleteAnnouncement(n['id']),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              n['content'] ?? '',
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                            ),
+                          ],
                         ),
                       );
                     },
                   ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(title, style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                    child: Icon(icon, color: color, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(value, style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-            ],
-          ),
-        ),
       ),
     );
   }
