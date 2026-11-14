@@ -13,3 +13,4 @@ void saveBinaryFile(List<int> bytes, String fileName, String mimeType) {
 void callBrowserPrint() {
   html.window.print();
 }
+

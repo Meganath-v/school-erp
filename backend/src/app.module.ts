@@ -26,6 +26,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CircularsModule } from './modules/circulars/circulars.module';
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SearchModule } from './modules/search/search.module';
     // Global rate limit (per IP); stricter limits are set on /auth/login and /auth/refresh.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     PrismaModule,
+    AuditModule,
     AuthModule,
     TenantDiscoveryModule,
     PlatformModule,

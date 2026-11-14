@@ -17,20 +17,26 @@ export class FilesService {
       throw new BadRequestException('No file provided for upload');
     }
 
-    const schoolFolder = path.join(this.uploadDir, schoolId);
+    const safeSchoolId = path.basename(schoolId).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!safeSchoolId) {
+      throw new BadRequestException('Invalid school identifier');
+    }
+
+    const schoolFolder = path.join(this.uploadDir, safeSchoolId);
     if (!fs.existsSync(schoolFolder)) {
       fs.mkdirSync(schoolFolder, { recursive: true });
     }
 
-    const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}${ext}`;
+    const ext = path.extname(file.originalname).toLowerCase();
+    const safeExt = ext.replace(/[^a-z0-9.]/g, '');
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}${safeExt}`;
     const targetPath = path.join(schoolFolder, uniqueName);
 
     fs.writeFileSync(targetPath, file.buffer);
 
-    const relativeUrl = `/uploads/${schoolId}/${uniqueName}`;
+    const relativeUrl = `/uploads/${safeSchoolId}/${uniqueName}`;
     return {
-      originalName: file.originalname,
+      originalName: path.basename(file.originalname),
       fileName: uniqueName,
       mimeType: file.mimetype,
       sizeBytes: file.size,

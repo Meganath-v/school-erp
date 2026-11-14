@@ -5,3 +5,4 @@ void saveBinaryFile(List<int> bytes, String fileName, String mimeType) {
 void callBrowserPrint() {
   // Fallback for non-web environments
 }
+

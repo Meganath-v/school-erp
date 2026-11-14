@@ -2,9 +2,10 @@ import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportsService } from './reports.service';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, OFFICE_STAFF, PLATFORM_ADMINS, SCHOOL_ADMINS, ALL_STAFF } from '../../common/decorators/roles.decorator';
-import { CurrentSchoolId } from '../../common/decorators/current-user.decorator';
+import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ReportFilterDto, ExportReportDto } from './reports.dto';
 
 @ApiTags('Institutional Reports & Analytics Suite')
@@ -264,14 +265,27 @@ export class ReportsController {
 @Controller('audit-logs')
 @UseGuards(JwtAuthGuard)
 export class AuditLogsController {
-  constructor(private reportsService: ReportsService) {}
+  constructor(private auditService: AuditService) {}
 
   @Roles(...SCHOOL_ADMINS, ...PLATFORM_ADMINS)
   @Get()
   @ApiOperation({ summary: 'Query immutable tenant audit log trail' })
   @ApiResponse({ status: 200, description: 'List of audit log records' })
-  async getAuditLogs(@CurrentSchoolId() schoolId: string) {
-    const data = await this.reportsService.getAuditLogs(schoolId);
+  async getAuditLogs(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser('role') role: string,
+    @Query('action') action?: string,
+    @Query('entity') entity?: string,
+    @Query('search') search?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const targetSchoolId = role === 'PLATFORM_OWNER' || role === 'SUPER_ADMIN' ? null : schoolId;
+    const data = await this.auditService.getAuditLogs(targetSchoolId, {
+      action,
+      entity,
+      search,
+      limit: limit ? Number(limit) : 100,
+    });
     return { data };
   }
 }

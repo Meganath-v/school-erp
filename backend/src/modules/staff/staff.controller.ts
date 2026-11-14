@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, ALL_STAFF, SCHOOL_ADMINS } from '../../common/decorators/roles.decorator';
-import { CurrentSchoolId } from '../../common/decorators/current-user.decorator';
+import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CreateStaffDto, CreateAssignmentDto } from './staff.dto';
 
 @ApiTags('Staff & Teacher Management')
@@ -33,6 +33,20 @@ export class StaffController {
   @ApiResponse({ status: 201, description: 'Staff member onboarded successfully' })
   async createStaff(@CurrentSchoolId() schoolId: string, @Body() body: CreateStaffDto) {
     const data = await this.staffService.createStaff(schoolId, body);
+    return { data };
+  }
+
+  @Roles(...SCHOOL_ADMINS)
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update staff member profile or status' })
+  @ApiResponse({ status: 200, description: 'Staff member updated successfully' })
+  async updateStaff(
+    @CurrentSchoolId() schoolId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: any,
+  ) {
+    const data = await this.staffService.updateStaff(schoolId, id, body, { userId: user?.userId, name: user?.name });
     return { data };
   }
 

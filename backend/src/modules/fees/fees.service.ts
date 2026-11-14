@@ -100,7 +100,7 @@ export class FeesService {
     }));
   }
 
-  async generateInvoice(schoolId: string, data: GenerateInvoiceDto) {
+  async generateInvoice(schoolId: string, data: GenerateInvoiceDto, actor?: { userId?: string; name?: string }) {
     const student = await this.prisma.student.findFirst({ where: { id: data.studentId, schoolId } });
     if (!student) {
       throw new BadRequestException('Student not found in this school');
@@ -112,7 +112,7 @@ export class FeesService {
     const count = await this.prisma.invoice.count({ where: { schoolId } });
     const invoiceNo = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
 
-    return this.prisma.invoice.create({
+    const invoice = await this.prisma.invoice.create({
       data: {
         schoolId,
         studentId: data.studentId,
@@ -126,6 +126,26 @@ export class FeesService {
         status: 'PENDING',
       },
     });
+
+    await this.prisma.auditLog.create({
+      data: {
+        schoolId,
+        actorId: actor?.userId || 'OFFICE',
+        actorName: actor?.name || 'Office Administration',
+        action: 'INVOICE_GENERATED',
+        entity: 'Invoice',
+        entityId: invoice.id,
+        details: JSON.stringify({
+          invoiceNo: invoice.invoiceNo,
+          studentId: data.studentId,
+          studentName: `${student.firstName} ${student.lastName}`,
+          amountMinor,
+          dueDate: data.dueDate,
+        }),
+      },
+    });
+
+    return invoice;
   }
 
   async createCheckoutOrder(schoolId: string, user: Caller, data: CheckoutDto) {
@@ -339,6 +359,30 @@ export class FeesService {
       });
 
       const updatedInvoice = await tx.invoice.findUnique({ where: { id: invoice.id } });
+
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor.userId,
+          actorName: actor.name || 'Office Staff',
+          action: 'FEE_COLLECTION',
+          entity: 'Invoice',
+          entityId: invoice.id,
+          details: JSON.stringify({ receiptNo, amountPaid: payAmountMinor / 100, method, status: newStatus }),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor.userId,
+          actorName: actor.name || 'Office Staff',
+          action: 'RECEIPT_GENERATED',
+          entity: 'Payment',
+          entityId: payment.id,
+          details: JSON.stringify({ receiptNo, invoiceNo: invoice.invoiceNo, amount: payAmountMinor / 100, method }),
+        },
+      });
 
       await tx.auditLog.create({
         data: {

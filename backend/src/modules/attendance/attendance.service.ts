@@ -124,6 +124,8 @@ export class AttendanceService {
         },
       });
 
+      const isUpdate = !!session;
+
       if (!session) {
         session = await tx.attendanceSession.create({
           data: {
@@ -170,15 +172,16 @@ export class AttendanceService {
       // Log to AuditLog
       const presentCount = data.records.filter((r) => r.status === 'PRESENT').length;
       const absentCount = data.records.filter((r) => r.status === 'ABSENT').length;
+      const auditAction = isUpdate ? 'ATTENDANCE_MODIFIED' : 'ATTENDANCE_MARKED';
       await tx.auditLog.create({
         data: {
           schoolId,
           actorId: data.markedBy || 'Teacher',
           actorName: data.markedBy || 'Teacher',
-          action: 'ATTENDANCE_MARKED',
+          action: auditAction,
           entity: 'AttendanceSession',
           entityId: session.id,
-          details: JSON.stringify({ sectionId: data.sectionId, present: presentCount, absent: absentCount }),
+          details: JSON.stringify({ sectionId: data.sectionId, present: presentCount, absent: absentCount, isUpdate }),
         },
       });
 
@@ -367,6 +370,26 @@ export class AttendanceService {
         data: {
           status: data.status,
           remarks: data.remarks || record.remarks,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor.id,
+          actorName: actor.name,
+          action: 'ATTENDANCE_MODIFIED',
+          entity: 'AttendanceRecord',
+          entityId: recordId,
+          details: JSON.stringify({
+            studentId: record.studentId,
+            studentName: `${record.student.firstName} ${record.student.lastName}`,
+            date: record.session.date,
+            from: previousStatus,
+            to: data.status,
+            reason: data.reason,
+            remarks: data.remarks,
+          }),
         },
       });
 

@@ -111,15 +111,29 @@ export class PlatformService {
     });
   }
 
-  async updateSchoolStatus(schoolId: string, status: 'ACTIVE' | 'SUSPENDED' | 'TRIAL') {
+  async updateSchoolStatus(schoolId: string, status: 'ACTIVE' | 'SUSPENDED' | 'TRIAL', actor?: { userId?: string; name?: string }) {
     const school = await this.prisma.school.findUnique({ where: { id: schoolId } });
     if (!school) {
       throw new NotFoundException('School tenant not found');
     }
-    return this.prisma.school.update({
+    const updated = await this.prisma.school.update({
       where: { id: schoolId },
       data: { status },
     });
+
+    await this.prisma.auditLog.create({
+      data: {
+        schoolId,
+        actorId: actor?.userId || 'PLATFORM_SUPERADMIN',
+        actorName: actor?.name || 'Platform Administrator',
+        action: 'TENANT_STATUS_CHANGED',
+        entity: 'School',
+        entityId: schoolId,
+        details: JSON.stringify({ previousStatus: school.status, newStatus: status }),
+      },
+    });
+
+    return updated;
   }
 
   async createSchool(dto: CreateSchoolDto) {
@@ -212,6 +226,32 @@ export class PlatformService {
         },
       });
 
+      // Audit Log for Tenant Creation
+      await tx.auditLog.create({
+        data: {
+          schoolId: school.id,
+          actorId: 'PLATFORM_SUPERADMIN',
+          actorName: 'Platform Administrator',
+          action: 'TENANT_CREATED',
+          entity: 'School',
+          entityId: school.id,
+          details: JSON.stringify({ name: school.name, code: school.code, adminEmail: dto.adminEmail }),
+        },
+      });
+
+      // Audit Log for Role Assignment
+      await tx.auditLog.create({
+        data: {
+          schoolId: school.id,
+          actorId: 'PLATFORM_SUPERADMIN',
+          actorName: 'Platform Administrator',
+          action: 'ROLE_PERMISSION_CHANGED',
+          entity: 'UserSchoolMembership',
+          entityId: user.id,
+          details: JSON.stringify({ email: user.email, role: 'SCHOOL_ADMIN', context: 'Initial tenant admin provisioning' }),
+        },
+      });
+
       return { school, createdNewUser };
     });
 
@@ -221,5 +261,44 @@ export class PlatformService {
         ? { email: dto.adminEmail, temporaryPassword, note: 'Shown once. Share securely and change after first sign-in.' }
         : { email: dto.adminEmail, note: 'Existing user was granted SCHOOL_ADMIN; their password is unchanged.' },
     };
+  }
+
+  async updateMembershipRole(
+    schoolId: string,
+    membershipId: string,
+    role: string,
+    actor?: { userId?: string; name?: string },
+  ) {
+    const membership = await this.prisma.userSchoolMembership.findFirst({
+      where: { id: membershipId, schoolId },
+      include: { user: true },
+    });
+    if (!membership) {
+      throw new NotFoundException('Membership not found');
+    }
+    const oldRole = membership.defaultRole;
+    const updated = await this.prisma.userSchoolMembership.update({
+      where: { id: membershipId },
+      data: { defaultRole: role },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        schoolId,
+        actorId: actor?.userId || 'ADMIN',
+        actorName: actor?.name || 'Administrator',
+        action: 'ROLE_PERMISSION_CHANGED',
+        entity: 'UserSchoolMembership',
+        entityId: membershipId,
+        details: JSON.stringify({
+          userId: membership.userId,
+          email: membership.user?.email,
+          previousRole: oldRole,
+          newRole: role,
+        }),
+      },
+    });
+
+    return updated;
   }
 }

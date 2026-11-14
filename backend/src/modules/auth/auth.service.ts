@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { LoginDto, SwitchSchoolDto, RefreshTokenDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from './auth.dto';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
@@ -13,6 +14,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private auditService: AuditService,
   ) {}
 
   private issueTokens(claims: TokenClaims) {
@@ -42,19 +44,53 @@ export class AuthService {
     });
 
     if (!user) {
+      await this.auditService.log({
+        action: 'LOGIN_FAILED',
+        entity: 'User',
+        entityId: null,
+        actorId: 'anonymous',
+        actorName: dto.login,
+        details: { login: dto.login, reason: 'User not found' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isMatch) {
+      await this.auditService.log({
+        schoolId: user.memberships[0]?.schoolId || null,
+        action: 'LOGIN_FAILED',
+        entity: 'User',
+        entityId: user.id,
+        actorId: user.id,
+        actorName: `${user.firstName} ${user.lastName}`,
+        details: { login: dto.login, reason: 'Invalid password' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.status !== 'ACTIVE') {
+      await this.auditService.log({
+        schoolId: user.memberships[0]?.schoolId || null,
+        action: 'LOGIN_FAILED',
+        entity: 'User',
+        entityId: user.id,
+        actorId: user.id,
+        actorName: `${user.firstName} ${user.lastName}`,
+        details: { login: dto.login, reason: 'Account suspended' },
+      });
       throw new UnauthorizedException('Account suspended');
     }
 
     if (user.memberships.length === 0) {
+      await this.auditService.log({
+        action: 'LOGIN_FAILED',
+        entity: 'User',
+        entityId: user.id,
+        actorId: user.id,
+        actorName: `${user.firstName} ${user.lastName}`,
+        details: { login: dto.login, reason: 'No active school memberships' },
+      });
       throw new UnauthorizedException('User has no active school memberships');
     }
 
@@ -65,6 +101,14 @@ export class AuthService {
         (m) => m.school.code.toLowerCase() === dto.schoolCode?.toLowerCase(),
       );
       if (!match) {
+        await this.auditService.log({
+          action: 'LOGIN_FAILED',
+          entity: 'User',
+          entityId: user.id,
+          actorId: user.id,
+          actorName: `${user.firstName} ${user.lastName}`,
+          details: { login: dto.login, schoolCode: dto.schoolCode, reason: 'No membership in requested school' },
+        });
         throw new UnauthorizedException('You do not have an active membership in this school');
       }
       activeMembership = match;
@@ -76,6 +120,21 @@ export class AuthService {
       schoolId: activeMembership.schoolId,
       role: activeMembership.defaultRole,
       ver: user.tokenVersion,
+    });
+
+    await this.auditService.log({
+      schoolId: activeMembership.schoolId,
+      actorId: user.id,
+      actorName: `${user.firstName} ${user.lastName}`,
+      action: 'LOGIN_SUCCESS',
+      entity: 'User',
+      entityId: user.id,
+      details: {
+        email: user.email,
+        role: activeMembership.defaultRole,
+        schoolCode: activeMembership.school.code,
+        schoolName: activeMembership.school.name,
+      },
     });
 
     return {
@@ -229,9 +288,18 @@ export class AuthService {
 
   /** Revokes every access and refresh token issued to the user so far. */
   async logout(userId: string) {
-    await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    await this.auditService.log({
+      actorId: userId,
+      actorName: `${updated.firstName} ${updated.lastName}`,
+      action: 'LOGOUT',
+      entity: 'User',
+      entityId: userId,
+      details: { message: 'User signed out and revoked active tokens' },
     });
     return { message: 'Logged out successfully' };
   }
@@ -241,6 +309,15 @@ export class AuthService {
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
+      select: { id: true, firstName: true, lastName: true, tokenVersion: true },
+    });
+    await this.auditService.log({
+      actorId: userId,
+      actorName: `${updated.firstName} ${updated.lastName}`,
+      action: 'SESSIONS_REVOKED',
+      entity: 'User',
+      entityId: userId,
+      details: { tokenVersion: updated.tokenVersion },
     });
     return {
       message: 'All active sessions have been revoked. Please sign in again.',
@@ -294,6 +371,16 @@ export class AuthService {
       schoolId: activeMembership ? activeMembership.schoolId : '',
       role: activeMembership ? activeMembership.defaultRole : 'GUEST',
       ver: updatedUser.tokenVersion,
+    });
+
+    await this.auditService.log({
+      schoolId: activeMembership?.schoolId || null,
+      actorId: userId,
+      actorName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+      action: 'PASSWORD_CHANGED',
+      entity: 'User',
+      entityId: userId,
+      details: { email: updatedUser.email },
     });
 
     return {
@@ -375,6 +462,15 @@ export class AuthService {
           tokenVersion: { increment: 1 },
         },
       });
+    });
+
+    await this.auditService.log({
+      actorId: resetRecord.userId,
+      actorName: `${resetRecord.user.firstName} ${resetRecord.user.lastName}`,
+      action: 'PASSWORD_RESET',
+      entity: 'User',
+      entityId: resetRecord.userId,
+      details: { email: resetRecord.user.email },
     });
 
     return {

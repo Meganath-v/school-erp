@@ -46,11 +46,30 @@ export class PlatformController {
   @Patch('schools/:id/status')
   async updateSchoolStatus(
     @CurrentUser('role') role: string,
+    @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() dto: UpdateSchoolStatusDto,
   ) {
     this.assertSuperAdmin(role);
-    const data = await this.platformService.updateSchoolStatus(id, dto.status);
+    const data = await this.platformService.updateSchoolStatus(id, dto.status, { userId: user?.userId, name: user?.name });
+    return { data };
+  }
+
+  @Roles(...PLATFORM_ADMINS)
+  @ApiOperation({ summary: 'Update a user school membership role' })
+  @Patch('schools/:schoolId/memberships/:membershipId/role')
+  async updateMembershipRole(
+    @CurrentUser('role') role: string,
+    @CurrentUser() user: any,
+    @Param('schoolId') schoolId: string,
+    @Param('membershipId') membershipId: string,
+    @Body('role') newRole: string,
+  ) {
+    this.assertSuperAdmin(role);
+    const data = await this.platformService.updateMembershipRole(schoolId, membershipId, newRole, {
+      userId: user?.userId,
+      name: user?.name,
+    });
     return { data };
   }
 

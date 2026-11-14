@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ExamsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditService: AuditService,
+  ) {}
 
   async getExams(schoolId: string, query?: { academicYearId?: string; term?: string; search?: string }) {
     const where: any = { schoolId };
@@ -242,6 +246,7 @@ export class ExamsService {
     schoolId: string,
     examSubjectId: string,
     marks: { studentId: string; marksObtained?: number; isAbsent?: boolean; remarks?: string }[],
+    actor?: { userId: string; role: string; name?: string },
   ) {
     if (!Array.isArray(marks) || marks.length === 0) {
       throw new BadRequestException('marks must be a non-empty array');
@@ -249,6 +254,23 @@ export class ExamsService {
 
     const examSubject = await this.findExamSubjectInSchool(schoolId, examSubjectId);
     this.assertMarksEditable(examSubject.exam);
+
+    // Subject teacher authorization check: must be assigned to this class and subject
+    if (actor && actor.role === 'SUBJECT_TEACHER') {
+      const assignment = await this.prisma.teacherAssignment.findFirst({
+        where: {
+          schoolId,
+          staff: { userId: actor.userId },
+          classId: examSubject.classId,
+          subjectId: examSubject.subjectId,
+        },
+      });
+      if (!assignment) {
+        throw new ForbiddenException(
+          'You are not authorized to submit examination marks for a class or subject not assigned to you.',
+        );
+      }
+    }
 
     // Only students actively enrolled in this class (and school) may receive marks.
     const enrolled = await this.prisma.enrollment.findMany({
@@ -284,6 +306,21 @@ export class ExamsService {
         }),
       ),
     );
+
+    await this.auditService.log({
+      schoolId,
+      actorId: actor?.userId || 'unknown',
+      actorName: actor?.name || 'Academic Faculty',
+      action: 'MARKS_SUBMITTED',
+      entity: 'ExamSubject',
+      entityId: examSubjectId,
+      details: {
+        examId: examSubject.examId,
+        classId: examSubject.classId,
+        subjectId: examSubject.subjectId,
+        marksEnteredCount: rows.length,
+      },
+    });
 
     return { message: 'Marks updated successfully', count: rows.length };
   }
@@ -347,12 +384,30 @@ export class ExamsService {
       isAbsent?: any;
       remarks?: string;
     }>,
+    actor?: { userId: string; role: string; name?: string },
   ) {
     if (!Array.isArray(rows)) {
       throw new BadRequestException('rows must be an array');
     }
     const examSubject = await this.findExamSubjectInSchool(schoolId, examSubjectId);
     this.assertMarksEditable(examSubject.exam);
+
+    // Subject teacher authorization check: must be assigned to this class and subject
+    if (actor && actor.role === 'SUBJECT_TEACHER') {
+      const assignment = await this.prisma.teacherAssignment.findFirst({
+        where: {
+          schoolId,
+          staff: { userId: actor.userId },
+          classId: examSubject.classId,
+          subjectId: examSubject.subjectId,
+        },
+      });
+      if (!assignment) {
+        throw new ForbiddenException(
+          'You are not authorized to submit examination marks for a class or subject not assigned to you.',
+        );
+      }
+    }
 
     // Map all admission numbers to student IDs
     const students = await this.prisma.student.findMany({
@@ -452,6 +507,20 @@ export class ExamsService {
       }),
       ),
     );
+
+    await this.auditService.log({
+      schoolId,
+      actorId: actor?.userId || 'unknown',
+      actorName: actor?.name || 'Academic Faculty',
+      action: 'MARKS_BULK_IMPORTED',
+      entity: 'ExamSubject',
+      entityId: examSubjectId,
+      details: {
+        examId: examSubject.examId,
+        importedCount: validBatch.length,
+        errorCount: errors.length,
+      },
+    });
 
     return {
       message: `Import completed: ${validBatch.length} marks saved successfully.`,
@@ -595,10 +664,10 @@ export class ExamsService {
           schoolId,
           actorId: userId || 'unknown',
           actorName: userName || 'Principal',
-          action: 'MARKS_PUBLISHED',
+          action: 'RESULTS_PUBLISHED',
           entity: 'Exam',
           entityId: examId,
-          details: JSON.stringify({ examName: exam.name }),
+          details: JSON.stringify({ examName: exam.name, status: 'PUBLISHED' }),
         },
       });
 

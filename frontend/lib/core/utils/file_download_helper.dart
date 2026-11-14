@@ -8,3 +8,4 @@ void downloadBinaryFile(List<int> bytes, String fileName, String mimeType) {
 void triggerBrowserPrint() {
   callBrowserPrint();
 }
+

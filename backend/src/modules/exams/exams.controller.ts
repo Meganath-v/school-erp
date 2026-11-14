@@ -63,10 +63,16 @@ export class ExamsController {
   @ApiResponse({ status: 201, description: 'Marks recorded successfully' })
   async enterMarks(
     @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: any,
     @Param('subjectId') subjectId: string,
     @Body() body: EnterMarksDto,
   ) {
-    const data = await this.examsService.enterMarks(schoolId, subjectId, body.marks);
+    const data = await this.examsService.enterMarks(
+      schoolId,
+      subjectId,
+      body.marks,
+      { userId: user.userId, role: user.role, name: user.name },
+    );
     return { data };
   }
 
@@ -87,10 +93,16 @@ export class ExamsController {
   @ApiResponse({ status: 201, description: 'Marks imported successfully' })
   async importMarks(
     @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: any,
     @Param('subjectId') subjectId: string,
     @Body() body: ImportMarksDto,
   ) {
-    const data = await this.examsService.importMarksFromData(schoolId, subjectId, body.rows);
+    const data = await this.examsService.importMarksFromData(
+      schoolId,
+      subjectId,
+      body.rows,
+      { userId: user.userId, role: user.role, name: user.name },
+    );
     return { data };
   }
 

@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { assertStudentAccess } from '../../common/access/student-access';
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private auditService: AuditService,
+  ) { }
 
   async getStudents(schoolId: string, query: { classId?: string; sectionId?: string; search?: string; userId?: string; role?: string }) {
     const where: any = { schoolId };
@@ -204,6 +208,22 @@ export class StudentsService {
         });
       }
 
+      await this.auditService.log(
+        {
+          schoolId,
+          action: 'STUDENT_CREATED',
+          entity: 'Student',
+          entityId: student.id,
+          details: {
+            admissionNo: student.admissionNo,
+            name: `${student.firstName} ${student.lastName}`,
+            classId: data.classId,
+            sectionId: data.sectionId,
+          },
+        },
+        tx,
+      );
+
       return student;
     });
   }
@@ -214,7 +234,7 @@ export class StudentsService {
       throw new NotFoundException('Student not found in this school');
     }
 
-    return this.prisma.student.update({
+    const updated = await this.prisma.student.update({
       where: { id },
       data: {
         ...(data.firstName ? { firstName: data.firstName } : {}),
@@ -227,6 +247,18 @@ export class StudentsService {
         ...(data.status ? { status: data.status } : {}),
       },
     });
+
+    await this.auditService.log({
+      schoolId,
+      action: 'STUDENT_UPDATED',
+      entity: 'Student',
+      entityId: id,
+      details: {
+        updatedFields: Object.keys(data),
+      },
+    });
+
+    return updated;
   }
 
   async getReportCard(schoolId: string, studentId: string, user: { userId: string; role: string }) {
@@ -482,7 +514,7 @@ export class StudentsService {
       throw new NotFoundException('Student not found in this school');
     }
 
-    return this.prisma.studentDocument.create({
+    const created = await this.prisma.studentDocument.create({
       data: {
         schoolId,
         studentId,
@@ -492,6 +524,16 @@ export class StudentsService {
         fileType: dto.fileType,
       },
     });
+
+    await this.auditService.log({
+      schoolId,
+      action: 'STUDENT_DOCUMENT_ATTACHED',
+      entity: 'StudentDocument',
+      entityId: created.id,
+      details: { studentId, title: dto.title, documentType: dto.documentType },
+    });
+
+    return created;
   }
 
   async getStudentDocuments(schoolId: string, studentId: string) {
@@ -518,6 +560,14 @@ export class StudentsService {
 
     await this.prisma.studentDocument.delete({
       where: { id: docId },
+    });
+
+    await this.auditService.log({
+      schoolId,
+      action: 'STUDENT_DOCUMENT_DELETED',
+      entity: 'StudentDocument',
+      entityId: docId,
+      details: { studentId, title: doc.title },
     });
 
     return { message: 'Document deleted successfully' };

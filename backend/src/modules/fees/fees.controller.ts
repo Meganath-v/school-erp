@@ -46,8 +46,12 @@ export class FeesController {
   @Post('invoices/generate')
   @ApiOperation({ summary: 'Generate a new tuition/institutional fee invoice' })
   @ApiResponse({ status: 201, description: 'Invoice generated successfully' })
-  async generateInvoice(@CurrentSchoolId() schoolId: string, @Body() body: GenerateInvoiceDto) {
-    const data = await this.feesService.generateInvoice(schoolId, body);
+  async generateInvoice(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: any,
+    @Body() body: GenerateInvoiceDto,
+  ) {
+    const data = await this.feesService.generateInvoice(schoolId, body, { userId: user?.userId, name: user?.name });
     return { data };
   }
 
