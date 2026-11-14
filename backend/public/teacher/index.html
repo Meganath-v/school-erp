@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Linways-Grade ERP | Teacher Computer Desktop Portal</title>
+  <title>Linways-Grade ERP | High-Speed Teacher Desktop Workstation</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS (XLSX) for client-side Excel handling -->
@@ -15,10 +15,38 @@
       outline: 2px solid #2563eb;
       background-color: #eff6ff;
     }
+    .spreadsheet-input.has-error {
+      border-color: #e11d48 !important;
+      background-color: #fff1f2 !important;
+      color: #be123c !important;
+    }
     @media print {
+      @page {
+        size: landscape;
+        margin: 10mm;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+        font-size: 10pt;
+      }
       .no-print { display: none !important; }
       .print-only { display: block !important; }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      th, td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 4px 6px !important;
+      }
+      thead {
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
+    .print-only { display: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
@@ -43,6 +71,9 @@
       <div id="authStatus" class="flex items-center space-x-3">
         <!-- Rendered dynamically -->
       </div>
+      <button onclick="logout()" title="Sign Out" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+      </button>
     </div>
   </header>
 
@@ -99,64 +130,64 @@
         <button onclick="switchTab('marksGrid')" data-tab="marksGrid"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-white bg-indigo-600 shadow-sm">
           <i data-lucide="grid" class="w-4 h-4"></i>
-          <span>Spreadsheet Mark Entry</span>
+          <span>Spreadsheet Marks Entry</span>
         </button>
 
         <button onclick="switchTab('excelWizard')" data-tab="excelWizard"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
           <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-          <span>Excel Import & Export</span>
+          <span>Excel Import & Matching</span>
         </button>
 
         <button onclick="switchTab('attendanceRegister')" data-tab="attendanceRegister"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
           <i data-lucide="calendar-check" class="w-4 h-4"></i>
-          <span>Class Attendance Matrix</span>
-        </button>
-
-        <button onclick="switchTab('circulars')" data-tab="circulars"
-          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
-          <i data-lucide="send" class="w-4 h-4"></i>
-          <span>Circular Dispatcher</span>
+          <span>Attendance Workstation</span>
         </button>
 
         <button onclick="switchTab('obeSyllabus')" data-tab="obeSyllabus"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
           <i data-lucide="book-open" class="w-4 h-4"></i>
-          <span>OBE & Course Diary</span>
-        </button>
-
-        <button onclick="switchTab('tasksReminders')" data-tab="tasksReminders"
-          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
-          <i data-lucide="check-square" class="w-4 h-4"></i>
-          <span>Tasks & Reminders</span>
+          <span>Teaching Diary & Progress</span>
         </button>
 
         <button onclick="switchTab('broadsheet')" data-tab="broadsheet"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
           <i data-lucide="printer" class="w-4 h-4"></i>
-          <span>Broadsheet & Reports</span>
+          <span>Broadsheet Studio & Print</span>
         </button>
 
         <button onclick="switchTab('feedbackDesk')" data-tab="feedbackDesk"
           class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
           <i data-lucide="message-square" class="w-4 h-4"></i>
-          <span>Parent Feedback Desk</span>
+          <span>Parent Feedback Center</span>
+        </button>
+
+        <button onclick="switchTab('circulars')" data-tab="circulars"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Circulars & Bulletins</span>
+        </button>
+
+        <button onclick="switchTab('tasksReminders')" data-tab="tasksReminders"
+          class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition hover:bg-slate-800 text-slate-300">
+          <i data-lucide="check-square" class="w-4 h-4"></i>
+          <span>Faculty Tasks & Reminders</span>
         </button>
       </nav>
 
       <!-- Computer Mode Footer Status -->
       <div class="p-3 bg-slate-950/60 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
         <span class="flex items-center space-x-1.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Desktop Online</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Database Sync Active</span>
         </span>
-        <button onclick="logout()" class="text-rose-400 hover:text-rose-300 text-xs">Sign Out</button>
+        <span class="font-mono text-[10px] text-slate-500">v2.6-Linways</span>
       </div>
     </aside>
 
-    <!-- Main Dynamic Content Workspace -->
-    <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+    <!-- Main Workspace Content Area -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
 
       <!-- =============================================================== -->
       <!-- TAB 1: SPREADSHEET MARK ENTRY GRID                              -->
@@ -168,7 +199,12 @@
               <i data-lucide="grid" class="w-5 h-5 text-indigo-600"></i>
               <span>High-Density Marks Entry Spreadsheet</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Rapid keyboard-driven score entry (Use Tab/Enter to advance, A to toggle Absent)</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Keyboard Shortcuts: <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">Tab</kbd> next cell • 
+              <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">Enter / ↓</kbd> next student • 
+              <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">A</kbd> mark absent • 
+              <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">Ctrl+S</kbd> save
+            </p>
           </div>
 
           <div class="flex items-center flex-wrap gap-3">
@@ -185,7 +221,7 @@
             <button onclick="saveSpreadsheetMarks()" id="saveMarksBtn"
               class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition shadow flex items-center space-x-1.5">
               <i data-lucide="save" class="w-4 h-4"></i>
-              <span>Save All Marks (Ctrl+S)</span>
+              <span>Save Marks (Ctrl+S)</span>
             </button>
           </div>
         </div>
@@ -218,28 +254,37 @@
           </div>
         </div>
 
+        <!-- Validation Alert Banner (if errors exist) -->
+        <div id="validationWarningBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-xl text-xs flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+            <span id="validationWarningText" class="font-semibold">Some marks exceed permitted limits. Please correct them before saving.</span>
+          </div>
+        </div>
+
         <!-- Spreadsheet Table Container -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="overflow-x-auto max-h-[580px]">
-            <table class="w-full text-left text-xs border-collapse">
+            <table class="w-full text-left text-xs border-collapse" id="spreadsheetTable">
               <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10 border-b border-slate-200">
                 <tr>
-                  <th class="py-3 px-4 w-12 text-center">#</th>
-                  <th class="py-3 px-4 w-28">Admission No</th>
-                  <th class="py-3 px-4 w-20 text-center">Roll No</th>
-                  <th class="py-3 px-4">Student Name</th>
-                  <th class="py-3 px-4 w-28">Section</th>
-                  <th class="py-3 px-4 w-32 text-center">Max Marks</th>
-                  <th class="py-3 px-4 w-36 text-center">Marks Obtained</th>
-                  <th class="py-3 px-4 w-24 text-center">Absent?</th>
-                  <th class="py-3 px-4 w-24 text-center">Grade</th>
-                  <th class="py-3 px-4 w-24 text-center">Status</th>
-                  <th class="py-3 px-4">Teacher Evaluation Remarks</th>
+                  <th class="py-3 px-3 w-10 text-center">#</th>
+                  <th class="py-3 px-3 w-28">Admission No</th>
+                  <th class="py-3 px-2 w-16 text-center">Roll No</th>
+                  <th class="py-3 px-3">Student Name</th>
+                  <th class="py-3 px-3 w-28">Subject</th>
+                  <th class="py-3 px-3 w-20 text-center">Max Marks</th>
+                  <th class="py-3 px-3 w-32 text-center">Entered Marks</th>
+                  <th class="py-3 px-2 w-20 text-center">Absent? (A)</th>
+                  <th class="py-3 px-3 w-20 text-center">Percentage</th>
+                  <th class="py-3 px-2 w-16 text-center">Grade</th>
+                  <th class="py-3 px-3 w-24 text-center">Result</th>
+                  <th class="py-3 px-3">Remarks / Feedback</th>
                 </tr>
               </thead>
               <tbody id="spreadsheetBody" class="divide-y divide-slate-100 text-slate-800">
                 <tr>
-                  <td colspan="11" class="py-12 text-center text-slate-400">
+                  <td colspan="12" class="py-12 text-center text-slate-400">
                     Select an Exam and Subject from the top dropdown to load the spreadsheet roster.
                   </td>
                 </tr>
@@ -250,7 +295,7 @@
       </section>
 
       <!-- =============================================================== -->
-      <!-- TAB 2: EXCEL IMPORT & EXPORT WIZARD                             -->
+      <!-- TAB 2: EXCEL IMPORT & MATCHING WIZARD                           -->
       <!-- =============================================================== -->
       <section id="tab-excelWizard" class="tab-pane hidden space-y-6">
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -259,7 +304,7 @@
             <span>Bulk Excel & CSV Marks Management</span>
           </h2>
           <p class="text-xs text-slate-500 mt-1">
-            Export class rosters to Excel (.xlsx/.csv), enter marks offline in Microsoft Excel or Google Sheets, and import with zero manual typing errors.
+            Export class rosters to Excel (.xlsx/.csv), enter marks offline in Microsoft Excel or Google Sheets, and import with real-time student matching and range validation.
           </p>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -287,23 +332,24 @@
               </div>
             </div>
 
-            <!-- Step 2: Upload & Parse -->
+            <!-- Step 2: Upload & Parse Dropzone -->
             <div class="p-5 rounded-xl border border-emerald-100 bg-emerald-50/50 flex flex-col justify-between">
               <div>
                 <span class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">Step 2</span>
-                <h3 class="font-bold text-slate-900 text-sm mt-3">Upload Completed Marks Sheet</h3>
+                <h3 class="font-bold text-slate-900 text-sm mt-3">Upload & Match Marks Sheet</h3>
                 <p class="text-xs text-slate-600 mt-1">
                   Drag and drop the filled Excel or CSV sheet. The computer engine validates every mark in real time.
                 </p>
               </div>
 
               <div class="mt-4">
-                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelFileUpload(event)">
-                <label for="excelFileInput"
-                  class="cursor-pointer border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white p-3 rounded-xl flex items-center justify-center space-x-2 text-xs font-semibold text-emerald-700 transition">
-                  <i data-lucide="upload-cloud" class="w-5 h-5 text-emerald-500"></i>
-                  <span>Choose or Drag Excel (.xlsx / .csv) file</span>
-                </label>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelFileInput(event)">
+                <div id="excelDropZone" onclick="document.getElementById('excelFileInput').click()"
+                  class="cursor-pointer border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white p-4 rounded-xl flex flex-col items-center justify-center space-y-1 text-xs text-emerald-700 transition">
+                  <i data-lucide="upload-cloud" class="w-6 h-6 text-emerald-500"></i>
+                  <span class="font-semibold">Drag & Drop Excel (.xlsx / .csv) file here</span>
+                  <span class="text-[11px] text-slate-400">or click to browse your computer</span>
+                </div>
               </div>
             </div>
           </div>
@@ -311,7 +357,7 @@
 
         <!-- Excel Preview & Verification Container -->
         <div id="excelPreviewContainer" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
                 <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i>
@@ -320,14 +366,19 @@
               <p class="text-xs text-slate-500" id="excelFileInfo">50 rows detected</p>
             </div>
 
-            <button onclick="commitImportedMarks()" id="commitImportBtn"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition shadow flex items-center space-x-1.5">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              <span>Confirm & Commit Marks to Database</span>
-            </button>
+            <div class="flex items-center space-x-3">
+              <span id="importStatsBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                Evaluating records...
+              </span>
+              <button onclick="commitImportedMarks()" id="commitImportBtn"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition shadow flex items-center space-x-1.5">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Confirm & Commit Marks to Database</span>
+              </button>
+            </div>
           </div>
 
-          <div class="overflow-x-auto max-h-[400px] border border-slate-200 rounded-xl">
+          <div class="overflow-x-auto max-h-[420px] border border-slate-200 rounded-xl">
             <table class="w-full text-left text-xs">
               <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0" id="previewTableHead">
                 <!-- Headers rendered dynamically -->
@@ -341,42 +392,48 @@
       </section>
 
       <!-- =============================================================== -->
-      <!-- TAB 3: CONSOLIDATED CLASS ATTENDANCE MATRIX & CONDONATION       -->
+      <!-- TAB 3: ATTENDANCE WORKSTATION                                   -->
       <!-- =============================================================== -->
       <section id="tab-attendanceRegister" class="tab-pane hidden space-y-6">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
               <i data-lucide="calendar-check" class="w-5 h-5 text-indigo-600"></i>
-              <span>Consolidated Class Attendance Register & Condonation</span>
+              <span>Monthly Class Attendance Workstation</span>
             </h2>
             <p class="text-xs text-slate-500 mt-0.5">
-              Linways-standard matrix monitoring the mandatory 75% attendance condonation threshold across the academic term.
+              Click any cell to edit status • Linways condonation threshold ($< 75\%$) automatically flagged
             </p>
           </div>
 
           <div class="flex items-center space-x-3">
+            <button onclick="openDailyAttendanceModal()"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5 shadow-sm">
+              <i data-lucide="check-square" class="w-4 h-4"></i>
+              <span>Mark Daily Session</span>
+            </button>
+            <button onclick="issueAttendanceWarnings()"
+              class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>Warn Defaulters</span>
+            </button>
             <button onclick="exportCondonationList()"
               class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5">
-              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-500"></i>
-              <span>Export &lt;75% Defaulters</span>
-            </button>
-            <button onclick="triggerAutomatedScan()"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-medium transition flex items-center space-x-1.5 shadow-sm">
-              <i data-lucide="bell-ring" class="w-4 h-4"></i>
-              <span>Send Attendance Warning Reminders</span>
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Export Defaulter Report</span>
             </button>
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4">
-          <div class="overflow-x-auto">
+        <!-- Attendance Table -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto max-h-[580px]">
             <table class="w-full text-xs text-left border-collapse" id="matrixTable">
-              <thead class="bg-slate-100 text-slate-700 font-semibold" id="matrixThead">
-                <!-- Matrix headers -->
+              <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 z-10 border-b border-slate-200" id="matrixThead">
+                <!-- Dynamic headers -->
               </thead>
-              <tbody id="matrixTbody" class="divide-y divide-slate-100">
-                <!-- Matrix rows with color-coded badges -->
+              <tbody id="matrixTbody" class="divide-y divide-slate-100 text-slate-800">
+                <!-- Dynamic student rows -->
               </tbody>
             </table>
           </div>
@@ -384,96 +441,16 @@
       </section>
 
       <!-- =============================================================== -->
-      <!-- TAB 4: CIRCULAR DISPATCHER                                      -->
-      <!-- =============================================================== -->
-      <section id="tab-circulars" class="tab-pane hidden space-y-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          <!-- Composer Column -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
-              <i data-lucide="send" class="w-5 h-5 text-indigo-600"></i>
-              <span>Dispatch New Circular</span>
-            </h2>
-            <p class="text-xs text-slate-500">
-              Class Teachers are restricted to dispatching circulars exclusively to their assigned class parents and students.
-            </p>
-
-            <form id="circularForm" onsubmit="handleCreateCircular(event)" class="space-y-3.5">
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Circular Title</label>
-                <input type="text" id="circTitle" required placeholder="e.g. Science Exhibition Participation & Consent"
-                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500">
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Target Audience</label>
-                <select id="circAudience" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
-                  <option value="CLASS_PARENTS">Assigned Class Parents (Grade 10-A)</option>
-                  <option value="CLASS_STUDENTS">Assigned Class Students (Grade 10-A)</option>
-                  <option value="ALL" id="optSchoolWide" disabled>School-Wide (Office / Admin Only)</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
-                <select id="circPriority" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
-                  <option value="NORMAL">Normal Priority</option>
-                  <option value="IMPORTANT">Important</option>
-                  <option value="URGENT">Urgent Broadcast</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Detailed Circular Text</label>
-                <textarea id="circContent" rows="4" required placeholder="Enter formal circular notification body..."
-                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500"></textarea>
-              </div>
-
-              <div class="flex items-center space-x-2">
-                <input type="checkbox" id="circRequiresAck" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                <label for="circRequiresAck" class="text-xs text-slate-700 font-medium">Require Mandatory Parent Signature / Digital Acknowledgment</label>
-              </div>
-
-              <button type="submit"
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-1.5">
-                <i data-lucide="send" class="w-4 h-4"></i>
-                <span>Publish Official Circular</span>
-              </button>
-            </form>
-          </div>
-
-          <!-- Circulars Roster & Acknowledgement Tracker -->
-          <div class="lg:col-span-2 space-y-4">
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div>
-                <h3 class="font-bold text-slate-900 text-sm">Issued Circulars & Real-Time Sign-Offs</h3>
-                <p class="text-xs text-slate-500">Click any circular to inspect who has read and signed</p>
-              </div>
-              <button onclick="loadCirculars()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                <span>Refresh</span>
-              </button>
-            </div>
-
-            <div id="circularsList" class="space-y-3">
-              <!-- Rendered dynamically -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- =============================================================== -->
-      <!-- TAB 5: LINWAYS OBE SYLLABUS & TEACHING DIARY                    -->
+      <!-- TAB 4: TEACHING DIARY & PROGRESS                                -->
       <!-- =============================================================== -->
       <section id="tab-obeSyllabus" class="tab-pane hidden space-y-6">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
               <i data-lucide="book-open" class="w-5 h-5 text-indigo-600"></i>
-              <span>Outcome-Based Education (OBE) & Teaching Diary</span>
+              <span>Teaching Diary & Syllabus Progress Tracker</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Track Course Outcomes (COs), Bloom's Taxonomy, and log daily lecture entries</p>
+            <p class="text-xs text-slate-500 mt-0.5">Track planned vs conducted lecture hours, topics taught, and unit completion</p>
           </div>
           <button onclick="openTeachingDiaryModal()"
             class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
@@ -482,10 +459,23 @@
           </button>
         </div>
 
+        <!-- Overall Syllabus Meter -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+            <span>Overall Course Syllabus Completion</span>
+            <span id="overallSyllabusPercent" class="text-indigo-600">0% Conducted</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-3">
+            <div id="overallSyllabusBar" class="bg-indigo-600 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <!-- Syllabus Units Progress -->
           <div class="md:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h3 class="font-bold text-slate-800 text-sm">Unit Syllabus Progress</h3>
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-800 text-sm">Unit Syllabus Progress</h3>
+            </div>
             <div id="unitProgressList" class="space-y-4">
               <!-- Rendered dynamically -->
             </div>
@@ -502,12 +492,181 @@
       </section>
 
       <!-- =============================================================== -->
-      <!-- TAB 6: TASKS & REMINDERS HUB                                    -->
+      <!-- TAB 5: BROADSHEET STUDIO & PRINT                                -->
+      <!-- =============================================================== -->
+      <section id="tab-broadsheet" class="tab-pane hidden space-y-6">
+        <div class="no-print bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="printer" class="w-5 h-5 text-indigo-600"></i>
+              <span>Consolidated Broadsheet Studio & Rank Matrix</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Comprehensive multi-subject mark tabulation with class rankings and division honours</p>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <select id="broadsheetExamSelector" onchange="loadBroadsheet()" class="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium bg-white text-slate-700 shadow-sm">
+              <option value="">Select Examination</option>
+            </select>
+            <button onclick="exportBroadsheetToExcel()"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+              <span>Export to Excel</span>
+            </button>
+            <button onclick="window.print()"
+              class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>Print / Export PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Print-Only Letterhead Banner -->
+        <div class="print-only text-center mb-4 pb-2 border-b-2 border-slate-800">
+          <h1 class="text-2xl font-bold uppercase tracking-wider" id="printSchoolTitle">Oakridge International Academy</h1>
+          <h2 class="text-base font-semibold text-slate-700" id="printExamTitle">Official Academic Broadsheet</h2>
+          <div class="text-xs text-slate-500 mt-1 flex justify-between">
+            <span id="printClassInfo">Class: Grade 10-A</span>
+            <span id="printDateInfo">Generated: 2026-11-14</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="broadsheetTable">
+              <thead class="bg-slate-100 text-slate-700 font-semibold" id="broadsheetThead">
+                <!-- Headers -->
+              </thead>
+              <tbody id="broadsheetTbody" class="divide-y divide-slate-100">
+                <!-- Roster Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Print-Only Signatures Block -->
+        <div class="print-only mt-12 pt-6 flex justify-between text-xs text-slate-700 font-semibold border-t border-slate-300">
+          <div class="text-center w-48">
+            <div class="border-b border-slate-500 pb-1 mb-1"></div>
+            <span>Class Teacher Signature</span>
+          </div>
+          <div class="text-center w-48">
+            <div class="border-b border-slate-500 pb-1 mb-1"></div>
+            <span>Academic Dean / Controller</span>
+          </div>
+          <div class="text-center w-48">
+            <div class="border-b border-slate-500 pb-1 mb-1"></div>
+            <span>Principal & Institutional Seal</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 6: PARENT FEEDBACK CENTER                                   -->
+      <!-- =============================================================== -->
+      <section id="tab-feedbackDesk" class="tab-pane hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="message-square" class="w-5 h-5 text-indigo-600"></i>
+              <span>Parent Inquiries & Feedback Center</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Filter category grievances, inspect student context, and issue verified responses</p>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <select id="feedbackCategoryFilter" onchange="renderFilteredFeedbacks()"
+              class="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium bg-slate-50 text-slate-700">
+              <option value="ALL">All Categories</option>
+              <option value="ACADEMICS">Academics</option>
+              <option value="FACILITIES">Facilities</option>
+              <option value="TRANSPORT">Transport</option>
+              <option value="CANTEEN">Canteen</option>
+              <option value="GENERAL">General</option>
+            </select>
+
+            <select id="feedbackStatusFilter" onchange="renderFilteredFeedbacks()"
+              class="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium bg-slate-50 text-slate-700">
+              <option value="ALL">All Statuses</option>
+              <option value="SUBMITTED">Pending / Submitted</option>
+              <option value="UNDER_REVIEW">Under Review</option>
+              <option value="RESOLVED">Resolved</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="feedbackListContainer" class="space-y-4">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 7: CIRCULARS & BULLETINS                                    -->
+      <!-- =============================================================== -->
+      <section id="tab-circulars" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+              <i data-lucide="send" class="w-4 h-4 text-indigo-600"></i>
+              <span>Compose Class Notice</span>
+            </h3>
+
+            <form id="circularForm" onsubmit="handleCreateCircular(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Notice Title *</label>
+                <input type="text" id="circTitle" required placeholder="e.g. Schedule of Unit Assessments"
+                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Target Audience</label>
+                <select id="circAudience" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                  <option value="CLASS">Class 10-A Parents & Students</option>
+                  <option value="ALL_PARENTS">All School Parents</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
+                <select id="circPriority" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                  <option value="NORMAL">Normal Bulletin</option>
+                  <option value="URGENT">Urgent Advisory</option>
+                </select>
+              </div>
+
+              <div class="flex items-center space-x-2 pt-1">
+                <input type="checkbox" id="circRequiresAck" checked class="rounded border-slate-300 text-indigo-600">
+                <label for="circRequiresAck" class="text-xs text-slate-700 font-medium">Require Parent Digital Signature</label>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Content Directive *</label>
+                <textarea id="circContent" rows="4" required placeholder="Enter the complete notice..."
+                  class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500"></textarea>
+              </div>
+
+              <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-2">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Publish & Broadcast Notice</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 space-y-4">
+            <h3 class="font-bold text-slate-900 text-sm">Dispatched Notices Registry</h3>
+            <div id="circularsList" class="space-y-3">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- TAB 8: TASKS & REMINDERS                                        -->
       <!-- =============================================================== -->
       <section id="tab-tasksReminders" class="tab-pane hidden space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          <!-- Action Tasks -->
           <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
               <div>
@@ -525,7 +684,6 @@
             </div>
           </div>
 
-          <!-- Automated Reminders -->
           <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
               <div>
@@ -548,64 +706,6 @@
         </div>
       </section>
 
-      <!-- =============================================================== -->
-      <!-- TAB 7: CONSOLIDATED BROADSHEET & REPORT CARDS                   -->
-      <!-- =============================================================== -->
-      <section id="tab-broadsheet" class="tab-pane hidden space-y-6">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
-              <i data-lucide="printer" class="w-5 h-5 text-indigo-600"></i>
-              <span>Consolidated Class Broadsheet & Rank Matrix</span>
-            </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Comprehensive multi-subject mark tabulation with class rankings and division honours</p>
-          </div>
-
-          <div class="flex items-center space-x-3">
-            <select id="broadsheetExamSelector" onchange="loadBroadsheet()" class="text-xs border border-slate-300 rounded-xl px-3 py-2 font-medium bg-white text-slate-700 shadow-sm">
-              <option value="">Select Examination</option>
-            </select>
-            <button onclick="window.print()"
-              class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow flex items-center space-x-1.5">
-              <i data-lucide="printer" class="w-4 h-4"></i>
-              <span>Print Broadsheet</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border-collapse" id="broadsheetTable">
-              <thead class="bg-slate-100 text-slate-700 font-semibold" id="broadsheetThead">
-                <!-- Headers -->
-              </thead>
-              <tbody id="broadsheetTbody" class="divide-y divide-slate-100">
-                <!-- Roster Rows -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- =============================================================== -->
-      <!-- TAB 8: PARENT FEEDBACK DESK                                     -->
-      <!-- =============================================================== -->
-      <section id="tab-feedbackDesk" class="tab-pane hidden space-y-6">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
-              <i data-lucide="message-square" class="w-5 h-5 text-indigo-600"></i>
-              <span>Parent Inquiries, Feedbacks & Grievances</span>
-            </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Review feedback submitted by parents and respond directly</p>
-          </div>
-        </div>
-
-        <div id="feedbackListContainer" class="space-y-4">
-          <!-- Rendered dynamically -->
-        </div>
-      </section>
-
     </main>
   </div>
 
@@ -614,7 +714,7 @@
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4">
       <div class="flex items-center justify-between border-b pb-3">
         <h3 class="font-bold text-slate-900 text-base">New Teaching Diary Entry</h3>
-        <button onclick="closeTeachingDiaryModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+        <button onclick="closeTeachingDiaryModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
       </div>
 
       <form onsubmit="handleSaveDiary(event)" class="space-y-3">
@@ -630,6 +730,7 @@
               <option value="LAB">Laboratory / Hands-on</option>
               <option value="FLIPPED_CLASS">Flipped Classroom</option>
               <option value="GROUP_DISCUSSION">Collaborative Discussion</option>
+              <option value="PROBLEM_SOLVING">Problem Solving Workshop</option>
             </select>
           </div>
         </div>
@@ -654,11 +755,55 @@
     </div>
   </div>
 
+  <!-- Modal for Daily Attendance Marking -->
+  <div id="dailyAttendanceModal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Record Daily Section Attendance</h3>
+          <p class="text-xs text-slate-500">Fast batch marking with automatic save to attendance sessions</p>
+        </div>
+        <button onclick="closeDailyAttendanceModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center space-x-2">
+          <label class="text-xs font-semibold text-slate-700">Session Date:</label>
+          <input type="date" id="dailyAttendanceDate" class="text-xs border border-slate-300 rounded-lg px-2.5 py-1">
+        </div>
+        <button onclick="markAllModalStudents('PRESENT')" class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-lg font-medium hover:bg-emerald-100">
+          Mark All Present
+        </button>
+      </div>
+
+      <div class="max-h-72 overflow-y-auto border border-slate-200 rounded-xl">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-100 text-slate-700 sticky top-0">
+            <tr>
+              <th class="py-2 px-3">Admission No</th>
+              <th class="py-2 px-3">Student Name</th>
+              <th class="py-2 px-3 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody id="dailyModalTbody" class="divide-y divide-slate-100">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t">
+        <button onclick="closeDailyAttendanceModal()" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+        <button onclick="saveDailyAttendanceSession()" id="saveDailySessionBtn" class="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow">
+          Commit Attendance Session
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Application Logic -->
   <script>
     const API_BASE = '/api/v1';
 
-    // Escape any server- or file-supplied value before inserting it into HTML (prevents stored XSS).
     function esc(value) {
       return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -667,6 +812,7 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
+
     let authToken = localStorage.getItem('erp_token');
     let currentUser = null;
     let currentSchool = null;
@@ -675,11 +821,19 @@
     let currentExamSubject = null;
     let currentRoster = [];
     let parsedImportRows = [];
+    let allFeedbacks = [];
+    let currentBroadsheetData = null;
+    let currentMatrixData = null;
 
     // Initialize application
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setupKeyboardShortcuts();
+      setupDragAndDrop();
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const dateInput = document.getElementById('dailyAttendanceDate');
+      if (dateInput) dateInput.value = todayStr;
 
       if (authToken) {
         await verifySession();
@@ -695,6 +849,31 @@
           e.preventDefault();
           saveSpreadsheetMarks();
         }
+      });
+    }
+
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('excelDropZone');
+      if (!dropZone) return;
+
+      ['dragenter', 'dragover'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
+          e.preventDefault();
+          dropZone.classList.add('border-emerald-600', 'bg-emerald-50');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(name => {
+        dropZone.addEventListener(name, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('border-emerald-600', 'bg-emerald-50');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) parseExcelFile(file);
       });
     }
 
@@ -777,7 +956,7 @@
           <div class="text-[10px] text-slate-400">${esc(currentUser.email)}</div>
         </div>
         <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
-          ${esc(currentUser.firstName[0])}${esc(currentUser.lastName[0])}
+          ${esc(currentUser.firstName ? currentUser.firstName[0] : 'T')}${esc(currentUser.lastName ? currentUser.lastName[0] : 'F')}
         </div>
       `;
     }
@@ -811,7 +990,6 @@
         activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
       }
 
-      // Load specific tab data if needed
       if (tabId === 'circulars') loadCirculars();
       else if (tabId === 'tasksReminders') loadTasksAndReminders();
       else if (tabId === 'attendanceRegister') loadAttendanceMatrix();
@@ -906,73 +1084,109 @@
       const tbody = document.getElementById('spreadsheetBody');
       const max = details.examSubject.maxMarks;
       const pass = details.examSubject.passMarks;
+      const subName = details.examSubject.subjectName || 'Subject';
 
-      tbody.innerHTML = details.students.map((s, idx) => `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100" data-student-id="${esc(s.studentId)}">
-          <td class="py-2.5 px-4 text-center font-semibold text-slate-400">${idx + 1}</td>
-          <td class="py-2.5 px-4 font-mono font-medium text-slate-700">${esc(s.admissionNo)}</td>
-          <td class="py-2.5 px-4 text-center text-slate-500">${esc(s.rollNo ?? '-')}</td>
-          <td class="py-2.5 px-4 font-semibold text-slate-900">${esc(s.studentName)}</td>
-          <td class="py-2.5 px-4 text-slate-600">${esc(s.sectionName)}</td>
-          <td class="py-2.5 px-4 text-center font-bold text-slate-400">${max}</td>
-          <td class="py-2 px-4 text-center">
-            <input type="number" min="0" max="${max}"
-              value="${s.marksObtained !== null && !s.isAbsent ? s.marksObtained : ''}"
-              ${s.isAbsent ? 'disabled' : ''}
+      tbody.innerHTML = details.students.map((s, idx) => {
+        const val = s.marksObtained;
+        const isAbsent = s.isAbsent;
+        const pct = (val !== null && !isAbsent) ? ((val / max) * 100).toFixed(1) : '-';
+
+        return `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100" data-student-id="${esc(s.studentId)}" id="row-${idx}">
+          <td class="py-2.5 px-3 text-center font-semibold text-slate-400">${idx + 1}</td>
+          <td class="py-2.5 px-3 font-mono font-medium text-slate-700">${esc(s.admissionNo)}</td>
+          <td class="py-2.5 px-2 text-center text-slate-500 font-mono">${esc(s.rollNo ?? '-')}</td>
+          <td class="py-2.5 px-3 font-semibold text-slate-900">${esc(s.studentName)}</td>
+          <td class="py-2.5 px-3 text-slate-600 font-medium">${esc(subName)}</td>
+          <td class="py-2.5 px-3 text-center font-bold text-slate-400">${max}</td>
+          <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="${max}" step="any"
+              value="${val !== null && !isAbsent ? val : ''}"
+              ${isAbsent ? 'disabled' : ''}
               tabindex="${idx + 1}"
               data-idx="${idx}"
+              id="input-mark-${idx}"
               onkeydown="handleSpreadsheetKey(event, ${idx})"
               oninput="handleMarkInput(this, ${idx}, ${max}, ${pass})"
-              class="spreadsheet-input w-24 py-1.5 px-2 text-center text-xs font-bold rounded-lg border ${
-                s.marksObtained !== null && s.marksObtained < pass ? 'border-rose-300 text-rose-600 bg-rose-50' : 'border-slate-300 text-slate-800'
+              class="spreadsheet-input w-24 py-1.5 px-2 text-center text-xs font-bold rounded-lg border transition ${
+                val !== null && val < pass ? 'border-rose-300 text-rose-600 bg-rose-50' : 'border-slate-300 text-slate-800'
               }">
           </td>
-          <td class="py-2.5 px-4 text-center">
-            <input type="checkbox" ${s.isAbsent ? 'checked' : ''}
+          <td class="py-2.5 px-2 text-center">
+            <input type="checkbox" ${isAbsent ? 'checked' : ''}
+              id="chk-absent-${idx}"
               onchange="handleAbsentToggle(this, ${idx})"
               class="rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer">
           </td>
-          <td class="py-2.5 px-4 text-center">
-            <span id="grade-${idx}" class="font-bold text-xs ${s.passed ? 'text-emerald-600' : 'text-rose-600'}">
-              ${esc(s.grade)}
+          <td class="py-2.5 px-3 text-center font-bold text-indigo-600 text-xs" id="pct-${idx}">
+            ${pct !== '-' ? pct + '%' : '-'}
+          </td>
+          <td class="py-2.5 px-2 text-center font-bold text-xs" id="grade-${idx}">
+            <span class="${s.passed ? 'text-emerald-600' : 'text-rose-600'}">
+              ${isAbsent ? 'ABS' : esc(s.grade || '-')}
             </span>
           </td>
-          <td class="py-2.5 px-4 text-center">
+          <td class="py-2.5 px-3 text-center" id="status-cell-${idx}">
             <span id="status-${idx}" class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              s.isAbsent ? 'bg-slate-200 text-slate-700' : (s.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')
+              isAbsent ? 'bg-slate-200 text-slate-700' : (s.passed ? 'bg-emerald-100 text-emerald-800' : (val !== null ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'))
             }">
-              ${s.isAbsent ? 'ABSENT' : (s.marksObtained !== null ? (s.passed ? 'PASS' : 'FAIL') : 'PENDING')}
+              ${isAbsent ? 'ABSENT' : (val !== null ? (s.passed ? 'PASS' : 'FAIL') : 'PENDING')}
             </span>
           </td>
-          <td class="py-2 px-4">
+          <td class="py-2 px-3">
             <input type="text" value="${esc(s.remarks || '')}"
               onchange="handleRemarksChange(this, ${idx})"
               placeholder="Feedback..."
               class="w-full py-1.5 px-2.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:border-indigo-500">
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
+
+      validateAllMarks();
     }
 
     function handleSpreadsheetKey(e, currentIdx) {
       if (e.key === 'Enter' || e.key === 'ArrowDown') {
         e.preventDefault();
-        const nextInput = document.querySelector(`input[data-idx="${currentIdx + 1}"]`);
-        if (nextInput) nextInput.focus();
+        const nextInput = document.getElementById(`input-mark-${currentIdx + 1}`);
+        if (nextInput && !nextInput.disabled) {
+          nextInput.focus();
+          nextInput.select();
+        } else if (nextInput && nextInput.disabled) {
+          const skipNext = document.getElementById(`input-mark-${currentIdx + 2}`);
+          if (skipNext) skipNext.focus();
+        }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const prevInput = document.querySelector(`input[data-idx="${currentIdx - 1}"]`);
-        if (prevInput) prevInput.focus();
+        const prevInput = document.getElementById(`input-mark-${currentIdx - 1}`);
+        if (prevInput) {
+          prevInput.focus();
+          prevInput.select();
+        }
+      } else if (e.key === 'a' || e.key === 'A') {
+        // 'A' key shortcut to mark absent
+        if (e.target.value === '' || e.target.value === 'a' || e.target.value === 'A') {
+          e.preventDefault();
+          const chk = document.getElementById(`chk-absent-${currentIdx}`);
+          if (chk) {
+            chk.checked = !chk.checked;
+            handleAbsentToggle(chk, currentIdx);
+            // Move focus to next student
+            const nextInput = document.getElementById(`input-mark-${currentIdx + 1}`);
+            if (nextInput) nextInput.focus();
+          }
+        }
       }
     }
 
     function handleMarkInput(input, idx, max, pass) {
       let val = input.value === '' ? null : Number(input.value);
 
-      if (val !== null && val > max) {
-        input.classList.add('border-rose-500', 'bg-rose-100');
+      if (val !== null && (val > max || val < 0)) {
+        input.classList.add('has-error');
       } else {
-        input.classList.remove('border-rose-500', 'bg-rose-100');
+        input.classList.remove('has-error');
       }
 
       currentRoster[idx].marksObtained = val;
@@ -980,8 +1194,10 @@
       currentRoster[idx].passed = passed;
 
       let grade = 'F';
-      if (val !== null) {
+      let pctStr = '-';
+      if (val !== null && val >= 0 && val <= max) {
         const pct = (val / max) * 100;
+        pctStr = `${pct.toFixed(1)}%`;
         if (pct >= 90) grade = 'A+';
         else if (pct >= 80) grade = 'A';
         else if (pct >= 70) grade = 'B';
@@ -989,34 +1205,81 @@
         else if (pct >= 40) grade = 'D';
       }
 
-      document.getElementById(`grade-${idx}`).innerText = val !== null ? grade : '-';
+      document.getElementById(`pct-${idx}`).innerText = pctStr;
+      document.getElementById(`grade-${idx}`).innerHTML = `<span class="${passed ? 'text-emerald-600' : 'text-rose-600'}">${val !== null ? grade : '-'}</span>`;
       document.getElementById(`status-${idx}`).innerText = val !== null ? (passed ? 'PASS' : 'FAIL') : 'PENDING';
       document.getElementById(`status-${idx}`).className = `text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-        passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+        passed ? 'bg-emerald-100 text-emerald-800' : (val !== null ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')
       }`;
+
+      validateAllMarks();
     }
 
     function handleAbsentToggle(checkbox, idx) {
       currentRoster[idx].isAbsent = checkbox.checked;
-      const input = document.querySelector(`input[data-idx="${idx}"]`);
+      const input = document.getElementById(`input-mark-${idx}`);
+
       if (checkbox.checked) {
         input.disabled = true;
         input.value = '';
+        input.classList.remove('has-error');
         currentRoster[idx].marksObtained = null;
-        document.getElementById(`grade-${idx}`).innerText = 'ABSENT';
+        document.getElementById(`pct-${idx}`).innerText = '-';
+        document.getElementById(`grade-${idx}`).innerHTML = '<span class="text-slate-400">ABS</span>';
         document.getElementById(`status-${idx}`).innerText = 'ABSENT';
         document.getElementById(`status-${idx}`).className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
       } else {
         input.disabled = false;
         input.focus();
+        document.getElementById(`status-${idx}`).innerText = 'PENDING';
+        document.getElementById(`status-${idx}`).className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600';
       }
+
+      validateAllMarks();
     }
 
     function handleRemarksChange(input, idx) {
       currentRoster[idx].remarks = input.value;
     }
 
+    function validateAllMarks() {
+      const max = currentExamSubject ? currentExamSubject.maxMarks : 100;
+      let errorCount = 0;
+
+      currentRoster.forEach((s) => {
+        if (!s.isAbsent && s.marksObtained !== null && s.marksObtained !== undefined) {
+          if (s.marksObtained < 0 || s.marksObtained > max) {
+            errorCount++;
+          }
+        }
+      });
+
+      const banner = document.getElementById('validationWarningBanner');
+      const saveBtn = document.getElementById('saveMarksBtn');
+
+      if (errorCount > 0) {
+        banner.classList.remove('hidden');
+        document.getElementById('validationWarningText').innerText = 
+          `Validation Warning: ${errorCount} mark entry(s) exceed allowed bounds (0 - ${max}). Please correct before saving.`;
+        saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+        saveBtn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+        saveBtn.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i><span>Fix ${errorCount} Error(s)</span>`;
+      } else {
+        banner.classList.add('hidden');
+        saveBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+        saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        saveBtn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>Save Marks (Ctrl+S)</span>`;
+      }
+      lucide.createIcons();
+      return errorCount === 0;
+    }
+
     async function saveSpreadsheetMarks() {
+      if (!validateAllMarks()) {
+        alert('Cannot save: Some marks exceed the maximum allowed marks limit. Please correct them.');
+        return;
+      }
+
       const subjectId = document.getElementById('subjectSelector').value;
       if (!subjectId) return alert('Select subject first');
 
@@ -1029,26 +1292,25 @@
 
       const btn = document.getElementById('saveMarksBtn');
       btn.disabled = true;
-      btn.innerText = 'Saving...';
+      btn.innerText = 'Persisting Marks...';
 
       try {
         await apiRequest(`/exams/subjects/${subjectId}/marks`, {
           method: 'POST',
           body: JSON.stringify({ marks: marksPayload }),
         });
-        alert('✅ All student marks saved and verified successfully!');
+        alert('✅ All student marks saved and committed to database successfully!');
         loadExamSubjectDetails();
       } catch (err) {
         alert('❌ Failed to save marks: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>Save All Marks (Ctrl+S)</span>`;
-        lucide.createIcons();
+        validateAllMarks();
       }
     }
 
     // =========================================================================
-    // 2. EXCEL IMPORT & EXPORT
+    // 2. EXCEL IMPORT & MATCHING
     // =========================================================================
     async function downloadExcelTemplate() {
       const subjectId = document.getElementById('subjectSelector').value;
@@ -1082,10 +1344,12 @@
       }
     }
 
-    function handleExcelFileUpload(event) {
+    function handleExcelFileInput(event) {
       const file = event.target.files[0];
-      if (!file) return;
+      if (file) parseExcelFile(file);
+    }
 
+    function parseExcelFile(file) {
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
@@ -1094,53 +1358,119 @@
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-          if (jsonData.length < 2) return alert('Empty spreadsheet file');
+          if (jsonData.length < 2) return alert('File is empty or contains no student data rows');
 
           const headers = jsonData[0];
-          const rows = jsonData.slice(1);
+          const rawRows = jsonData.slice(1);
 
-          // Map columns to structured object
-          parsedImportRows = rows.map((r) => ({
-            admissionNo: r[0],
-            rollNo: r[1],
-            studentName: r[2],
-            sectionName: r[3],
-            maxMarks: r[4],
-            passMarks: r[5],
-            marksObtained: r[6],
-            isAbsent: r[7],
-            remarks: r[8],
-          })).filter((r) => r.admissionNo);
+          // Student matching against current roster
+          const maxMarks = currentExamSubject ? currentExamSubject.maxMarks : 100;
+          let matchedValidCount = 0;
+          let errorCount = 0;
 
-          showExcelPreview(headers, parsedImportRows);
+          parsedImportRows = rawRows.map((r, rowIdx) => {
+            const adm = String(r[0] || '').trim().toUpperCase();
+            const roll = String(r[1] || '').trim();
+            const rawName = String(r[2] || '').trim();
+            const rawMarks = r[6];
+            const rawAbsent = String(r[7] || '').trim().toUpperCase();
+            const isAbsent = rawAbsent === 'Y' || rawAbsent === 'YES' || rawAbsent === 'TRUE' || rawAbsent === '1';
+            const remarks = String(r[8] || '').trim();
+
+            // Match against roster
+            const matchedStudent = currentRoster.find(s => 
+              s.admissionNo.trim().toUpperCase() === adm || (roll && String(s.rollNo || '').trim() === roll)
+            );
+
+            let error = null;
+            let numericMark = null;
+
+            if (!adm && !roll) {
+              error = 'Missing Admission Number';
+            } else if (!matchedStudent) {
+              error = `Student "${adm}" not found in this class roster`;
+            } else if (!isAbsent) {
+              if (rawMarks === undefined || rawMarks === null || rawMarks === '') {
+                error = 'No marks provided';
+              } else {
+                numericMark = Number(rawMarks);
+                if (isNaN(numericMark)) {
+                  error = `Non-numeric mark value "${rawMarks}"`;
+                } else if (numericMark < 0 || numericMark > maxMarks) {
+                  error = `Mark ${numericMark} exceeds range (0 - ${maxMarks})`;
+                }
+              }
+            }
+
+            if (error) errorCount++;
+            else matchedValidCount++;
+
+            return {
+              rowNumber: rowIdx + 2,
+              admissionNo: adm || (matchedStudent ? matchedStudent.admissionNo : ''),
+              rollNo: roll || (matchedStudent ? matchedStudent.rollNo : ''),
+              studentName: matchedStudent ? matchedStudent.studentName : (rawName || 'Unknown'),
+              studentId: matchedStudent ? matchedStudent.studentId : null,
+              marksObtained: numericMark,
+              isAbsent,
+              remarks,
+              matched: !!matchedStudent,
+              error,
+              isValid: !error,
+            };
+          }).filter(r => r.admissionNo);
+
+          showExcelPreview(matchedValidCount, errorCount);
         } catch (err) {
-          alert('Failed to parse Excel file: ' + err.message);
+          alert('Failed to parse file: ' + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    function showExcelPreview(headers, rows) {
+    function showExcelPreview(validCount, errorCount) {
       const container = document.getElementById('excelPreviewContainer');
       container.classList.remove('hidden');
 
-      document.getElementById('excelFileInfo').innerText = `${rows.length} student records extracted from file`;
+      document.getElementById('excelFileInfo').innerText = `${parsedImportRows.length} total rows parsed from uploaded file`;
+      const badge = document.getElementById('importStatsBadge');
+      if (errorCount === 0) {
+        badge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800';
+        badge.innerText = `✅ All ${validCount} records verified & matched`;
+      } else {
+        badge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800';
+        badge.innerText = `⚠️ ${validCount} valid, ${errorCount} flagged with errors`;
+      }
+
       document.getElementById('previewTableHead').innerHTML = `
         <tr>
+          <th class="py-2.5 px-3">Row</th>
           <th class="py-2.5 px-3">Admission No</th>
-          <th class="py-2.5 px-3">Student Name</th>
+          <th class="py-2.5 px-3">Student Match</th>
           <th class="py-2.5 px-3 text-center">Marks Entered</th>
           <th class="py-2.5 px-3 text-center">Absent?</th>
+          <th class="py-2.5 px-3">Validation Status</th>
           <th class="py-2.5 px-3">Remarks</th>
         </tr>
       `;
 
-      document.getElementById('previewTableBody').innerHTML = rows.map((r) => `
-        <tr class="hover:bg-slate-50 border-b border-slate-100">
+      document.getElementById('previewTableBody').innerHTML = parsedImportRows.map((r) => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100 ${!r.isValid ? 'bg-rose-50/50' : ''}">
+          <td class="py-2 px-3 text-slate-400 font-mono text-[11px]">${r.rowNumber}</td>
           <td class="py-2 px-3 font-mono font-bold text-slate-800">${esc(r.admissionNo)}</td>
-          <td class="py-2 px-3 font-semibold text-slate-700">${esc(r.studentName || '-')}</td>
-          <td class="py-2 px-3 text-center font-bold text-indigo-600">${r.marksObtained !== undefined ? esc(r.marksObtained) : '-'}</td>
-          <td class="py-2 px-3 text-center text-slate-500">${esc(r.isAbsent || 'N')}</td>
+          <td class="py-2 px-3 font-semibold text-slate-700">
+            ${r.matched ? `<span class="text-emerald-700">✅ ${esc(r.studentName)}</span>` : `<span class="text-rose-600">❌ Unmatched</span>`}
+          </td>
+          <td class="py-2 px-3 text-center font-bold ${r.error && r.error.includes('range') ? 'text-rose-600' : 'text-indigo-600'}">
+            ${r.marksObtained !== null && r.marksObtained !== undefined ? esc(r.marksObtained) : (r.isAbsent ? '-' : 'Empty')}
+          </td>
+          <td class="py-2 px-3 text-center text-slate-500 font-semibold">${r.isAbsent ? 'YES' : 'NO'}</td>
+          <td class="py-2 px-3 text-xs">
+            ${r.isValid ? 
+              `<span class="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Ready to Import</span>` :
+              `<span class="text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">⚠️ ${esc(r.error)}</span>`
+            }
+          </td>
           <td class="py-2 px-3 text-slate-500 text-xs">${esc(r.remarks || '')}</td>
         </tr>
       `).join('');
@@ -1151,6 +1481,17 @@
       if (!subjectId) return alert('Select subject first');
       if (parsedImportRows.length === 0) return alert('No rows to import');
 
+      const validRows = parsedImportRows.filter(r => r.isValid);
+      if (validRows.length === 0) {
+        return alert('Cannot import: All rows have validation errors. Please check the file.');
+      }
+
+      const invalidCount = parsedImportRows.length - validRows.length;
+      if (invalidCount > 0) {
+        const proceed = confirm(`⚠️ ${invalidCount} rows have errors and will be skipped. Proceed with importing ${validRows.length} valid records?`);
+        if (!proceed) return;
+      }
+
       const btn = document.getElementById('commitImportBtn');
       btn.disabled = true;
       btn.innerText = 'Importing to Database...';
@@ -1158,10 +1499,10 @@
       try {
         const res = await apiRequest(`/exams/subjects/${subjectId}/import`, {
           method: 'POST',
-          body: JSON.stringify({ rows: parsedImportRows }),
+          body: JSON.stringify({ rows: validRows }),
         });
 
-        alert(`🎉 ${res.message}\nTotal Valid Saved: ${res.successCount}\nErrors: ${res.errorCount}`);
+        alert(`🎉 Transactional Import Complete!\n• Successfully Committed: ${res.successCount}\n• Errors / Skipped: ${res.errorCount}`);
         document.getElementById('excelPreviewContainer').classList.add('hidden');
         switchTab('marksGrid');
         loadExamSubjectDetails();
@@ -1174,10 +1515,8 @@
     }
 
     // =========================================================================
-    // 3. CONSOLIDATED ATTENDANCE MATRIX & CONDONATION
+    // 3. ATTENDANCE WORKSTATION & DEFECT CONDONATION
     // =========================================================================
-    let currentMatrixData = null;
-
     async function loadAttendanceMatrix() {
       try {
         const thead = document.getElementById('matrixThead');
@@ -1200,7 +1539,10 @@
             <th class="py-3 px-3 w-10 text-center">#</th>
             <th class="py-3 px-3 w-28">Admission No</th>
             <th class="py-3 px-3">Student Name</th>
-            ${sessions.map(s => `<th class="py-3 px-1 text-center w-8 text-[10px]">${esc(s.date ? s.date.substring(5) : s)}</th>`).join('')}
+            ${sessions.map(s => {
+              const d = s.date ? s.date.substring(5) : s;
+              return `<th class="py-3 px-1 text-center w-8 text-[10px] font-mono cursor-pointer hover:bg-slate-200" title="Click to inspect">${esc(d)}</th>`;
+            }).join('')}
             <th class="py-3 px-3 text-center">Total Attended</th>
             <th class="py-3 px-3 text-center">Attendance %</th>
             <th class="py-3 px-3 text-center">75% Linways Status</th>
@@ -1208,10 +1550,10 @@
         `;
 
         tbody.innerHTML = data.students.map((s, idx) => {
-          const isDefaulter = s.isCondonationRisk;
+          const isDefaulter = s.isCondonationRisk || (s.attendancePercentage < 75);
 
           return `
-            <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${isDefaulter ? 'bg-rose-50/40' : ''}">
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${isDefaulter ? 'bg-rose-50/50' : ''}">
               <td class="py-2 px-3 text-center text-slate-400 font-semibold">${idx + 1}</td>
               <td class="py-2 px-3 font-mono font-medium text-slate-700">${esc(s.admissionNo)}</td>
               <td class="py-2 px-3 font-semibold text-slate-900">${esc(s.fullName)}</td>
@@ -1220,17 +1562,23 @@
                 const status = (s.dailyStatus && s.dailyStatus[dateKey]) || '-';
                 const isAbsent = status === 'ABSENT';
                 const isPresent = status === 'PRESENT';
+                const isLate = status === 'LATE';
+                const isHalf = status === 'HALF_DAY';
+                const displayChar = isPresent ? 'P' : (isAbsent ? 'A' : (isLate ? 'L' : (isHalf ? 'HD' : '-')));
+
                 return `
-                  <td class="py-2 px-1 text-center font-bold text-[10px] ${isAbsent ? 'text-rose-600 bg-rose-100/60' : (isPresent ? 'text-emerald-600' : 'text-amber-600')}">
-                    ${status === 'PRESENT' ? 'P' : (status === 'ABSENT' ? 'A' : (status === 'HALF_DAY' ? 'HD' : status))}
+                  <td class="py-2 px-1 text-center font-bold text-[10px] select-none cursor-pointer hover:opacity-80 ${
+                    isAbsent ? 'text-rose-600 bg-rose-100' : (isPresent ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50')
+                  }" onclick="toggleCellAttendance('${esc(s.studentId || s.id)}', '${esc(dateKey)}', '${status}')" title="Click to toggle status">
+                    ${displayChar}
                   </td>
                 `;
               }).join('')}
               <td class="py-2 px-3 text-center font-bold text-slate-800">${esc(s.attended)} / ${esc(s.totalConducted)}</td>
               <td class="py-2 px-3 text-center font-bold ${isDefaulter ? 'text-rose-600' : 'text-emerald-600'}">${s.attendancePercentage}%</td>
               <td class="py-2 px-3 text-center">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDefaulter ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'}">
-                  ${isDefaulter ? 'CONDONATION AT RISK' : 'SATISFACTORY'}
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDefaulter ? 'bg-rose-600 text-white animate-pulse' : 'bg-emerald-100 text-emerald-800'}">
+                  ${isDefaulter ? 'CONDONATION AT RISK (<75%)' : 'SATISFACTORY'}
                 </span>
               </td>
             </tr>
@@ -1242,12 +1590,108 @@
       }
     }
 
+    async function toggleCellAttendance(studentId, dateKey, currentStatus) {
+      const nextStatusMap = {
+        'PRESENT': 'ABSENT',
+        'ABSENT': 'LATE',
+        'LATE': 'HALF_DAY',
+        'HALF_DAY': 'PRESENT',
+        '-': 'PRESENT'
+      };
+      const nextStatus = nextStatusMap[currentStatus] || 'PRESENT';
+
+      try {
+        const sectionId = (currentMatrixData && currentMatrixData.sectionId) || 'section-1';
+        await apiRequest('/attendance/sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            sectionId,
+            date: dateKey,
+            records: [{ studentId, status: nextStatus, remarks: 'Updated via Desktop Attendance Workstation' }]
+          })
+        });
+        loadAttendanceMatrix();
+      } catch (e) {
+        alert('Failed to update cell attendance: ' + e.message);
+      }
+    }
+
+    function openDailyAttendanceModal() {
+      if (!currentMatrixData || !currentMatrixData.students) {
+        return alert('Loading attendance matrix, please wait...');
+      }
+      document.getElementById('dailyAttendanceModal').classList.remove('hidden');
+
+      const tbody = document.getElementById('dailyModalTbody');
+      tbody.innerHTML = currentMatrixData.students.map((s, idx) => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <td class="py-2 px-3 font-mono font-semibold text-slate-700">${esc(s.admissionNo)}</td>
+          <td class="py-2 px-3 font-semibold text-slate-900">${esc(s.fullName)}</td>
+          <td class="py-2 px-3 text-center">
+            <select id="modal-status-${idx}" data-student-id="${esc(s.studentId || s.id)}"
+              class="text-xs border border-slate-300 rounded px-2 py-1 font-bold text-slate-700">
+              <option value="PRESENT" class="text-emerald-600 font-bold">PRESENT</option>
+              <option value="ABSENT" class="text-rose-600 font-bold">ABSENT</option>
+              <option value="LATE" class="text-amber-600 font-bold">LATE</option>
+              <option value="HALF_DAY" class="text-sky-600 font-bold">HALF DAY</option>
+            </select>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function closeDailyAttendanceModal() {
+      document.getElementById('dailyAttendanceModal').classList.add('hidden');
+    }
+
+    function markAllModalStudents(status) {
+      if (!currentMatrixData) return;
+      currentMatrixData.students.forEach((_, idx) => {
+        const el = document.getElementById(`modal-status-${idx}`);
+        if (el) el.value = status;
+      });
+    }
+
+    async function saveDailyAttendanceSession() {
+      const date = document.getElementById('dailyAttendanceDate').value;
+      if (!date) return alert('Please select a session date');
+
+      const records = currentMatrixData.students.map((s, idx) => {
+        const el = document.getElementById(`modal-status-${idx}`);
+        return {
+          studentId: s.studentId || s.id,
+          status: el ? el.value : 'PRESENT',
+          remarks: 'Daily section register commit'
+        };
+      });
+
+      const sectionId = currentMatrixData.sectionId || 'section-1';
+      const btn = document.getElementById('saveDailySessionBtn');
+      btn.disabled = true;
+      btn.innerText = 'Saving session...';
+
+      try {
+        await apiRequest('/attendance/sessions', {
+          method: 'POST',
+          body: JSON.stringify({ sectionId, date, records }),
+        });
+        alert(`✅ Attendance session for ${date} committed to institutional database!`);
+        closeDailyAttendanceModal();
+        loadAttendanceMatrix();
+      } catch (e) {
+        alert('Failed to save attendance session: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Commit Attendance Session';
+      }
+    }
+
     function exportCondonationList() {
       if (!currentMatrixData || !currentMatrixData.students) {
         alert('Attendance data not loaded yet.');
         return;
       }
-      const defaulters = currentMatrixData.students.filter(s => s.isCondonationRisk);
+      const defaulters = currentMatrixData.students.filter(s => s.isCondonationRisk || s.attendancePercentage < 75);
       const rows = defaulters.length > 0 ? defaulters : currentMatrixData.students;
       const exportData = rows.map(s => ({
         'Admission No': s.admissionNo,
@@ -1255,13 +1699,43 @@
         'Sessions Conducted': s.totalConducted,
         'Sessions Attended': s.attended,
         'Attendance %': `${s.attendancePercentage}%`,
-        'Status': s.isCondonationRisk ? 'CONDONATION AT RISK (<75%)' : 'SATISFACTORY',
+        'Deficit Sessions to 75%': Math.max(0, Math.ceil((0.75 * s.totalConducted) - s.attended)),
+        'Status': (s.isCondonationRisk || s.attendancePercentage < 75) ? 'CONDONATION AT RISK (<75%)' : 'SATISFACTORY',
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Condonation Report');
-      XLSX.writeFile(wb, `Attendance_Condonation_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, 'Defaulters Report');
+      XLSX.writeFile(wb, `Attendance_Defaulters_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    async function issueAttendanceWarnings() {
+      if (!currentMatrixData || !currentMatrixData.students) return alert('Data not loaded');
+      const defaulters = currentMatrixData.students.filter(s => s.isCondonationRisk || s.attendancePercentage < 75);
+
+      if (defaulters.length === 0) {
+        return alert('Excellent! No students currently fall below the 75% condonation threshold.');
+      }
+
+      const proceed = confirm(`⚠️ Found ${defaulters.length} student(s) below the statutory 75% condonation threshold.\n\nIssue official attendance advisory circulars and parent notifications?`);
+      if (!proceed) return;
+
+      try {
+        const names = defaulters.map(d => `${d.fullName} (${d.attendancePercentage}%)`).join(', ');
+        await apiRequest('/circulars', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: 'Urgent Attendance Condonation Advisory (< 75%)',
+            content: `Official notice to parents: The following student(s) have fallen below the mandatory 75% attendance threshold: ${names}. Regular attendance is required for examination eligibility.`,
+            targetAudience: 'ALL_PARENTS',
+            priority: 'URGENT',
+            requiresAck: true,
+          })
+        });
+        alert(`✅ Official condonation warning circular published and parent alerts dispatched for ${defaulters.length} student(s)!`);
+      } catch (err) {
+        alert('Failed to issue warnings: ' + err.message);
+      }
     }
 
     async function triggerAutomatedScan() {
@@ -1275,14 +1749,310 @@
     }
 
     // =========================================================================
-    // 4. CIRCULARS
+    // 4. TEACHING DIARY & SYLLABUS
+    // =========================================================================
+    async function loadObeData() {
+      try {
+        const [plansRes, diariesRes] = await Promise.all([
+          apiRequest('/academics/lesson-plans'),
+          apiRequest('/academics/teaching-diaries'),
+        ]);
+
+        const plans = (plansRes.data && plansRes.data.plans) || plansRes.plans || (Array.isArray(plansRes.data) ? plansRes.data : (Array.isArray(plansRes) ? plansRes : []));
+        const unitContainer = document.getElementById('unitProgressList');
+
+        let totalPlanned = 0;
+        let totalConducted = 0;
+
+        if (!plans || plans.length === 0) {
+          unitContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No unit lesson plans recorded yet.</p>';
+        } else {
+          unitContainer.innerHTML = plans.map(p => {
+            const planHrs = p.plannedHours || 4;
+            const condHrs = p.conductedHours || 0;
+            totalPlanned += planHrs;
+            totalConducted += condHrs;
+            const pct = Math.min(100, Math.round((condHrs / planHrs) * 100));
+
+            return `
+            <div class="space-y-1.5 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+              <div class="flex justify-between text-xs font-semibold text-slate-800">
+                <span>Unit ${esc(p.unitNumber || 1)}: ${esc(p.unitTitle || p.topic || 'Syllabus Module')}</span>
+                <span>${pct}% (${condHrs}/${planHrs} hrs)</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="${pct >= 100 ? 'bg-emerald-500' : (pct >= 50 ? 'bg-indigo-600' : 'bg-amber-500')} h-2 rounded-full transition-all" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+          }).join('');
+        }
+
+        const overallPct = totalPlanned > 0 ? Math.min(100, Math.round((totalConducted / totalPlanned) * 100)) : 0;
+        document.getElementById('overallSyllabusPercent').innerText = `${overallPct}% Conducted (${totalConducted}/${totalPlanned} hours)`;
+        document.getElementById('overallSyllabusBar').style.width = `${overallPct}%`;
+
+        const diaries = diariesRes.data || (Array.isArray(diariesRes) ? diariesRes : []);
+        const diaryContainer = document.getElementById('diaryLogsList');
+
+        if (!diaries || diaries.length === 0) {
+          diaryContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No diary entries logged yet.</p>';
+        } else {
+          diaryContainer.innerHTML = diaries.map(d => `
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                <span>Period ${esc(d.periodNumber)}: ${esc(d.topicTaught || d.topicCovered || 'Lesson Session')}</span>
+                <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px] font-semibold">${esc(d.methodology || 'LECTURE')}</span>
+              </div>
+              <p class="text-xs text-slate-600">${esc(d.remarks || 'No remarks recorded.')}</p>
+              <div class="text-[10px] text-slate-400">Lesson on ${new Date(d.date || Date.now()).toLocaleDateString()}</div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load OBE data', err);
+      }
+    }
+
+    function openTeachingDiaryModal() {
+      document.getElementById('diaryModal').classList.remove('hidden');
+    }
+    function closeTeachingDiaryModal() {
+      document.getElementById('diaryModal').classList.add('hidden');
+    }
+
+    async function handleSaveDiary(e) {
+      e.preventDefault();
+      const periodNumber = parseInt(document.getElementById('diaryPeriod').value, 10) || 1;
+      const methodology = document.getElementById('diaryMethod').value;
+      const topicTaught = document.getElementById('diaryTopic').value.trim();
+      const remarks = document.getElementById('diaryRemarks').value.trim();
+
+      try {
+        await apiRequest('/academics/teaching-diaries', {
+          method: 'POST',
+          body: JSON.stringify({
+            periodNumber,
+            methodology,
+            topicTaught,
+            remarks,
+          }),
+        });
+
+        alert('✅ Teaching diary entry saved to Linways academic course registry!');
+        document.getElementById('diaryTopic').value = '';
+        document.getElementById('diaryRemarks').value = '';
+        closeTeachingDiaryModal();
+        loadObeData();
+      } catch (err) {
+        alert('Failed to save diary entry: ' + err.message);
+      }
+    }
+
+    // =========================================================================
+    // 5. BROADSHEET STUDIO & PRINT
+    // =========================================================================
+    async function loadBroadsheet() {
+      if (!examsList || !examsList.length) return;
+      const selector = document.getElementById('broadsheetExamSelector');
+      const examId = (selector && selector.value) ? selector.value : examsList[0].id;
+      const currentExam = examsList.find(e => e.id === examId) || examsList[0];
+      const classId = currentExam.subjects && currentExam.subjects[0]?.classId;
+      
+      const thead = document.getElementById('broadsheetThead');
+      const tbody = document.getElementById('broadsheetTbody');
+
+      document.getElementById('printExamTitle').innerText = `${currentExam.name} - Consolidated Broadsheet`;
+      document.getElementById('printDateInfo').innerText = `Generated: ${new Date().toLocaleDateString()}`;
+
+      if (!classId) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No subjects or classes configured for this examination.</td></tr>';
+        return;
+      }
+
+      try {
+        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">Loading broadsheet...</td></tr>';
+        const data = await apiRequest(`/exams/${examId}/classes/${classId}/broadsheet`);
+        currentBroadsheetData = data;
+
+        if (!data.broadsheet || data.broadsheet.length === 0) {
+          thead.innerHTML = '';
+          tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No marks entered for this class yet.</td></tr>';
+          return;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th class="py-3 px-3 text-center">Rank</th>
+            <th class="py-3 px-3">Admission No</th>
+            <th class="py-3 px-2 text-center">Roll No</th>
+            <th class="py-3 px-3">Student Name</th>
+            ${data.subjects.map(s => `<th class="py-3 px-3 text-center">${esc(s.name)} (${esc(s.maxMarks)})</th>`).join('')}
+            <th class="py-3 px-3 text-center font-bold">Total</th>
+            <th class="py-3 px-3 text-center font-bold">Percentage</th>
+            <th class="py-3 px-3 text-center">Grade</th>
+            <th class="py-3 px-3 text-center">Result</th>
+          </tr>
+        `;
+
+        tbody.innerHTML = data.broadsheet.map((r) => `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${esc(r.rank)}</td>
+            <td class="py-2.5 px-3 font-mono font-medium text-slate-700">${esc(r.admissionNo)}</td>
+            <td class="py-2.5 px-2 text-center font-mono text-slate-500">${esc(r.rollNo || '-')}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-900">${esc(r.studentName)}</td>
+            ${data.subjects.map(s => {
+              const score = r.subjectMarks[s.name]?.marksObtained ?? '-';
+              return `<td class="py-2.5 px-3 text-center font-bold text-slate-800">${score}</td>`;
+            }).join('')}
+            <td class="py-2.5 px-3 text-center font-bold text-slate-900">${esc(r.totalObtained)} / ${esc(r.maxTotalPossible)}</td>
+            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${esc(r.percentage)}%</td>
+            <td class="py-2.5 px-3 text-center font-bold">${esc(r.grade)}</td>
+            <td class="py-2.5 px-3 text-center">
+              <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full ${r.result === 'PASS' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${esc(r.result)}
+              </span>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('Failed to load broadsheet', err);
+        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-rose-500">Failed to load broadsheet: ${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    function exportBroadsheetToExcel() {
+      if (!currentBroadsheetData || !currentBroadsheetData.broadsheet) {
+        return alert('No broadsheet data loaded to export');
+      }
+
+      const rows = currentBroadsheetData.broadsheet.map(r => {
+        const row = {
+          'Rank': r.rank,
+          'Admission No': r.admissionNo,
+          'Roll No': r.rollNo || '',
+          'Student Name': r.studentName,
+        };
+        currentBroadsheetData.subjects.forEach(s => {
+          row[`${s.name} (${s.maxMarks})`] = r.subjectMarks[s.name]?.marksObtained ?? '-';
+        });
+        row['Total Obtained'] = r.totalObtained;
+        row['Max Total'] = r.maxTotalPossible;
+        row['Percentage'] = `${r.percentage}%`;
+        row['Grade'] = r.grade;
+        row['Result'] = r.result;
+        return row;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Broadsheet');
+      XLSX.writeFile(wb, `Broadsheet_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // =========================================================================
+    // 6. PARENT FEEDBACK CENTER
+    // =========================================================================
+    async function loadFeedbacks() {
+      try {
+        allFeedbacks = await apiRequest('/feedback');
+        renderFilteredFeedbacks();
+      } catch (err) {
+        console.error('Failed to load feedbacks', err);
+      }
+    }
+
+    function renderFilteredFeedbacks() {
+      const catFilter = document.getElementById('feedbackCategoryFilter').value;
+      const statusFilter = document.getElementById('feedbackStatusFilter').value;
+
+      const filtered = allFeedbacks.filter(f => {
+        const matchesCat = catFilter === 'ALL' || f.category === catFilter;
+        const matchesStatus = statusFilter === 'ALL' || f.status === statusFilter;
+        return matchesCat && matchesStatus;
+      });
+
+      const container = document.getElementById('feedbackListContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 p-8 text-center bg-white rounded-2xl border border-slate-200">No feedbacks match the active filter criteria.</p>';
+        return;
+      }
+
+      container.innerHTML = filtered.map((f) => `
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-bold px-2.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
+                ${esc(f.category)}
+              </span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded ${
+                f.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' : (f.status === 'UNDER_REVIEW' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')
+              }">${esc(f.status)}</span>
+              ${f.rating ? `<span class="text-xs text-amber-500 font-bold">★ ${esc(f.rating)}/5</span>` : ''}
+              ${f.submitterRole ? `<span class="text-[10px] text-slate-400 font-medium">From: ${esc(f.submitterRole)}</span>` : ''}
+            </div>
+            <span class="text-xs text-slate-400">${new Date(f.createdAt).toLocaleDateString()}</span>
+          </div>
+
+          <h4 class="font-bold text-slate-900 text-sm">${esc(f.title)}</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">${esc(f.content)}</p>
+
+          ${f.response ? `
+            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-900 space-y-1">
+              <div class="font-bold text-[11px] text-emerald-800 flex items-center justify-between">
+                <span>Official Resolution Response:</span>
+                <span class="text-[10px] text-emerald-600">${new Date(f.respondedAt || Date.now()).toLocaleDateString()}</span>
+              </div>
+              <div>${esc(f.response)}</div>
+            </div>
+          ` : `
+            <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              <input type="text" id="resp-${esc(f.id)}" placeholder="Write verified response to parent..."
+                class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-indigo-500">
+              <select id="status-pick-${esc(f.id)}" class="text-xs border border-slate-300 rounded-xl px-2.5 py-2 font-medium bg-slate-50 text-slate-700">
+                <option value="RESOLVED">Resolve & Close</option>
+                <option value="UNDER_REVIEW">Mark Under Review</option>
+              </select>
+              <button onclick="submitFeedbackReply('${f.id}')"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl font-medium transition shadow-sm whitespace-nowrap">
+                Submit Response
+              </button>
+            </div>
+          `}
+        </div>
+      `).join('');
+    }
+
+    async function submitFeedbackReply(feedbackId) {
+      const input = document.getElementById(`resp-${feedbackId}`);
+      const statusPick = document.getElementById(`status-pick-${feedbackId}`);
+      const text = input ? input.value.trim() : '';
+      const status = statusPick ? statusPick.value : 'RESOLVED';
+      if (!text) return alert('Please enter response text');
+
+      try {
+        await apiRequest(`/feedback/${feedbackId}/respond`, {
+          method: 'POST',
+          body: JSON.stringify({ response: text, status }),
+        });
+        alert('✅ Official response submitted to parent successfully!');
+        loadFeedbacks();
+      } catch (err) {
+        alert('Failed to respond: ' + err.message);
+      }
+    }
+
+    // =========================================================================
+    // 7. CIRCULARS & NOTICES
     // =========================================================================
     async function loadCirculars() {
       try {
         const list = await apiRequest('/circulars');
         const container = document.getElementById('circularsList');
 
-        if (list.length === 0) {
+        if (!list || list.length === 0) {
           container.innerHTML = '<p class="text-xs text-slate-400 p-4">No circulars issued.</p>';
           return;
         }
@@ -1361,92 +2131,7 @@
     }
 
     // =========================================================================
-    // 5. OBE SYLLABUS & TEACHING DIARY
-    // =========================================================================
-    async function loadObeData() {
-      try {
-        const [plansRes, diariesRes] = await Promise.all([
-          apiRequest('/academics/lesson-plans'),
-          apiRequest('/academics/teaching-diaries'),
-        ]);
-
-        const plans = (plansRes.data && plansRes.data.plans) || plansRes.plans || (Array.isArray(plansRes.data) ? plansRes.data : []);
-        const unitContainer = document.getElementById('unitProgressList');
-
-        if (!plans || plans.length === 0) {
-          unitContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No unit lesson plans recorded yet.</p>';
-        } else {
-          unitContainer.innerHTML = plans.map(p => `
-            <div class="space-y-1.5">
-              <div class="flex justify-between text-xs font-semibold text-slate-800">
-                <span>Unit ${esc(p.unitNumber)}: ${esc(p.unitTitle || p.topic || 'Syllabus Module')}</span>
-                <span>${esc(p.coveragePercent || 0)}% (${esc(p.conductedHours || 0)}/${esc(p.plannedHours || 0)} hrs)</span>
-              </div>
-              <div class="w-full bg-slate-100 rounded-full h-2">
-                <div class="${(p.coveragePercent || 0) >= 100 ? 'bg-emerald-500' : ((p.coveragePercent || 0) >= 50 ? 'bg-indigo-600' : 'bg-amber-500')} h-2 rounded-full" style="width: ${Math.min(100, p.coveragePercent || 0)}%"></div>
-              </div>
-            </div>
-          `).join('');
-        }
-
-        const diaries = diariesRes.data || (Array.isArray(diariesRes) ? diariesRes : []);
-        const diaryContainer = document.getElementById('diaryLogsList');
-
-        if (!diaries || diaries.length === 0) {
-          diaryContainer.innerHTML = '<p class="text-xs text-slate-400 p-2">No diary entries logged yet.</p>';
-        } else {
-          diaryContainer.innerHTML = diaries.map(d => `
-            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-              <div class="flex items-center justify-between text-xs font-bold text-slate-800">
-                <span>Period ${esc(d.periodNumber)}: ${esc(d.topicTaught || 'Lesson Session')}</span>
-                <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px] font-semibold">${esc(d.methodology || 'LECTURE')}</span>
-              </div>
-              <p class="text-xs text-slate-600">${esc(d.remarks || 'No notes logged.')}</p>
-              <div class="text-[10px] text-slate-400">Taught on ${new Date(d.date).toLocaleDateString()} • ${esc(d.className || '')} ${esc(d.subjectName || '')}</div>
-            </div>
-          `).join('');
-        }
-      } catch (err) {
-        console.error('Failed to load OBE data', err);
-      }
-    }
-
-    function openTeachingDiaryModal() {
-      document.getElementById('diaryModal').classList.remove('hidden');
-    }
-    function closeTeachingDiaryModal() {
-      document.getElementById('diaryModal').classList.add('hidden');
-    }
-    async function handleSaveDiary(e) {
-      e.preventDefault();
-      const periodNumber = parseInt(document.getElementById('diaryPeriod').value, 10) || 1;
-      const methodology = document.getElementById('diaryMethod').value;
-      const topicTaught = document.getElementById('diaryTopic').value.trim();
-      const remarks = document.getElementById('diaryRemarks').value.trim();
-
-      try {
-        await apiRequest('/academics/teaching-diaries', {
-          method: 'POST',
-          body: JSON.stringify({
-            periodNumber,
-            methodology,
-            topicTaught,
-            remarks,
-          }),
-        });
-
-        alert('✅ Teaching diary entry saved to Linways academic course registry!');
-        document.getElementById('diaryTopic').value = '';
-        document.getElementById('diaryRemarks').value = '';
-        closeTeachingDiaryModal();
-        loadObeData();
-      } catch (err) {
-        alert('Failed to save diary entry: ' + err.message);
-      }
-    }
-
-    // =========================================================================
-    // 6. TASKS & REMINDERS
+    // 8. TASKS & REMINDERS
     // =========================================================================
     async function loadTasksAndReminders() {
       try {
@@ -1455,7 +2140,6 @@
           apiRequest('/reminders'),
         ]);
 
-        // Tasks
         const tasksContainer = document.getElementById('tasksList');
         const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
         document.getElementById('taskStatsPill').innerText = `${pendingCount} Pending`;
@@ -1479,7 +2163,6 @@
           </div>
         `).join('');
 
-        // Reminders
         const remindersContainer = document.getElementById('remindersList');
         remindersContainer.innerHTML = reminders.map((r) => `
           <div class="p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-300 transition space-y-1">
@@ -1506,145 +2189,6 @@
         loadTasksAndReminders();
       } catch (err) {
         alert('Failed to update task: ' + err.message);
-      }
-    }
-
-    // =========================================================================
-    // 7. BROADSHEET
-    // =========================================================================
-    async function loadBroadsheet() {
-      if (!examsList || !examsList.length) return;
-      const selector = document.getElementById('broadsheetExamSelector');
-      const examId = (selector && selector.value) ? selector.value : examsList[0].id;
-      const currentExam = examsList.find(e => e.id === examId) || examsList[0];
-      const classId = currentExam.subjects && currentExam.subjects[0]?.classId;
-      
-      const thead = document.getElementById('broadsheetThead');
-      const tbody = document.getElementById('broadsheetTbody');
-
-      if (!classId) {
-        thead.innerHTML = '';
-        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No subjects or classes configured for this examination.</td></tr>';
-        return;
-      }
-
-      try {
-        tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">Loading broadsheet...</td></tr>';
-        const data = await apiRequest(`/exams/${examId}/classes/${classId}/broadsheet`);
-
-        if (!data.broadsheet || data.broadsheet.length === 0) {
-          thead.innerHTML = '';
-          tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400">No marks entered for this class yet.</td></tr>';
-          return;
-        }
-
-        thead.innerHTML = `
-          <tr>
-            <th class="py-3 px-3 text-center">Rank</th>
-            <th class="py-3 px-3">Admission No</th>
-            <th class="py-3 px-3">Student Name</th>
-            ${data.subjects.map(s => `<th class="py-3 px-3 text-center">${esc(s.name)} (${esc(s.maxMarks)})</th>`).join('')}
-            <th class="py-3 px-3 text-center">Total Score</th>
-            <th class="py-3 px-3 text-center">Percentage</th>
-            <th class="py-3 px-3 text-center">Grade</th>
-            <th class="py-3 px-3 text-center">Result</th>
-          </tr>
-        `;
-
-        tbody.innerHTML = data.broadsheet.map((r) => `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${esc(r.rank)}</td>
-            <td class="py-2.5 px-3 font-mono font-medium text-slate-700">${esc(r.admissionNo)}</td>
-            <td class="py-2.5 px-3 font-semibold text-slate-900">${esc(r.studentName)}</td>
-            ${data.subjects.map(s => {
-              const score = r.subjectMarks[s.name]?.marksObtained ?? '-';
-              return `<td class="py-2.5 px-3 text-center font-bold text-slate-800">${score}</td>`;
-            }).join('')}
-            <td class="py-2.5 px-3 text-center font-bold text-slate-900">${esc(r.totalObtained)} / ${esc(r.maxTotalPossible)}</td>
-            <td class="py-2.5 px-3 text-center font-bold text-indigo-600">${esc(r.percentage)}%</td>
-            <td class="py-2.5 px-3 text-center font-bold">${esc(r.grade)}</td>
-            <td class="py-2.5 px-3 text-center">
-              <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full ${r.result === 'PASS' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-                ${esc(r.result)}
-              </span>
-            </td>
-          </tr>
-        `).join('');
-
-      } catch (err) {
-        console.error('Failed to load broadsheet', err);
-        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-rose-500">Failed to load broadsheet: ${esc(err.message)}</td></tr>`;
-      }
-    }
-
-    // =========================================================================
-    // 8. PARENT FEEDBACK DESK
-    // =========================================================================
-    async function loadFeedbacks() {
-      try {
-        const feedbacks = await apiRequest('/feedback');
-        const container = document.getElementById('feedbackListContainer');
-
-        if (feedbacks.length === 0) {
-          container.innerHTML = '<p class="text-xs text-slate-400 p-4">No parent feedbacks received.</p>';
-          return;
-        }
-
-        container.innerHTML = feedbacks.map((f) => `
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  ${esc(f.category)}
-                </span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${
-                  f.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }">${esc(f.status)}</span>
-                ${f.rating ? `<span class="text-xs text-amber-500 font-bold">★ ${esc(f.rating)}/5</span>` : ''}
-              </div>
-              <span class="text-xs text-slate-400">${new Date(f.createdAt).toLocaleDateString()}</span>
-            </div>
-
-            <h4 class="font-bold text-slate-900 text-sm">${esc(f.title)}</h4>
-            <p class="text-xs text-slate-600 leading-relaxed">${esc(f.content)}</p>
-
-            ${f.response ? `
-              <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-900 space-y-1">
-                <div class="font-bold text-[11px] text-emerald-800">Resolution by: ${esc(f.respondedByName || 'Teacher / Admin')}</div>
-                <div>${esc(f.response)}</div>
-              </div>
-            ` : `
-              <div class="pt-2 flex items-center space-x-2">
-                <input type="text" id="resp-${esc(f.id)}" placeholder="Write response to parent..."
-                  class="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-300">
-                <button onclick="submitFeedbackReply('${f.id}')"
-                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 rounded-xl font-medium transition shadow-sm">
-                  Resolve & Reply
-                </button>
-              </div>
-            `}
-          </div>
-        `).join('');
-
-      } catch (err) {
-        console.error('Failed to load feedbacks', err);
-      }
-    }
-
-    async function submitFeedbackReply(feedbackId) {
-      const input = document.getElementById(`resp-${feedbackId}`);
-      const text = input.value.trim();
-      if (!text) return alert('Please enter response text');
-
-      try {
-        await apiRequest(`/feedback/${feedbackId}/respond`, {
-          method: 'POST',
-          body: JSON.stringify({ response: text, status: 'RESOLVED' }),
-        });
-        alert('✅ Response submitted to parent successfully!');
-        loadFeedbacks();
-      } catch (err) {
-        alert('Failed to respond: ' + err.message);
       }
     }
   </script>
