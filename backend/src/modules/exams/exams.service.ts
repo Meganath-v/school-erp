@@ -225,7 +225,7 @@ export class ExamsService {
   async enterMarks(
     schoolId: string,
     examSubjectId: string,
-    marks: { studentId: string; marksObtained: number; isAbsent?: boolean; remarks?: string }[],
+    marks: { studentId: string; marksObtained?: number; isAbsent?: boolean; remarks?: string }[],
   ) {
     if (!Array.isArray(marks) || marks.length === 0) {
       throw new BadRequestException('marks must be a non-empty array');
@@ -568,23 +568,25 @@ export class ExamsService {
     if (!existing) {
       throw new NotFoundException('Exam not found');
     }
-    const exam = await this.prisma.exam.update({
-      where: { id: examId },
-      data: { status: 'PUBLISHED' },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const exam = await tx.exam.update({
+        where: { id: examId },
+        data: { status: 'PUBLISHED' },
+      });
 
-    await this.prisma.auditLog.create({
-      data: {
-        schoolId,
-        actorId: userId || 'unknown',
-        actorName: userName || 'Principal',
-        action: 'MARKS_PUBLISHED',
-        entity: 'Exam',
-        entityId: examId,
-        details: JSON.stringify({ examName: exam.name }),
-      },
-    });
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: userId || 'unknown',
+          actorName: userName || 'Principal',
+          action: 'MARKS_PUBLISHED',
+          entity: 'Exam',
+          entityId: examId,
+          details: JSON.stringify({ examName: exam.name }),
+        },
+      });
 
-    return exam;
+      return exam;
+    });
   }
 }

@@ -4,7 +4,7 @@ import { assertStudentAccess } from '../../common/access/student-access';
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getStudents(schoolId: string, query: { classId?: string; sectionId?: string; search?: string; userId?: string; role?: string }) {
     const where: any = { schoolId };
@@ -141,69 +141,92 @@ export class StudentsService {
   }
 
   async createStudentAdmission(schoolId: string, data: any) {
-    // Generate admission number if not provided
-    const count = await this.prisma.student.count({ where: { schoolId } });
-    const admissionNo = data.admissionNo || `ADM-2026-${String(count + 1).padStart(3, '0')}`;
+    return this.prisma.$transaction(async (tx) => {
+      // Generate admission number if not provided
+      const count = await tx.student.count({ where: { schoolId } });
+      const admissionNo = data.admissionNo || `ADM-2026-${String(count + 1).padStart(3, '0')}`;
 
-    const student = await this.prisma.student.create({
-      data: {
-        schoolId,
-        admissionNo,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        dob: new Date(data.dob || '2012-01-01'),
-        gender: data.gender || 'OTHER',
-        bloodGroup: data.bloodGroup,
-        address: data.address,
-        emergencyContact: data.emergencyContact || data.guardianPhone,
-        status: 'ACTIVE',
-      },
-    });
-
-    // Create Enrollment if class & section provided
-    if (data.classId && data.sectionId) {
-      const activeYear = await this.prisma.academicYear.findFirst({
-        where: { schoolId, isCurrent: true },
+      const student = await tx.student.create({
+        data: {
+          schoolId,
+          admissionNo,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          dob: new Date(data.dob || '2012-01-01'),
+          gender: data.gender || 'OTHER',
+          bloodGroup: data.bloodGroup,
+          address: data.address,
+          emergencyContact: data.emergencyContact || data.guardianPhone,
+          status: 'ACTIVE',
+        },
       });
-      if (activeYear) {
-        await this.prisma.enrollment.create({
+
+      // Create Enrollment if class & section provided
+      if (data.classId && data.sectionId) {
+        const activeYear = await tx.academicYear.findFirst({
+          where: { schoolId, isCurrent: true },
+        });
+        if (activeYear) {
+          await tx.enrollment.create({
+            data: {
+              schoolId,
+              studentId: student.id,
+              academicYearId: activeYear.id,
+              classId: data.classId,
+              sectionId: data.sectionId,
+              rollNo: data.rollNo || count + 1,
+              status: 'ACTIVE',
+            },
+          });
+        }
+      }
+
+      // Create Guardian and link
+      if (data.guardianName && data.guardianPhone) {
+        const guardian = await tx.guardian.create({
           data: {
             schoolId,
+            name: data.guardianName,
+            relation: data.guardianRelation || 'FATHER',
+            phone: data.guardianPhone,
+            email: data.guardianEmail,
+          },
+        });
+
+        await tx.studentGuardian.create({
+          data: {
             studentId: student.id,
-            academicYearId: activeYear.id,
-            classId: data.classId,
-            sectionId: data.sectionId,
-            rollNo: data.rollNo || count + 1,
-            status: 'ACTIVE',
+            guardianId: guardian.id,
+            relationship: data.guardianRelation || 'FATHER',
+            isPrimary: true,
+            canAccessPortal: true,
           },
         });
       }
+
+      return student;
+    });
+  }
+
+  async updateStudent(schoolId: string, id: string, data: any) {
+    const existing = await this.prisma.student.findFirst({ where: { id, schoolId } });
+    if (!existing) {
+      throw new NotFoundException('Student not found in this school');
     }
 
-    // Create Guardian and link
-    if (data.guardianName && data.guardianPhone) {
-      const guardian = await this.prisma.guardian.create({
-        data: {
-          schoolId,
-          name: data.guardianName,
-          relation: data.guardianRelation || 'FATHER',
-          phone: data.guardianPhone,
-          email: data.guardianEmail,
-        },
-      });
-
-      await this.prisma.studentGuardian.create({
-        data: {
-          studentId: student.id,
-          guardianId: guardian.id,
-          relationship: data.guardianRelation || 'FATHER',
-          isPrimary: true,
-          canAccessPortal: true,
-        },
-      });
-    }
-
-    return student;
+    return this.prisma.student.update({
+      where: { id },
+      data: {
+        ...(data.firstName ? { firstName: data.firstName } : {}),
+        ...(data.lastName ? { lastName: data.lastName } : {}),
+        ...(data.dob ? { dob: new Date(data.dob) } : {}),
+        ...(data.gender ? { gender: data.gender } : {}),
+        ...(data.bloodGroup !== undefined ? { bloodGroup: data.bloodGroup } : {}),
+        ...(data.address !== undefined ? { address: data.address } : {}),
+        ...(data.emergencyContact !== undefined ? { emergencyContact: data.emergencyContact } : {}),
+        ...(data.status ? { status: data.status } : {}),
+      },
+    });
   }
 
   async getReportCard(schoolId: string, studentId: string, user: { userId: string; role: string }) {
@@ -273,7 +296,7 @@ export class StudentsService {
         class: student.enrollments[0]?.class?.name || 'N/A',
         section: student.enrollments[0]?.section?.name || 'N/A',
         rollNo: student.enrollments[0]?.rollNo || 'N/A',
-        academicYear: student.enrollments[0]?.academicYear?.name || '2026-2027',
+        academicYear: student.enrollments[0]?.academicYear?.name || 'N/A',
       },
       attendancePercentage,
       totalWorkingDays: totalAttendance,
@@ -314,8 +337,8 @@ export class StudentsService {
       gender: student.gender,
       bloodGroup: student.bloodGroup,
       address: student.address,
-      className: student.enrollments[0]?.class?.name || 'Grade 10',
-      sectionName: student.enrollments[0]?.section?.name || 'Section A',
+      className: student.enrollments[0]?.class?.name || 'Unassigned',
+      sectionName: student.enrollments[0]?.section?.name || 'Unassigned',
       classId: student.enrollments[0]?.classId,
       sectionId: student.enrollments[0]?.sectionId,
       rollNo: student.enrollments[0]?.rollNo,

@@ -106,85 +106,89 @@ export class AttendanceService {
     const date = data.date ? new Date(data.date) : new Date();
     date.setHours(0, 0, 0, 0);
 
-    // Upsert AttendanceSession
-    let session = await this.prisma.attendanceSession.findFirst({
-      where: {
-        schoolId,
-        sectionId: data.sectionId,
-        date,
-        sessionType: 'DAILY',
-      },
-    });
-
-    if (!session) {
-      session = await this.prisma.attendanceSession.create({
-        data: {
+    return this.prisma.$transaction(async (tx) => {
+      // Upsert AttendanceSession
+      let session = await tx.attendanceSession.findFirst({
+        where: {
           schoolId,
           sectionId: data.sectionId,
           date,
           sessionType: 'DAILY',
-          status: 'SUBMITTED',
-          createdBy: data.markedBy || 'Teacher',
         },
       });
-    } else {
-      session = await this.prisma.attendanceSession.update({
-        where: { id: session.id },
-        data: {
-          status: 'SUBMITTED',
-          createdBy: data.markedBy || session.createdBy,
-        },
-      });
-    }
 
-    // Save records
-    for (const rec of data.records) {
-      await this.prisma.attendanceRecord.upsert({
-        where: {
-          sessionId_studentId: {
+      if (!session) {
+        session = await tx.attendanceSession.create({
+          data: {
+            schoolId,
+            sectionId: data.sectionId,
+            date,
+            sessionType: 'DAILY',
+            status: 'SUBMITTED',
+            createdBy: data.markedBy || 'Teacher',
+          },
+        });
+      } else {
+        session = await tx.attendanceSession.update({
+          where: { id: session.id },
+          data: {
+            status: 'SUBMITTED',
+            createdBy: data.markedBy || session.createdBy,
+          },
+        });
+      }
+
+      // Save records
+      for (const rec of data.records) {
+        await tx.attendanceRecord.upsert({
+          where: {
+            sessionId_studentId: {
+              sessionId: session.id,
+              studentId: rec.studentId,
+            },
+          },
+          update: {
+            status: rec.status,
+            remarks: rec.remarks,
+          },
+          create: {
             sessionId: session.id,
             studentId: rec.studentId,
+            status: rec.status,
+            remarks: rec.remarks,
           },
-        },
-        update: {
-          status: rec.status,
-          remarks: rec.remarks,
-        },
-        create: {
-          sessionId: session.id,
-          studentId: rec.studentId,
-          status: rec.status,
-          remarks: rec.remarks,
+        });
+      }
+
+      // Log to AuditLog
+      const presentCount = data.records.filter((r) => r.status === 'PRESENT').length;
+      const absentCount = data.records.filter((r) => r.status === 'ABSENT').length;
+      await tx.auditLog.create({
+        data: {
+          schoolId,
+          actorId: data.markedBy || 'Teacher',
+          actorName: data.markedBy || 'Teacher',
+          action: 'ATTENDANCE_MARKED',
+          entity: 'AttendanceSession',
+          entityId: session.id,
+          details: JSON.stringify({ sectionId: data.sectionId, present: presentCount, absent: absentCount }),
         },
       });
-    }
 
-    // Log to AuditLog
-    const presentCount = data.records.filter((r) => r.status === 'PRESENT').length;
-    const absentCount = data.records.filter((r) => r.status === 'ABSENT').length;
-    await this.prisma.auditLog.create({
-      data: {
-        schoolId,
-        actorId: data.markedBy || 'Teacher',
-        actorName: data.markedBy || 'Teacher',
-        action: 'ATTENDANCE_MARKED',
-        entity: 'AttendanceSession',
-        entityId: session.id,
-        details: JSON.stringify({ sectionId: data.sectionId, present: presentCount, absent: absentCount }),
-      },
+      return {
+        message: 'Attendance saved successfully',
+        sessionId: session.id,
+        date,
+        summary: {
+          total: data.records.length,
+          present: presentCount,
+          absent: absentCount,
+          late: data.records.filter((r) => r.status === 'LATE').length,
+          excused: data.records.filter((r) => r.status === 'EXCUSED').length,
+          halfDay: data.records.filter((r) => r.status === 'HALF_DAY').length,
+        },
+      };
     });
-
-    return {
-      message: 'Attendance saved successfully',
-      sessionId: session.id,
-      date,
-      summary: {
-        total: data.records.length,
-        present: presentCount,
-        absent: absentCount,
-        late: data.records.filter((r) => r.status === 'LATE').length,
-      },
-    };
   }
 
   async getAttendanceReports(schoolId: string, sectionId?: string) {

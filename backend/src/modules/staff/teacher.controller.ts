@@ -1,9 +1,12 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, ACADEMIC_STAFF } from '../../common/decorators/roles.decorator';
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
+@ApiTags('Teacher Desktop Portal & Workflows')
+@ApiBearerAuth()
 @Controller('teacher')
 @UseGuards(JwtAuthGuard)
 export class TeacherController {
@@ -11,6 +14,8 @@ export class TeacherController {
 
   @Roles(...ACADEMIC_STAFF)
   @Get('my-classes')
+  @ApiOperation({ summary: 'Get assigned classes, enrolled students, attendance health, and pending leave count' })
+  @ApiResponse({ status: 200, description: 'Teacher dashboard aggregated payload' })
   async getMyClasses(@CurrentSchoolId() schoolId: string, @CurrentUser('userId') userId: string) {
     const staff = await this.prisma.staff.findFirst({
       where: { schoolId, userId },
@@ -62,7 +67,7 @@ export class TeacherController {
           const present = s.attendanceRecords.filter(
             (r) => r.status === 'PRESENT' || r.status === 'EXCUSED' || r.status === 'LATE',
           ).length;
-          const attendancePct = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 95;
+          const attendancePct = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 100;
 
           return {
             id: s.id,

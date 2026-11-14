@@ -52,7 +52,7 @@ export class ParentService {
         const presentSessions = s.attendanceRecords.filter(
           (r) => r.status === 'PRESENT' || r.status === 'EXCUSED' || r.status === 'LATE',
         ).length;
-        const attendancePct = totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 95;
+        const attendancePct = totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 100;
 
         children.push({
           id: s.id,
