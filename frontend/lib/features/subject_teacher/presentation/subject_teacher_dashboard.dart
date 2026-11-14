@@ -646,61 +646,134 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PageHeader(
-              breadcrumbs: const ['Academics', 'Outcome-Based Education'],
-              title: 'Outcome-Based Course Delivery Plan (OBE)',
-              subtitle: 'Track planned versus conducted instructional hours, Bloom’s taxonomy mapping, and course outcomes.',
+              breadcrumbs: const ['Academics', 'Faculty Dashboard', 'Subject Educator'],
+              title: 'Subject Teacher Academic Dashboard',
+              subtitle: 'Track assigned subjects, classroom periods, OBE lesson delivery, and student submissions.',
               actions: [
                 OutlinedButton.icon(
                   onPressed: _loadTeacherData,
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('Refresh'),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                ElevatedButton.icon(
+                  onPressed: _showNewTeachingDiaryDialog,
+                  icon: const Icon(Icons.edit_note, size: 16),
+                  label: const Text('Log Diary Entry'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Assigned Subjects & Classes Badges
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.menu_book, size: 16, color: AppColors.primary),
+                  label: Text(
+                    'Assigned Subjects: ${_subjects.map((s) => s['name']).join(', ')}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: AppColors.primarySubtle,
+                ),
+                Chip(
+                  avatar: const Icon(Icons.meeting_room, size: 16, color: AppColors.secondary),
+                  label: Text(
+                    'Assigned Classes: ${_classes.map((c) => c['name']).join(', ')}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: AppColors.secondarySubtle,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            Row(
-              children: [
-                Expanded(
-                  child: MetricCard(
-                    title: 'Teaching Diary Logs',
-                    value: '${_teachingDiaries.length}',
-                    icon: Icons.book_outlined,
-                    subtitle: 'Periods delivered',
+            // 8 Subject Teacher Metrics
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 1000;
+                final todayPeriods = _timetable.where((t) => t['dayOfWeek'] == DateTime.now().weekday).length;
+                final pendingMarks = _exams.where((e) => e['status'] == 'DRAFT').length;
+                final upcomingDeadlines = _assignments.where((a) => a['dueDate'] != null).length;
+
+                final cards = [
+                  MetricCard(
+                    title: "Today's Timetable",
+                    value: '$todayPeriods Periods',
+                    icon: Icons.schedule_outlined,
+                    subtitle: 'Today • Classroom Sessions',
                     color: AppColors.primary,
+                    onTap: () => _tabController.animateTo(3),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Study Materials',
-                    value: '${_courseMaterials.length}',
-                    icon: Icons.folder_shared_outlined,
-                    subtitle: 'Published resources',
+                  MetricCard(
+                    title: 'Pending Mark Entry',
+                    value: '$pendingMarks Exams',
+                    icon: Icons.grade_outlined,
+                    subtitle: 'Awaiting Marks Entry',
+                    color: pendingMarks > 0 ? AppColors.warning : AppColors.success,
+                    onTap: () => _tabController.animateTo(4),
+                  ),
+                  MetricCard(
+                    title: 'Assignment Evaluation',
+                    value: '${_assignments.length} Tasks',
+                    icon: Icons.assignment_turned_in_outlined,
+                    subtitle: 'Student Homework Track',
+                    color: AppColors.info,
+                    onTap: () => _tabController.animateTo(4),
+                  ),
+                  MetricCard(
+                    title: 'Syllabus Completion',
+                    value: '$coverage%',
+                    icon: Icons.track_changes_outlined,
+                    subtitle: '$conducted / $planned Hours Done',
+                    color: coverage >= 75 ? AppColors.success : AppColors.accent,
+                    onTap: () => _tabController.animateTo(0),
+                  ),
+                  MetricCard(
+                    title: 'Teaching Diary Status',
+                    value: '${_teachingDiaries.length} Logs',
+                    icon: Icons.book_outlined,
+                    subtitle: 'Logged Instructional Hours',
+                    color: AppColors.success,
+                    onTap: () => _tabController.animateTo(1),
+                  ),
+                  MetricCard(
+                    title: 'Upcoming Deadlines',
+                    value: '$upcomingDeadlines Due',
+                    icon: Icons.alarm_outlined,
+                    subtitle: 'Pending Submissions',
+                    color: AppColors.error,
+                    onTap: () => _tabController.animateTo(4),
+                  ),
+                  MetricCard(
+                    title: 'Assigned Subjects',
+                    value: '${_subjects.length} Subjects',
+                    icon: Icons.auto_stories_outlined,
+                    subtitle: 'Academic Allocations',
                     color: AppColors.secondary,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Active Homework',
-                    value: '${_assignments.length}',
-                    icon: Icons.assignment_outlined,
-                    subtitle: 'Course assignments',
-                    color: AppColors.info,
+                  MetricCard(
+                    title: 'Assigned Classes',
+                    value: '${_classes.length} Classes',
+                    icon: Icons.groups_outlined,
+                    subtitle: 'Enrolled Cohorts',
+                    color: AppColors.accent,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Scheduled Exams',
-                    value: '${_exams.length}',
-                    icon: Icons.school_outlined,
-                    subtitle: 'Term evaluations',
-                    color: AppColors.warning,
-                  ),
-                ),
-              ],
+                ];
+
+                return Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: cards.map((c) {
+                    final width = isDesktop
+                        ? (constraints.maxWidth - 3 * AppSpacing.md) / 4
+                        : (constraints.maxWidth - AppSpacing.md) / 2;
+                    return SizedBox(width: width, child: c);
+                  }).toList(),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.xl),
 

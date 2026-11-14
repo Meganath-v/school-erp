@@ -10,8 +10,14 @@ export class AttendanceService {
     today.setHours(0, 0, 0, 0);
 
     const targetSection = sectionId
-      ? await this.prisma.section.findFirst({ where: { id: sectionId, schoolId } })
-      : await this.prisma.section.findFirst({ where: { schoolId } });
+      ? await this.prisma.section.findFirst({
+          where: { id: sectionId, schoolId },
+          include: { class: true },
+        })
+      : await this.prisma.section.findFirst({
+          where: { schoolId },
+          include: { class: true },
+        });
 
     if (!targetSection) {
       return { session: null, students: [] };
@@ -89,6 +95,7 @@ export class AttendanceService {
       section: {
         id: targetSection.id,
         name: targetSection.name,
+        className: (targetSection as any).class?.name || 'Grade 10',
       },
       session: session
         ? {

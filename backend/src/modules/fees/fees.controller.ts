@@ -90,6 +90,15 @@ export class ReceiptsController {
   constructor(private feesService: FeesService) {}
 
   @Roles(...OFFICE_STAFF, 'PARENT')
+  @Get()
+  @ApiOperation({ summary: 'List recent payment receipts' })
+  @ApiResponse({ status: 200, description: 'List of recent payment receipts' })
+  async getReceipts(@CurrentSchoolId() schoolId: string) {
+    const data = await this.feesService.getRecentReceipts(schoolId);
+    return { data };
+  }
+
+  @Roles(...OFFICE_STAFF, 'PARENT')
   @Get(':id')
   @ApiOperation({ summary: 'Get payment receipt details for printing or download' })
   @ApiParam({ name: 'id', description: 'Receipt UUID' })

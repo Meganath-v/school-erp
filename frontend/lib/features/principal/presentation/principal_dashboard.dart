@@ -23,6 +23,9 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
   Map<String, dynamic>? _overview;
   List<dynamic> _exams = [];
   List<dynamic> _leaveRequests = [];
+  Map<String, dynamic>? _examReport;
+  List<dynamic> _teacherWorkload = [];
+  Map<String, dynamic>? _attendanceReport;
   String _noticeSearchQuery = '';
 
   @override
@@ -49,12 +52,18 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
         ApiClient().dio.get('/reports/overview').then((r) => r.data['data'] as Map<String, dynamic>?).catchError((_) => null),
         ApiClient().dio.get('/exams').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/leave-requests').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/reports/examinations').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
+        ApiClient().dio.get('/reports/teacher-workload').then((r) => r.data as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/reports/attendance').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
       ]);
 
       setState(() {
         _overview = results[0] as Map<String, dynamic>?;
         _exams = results[1] as List<dynamic>;
         _leaveRequests = results[2] as List<dynamic>;
+        _examReport = results[3] as Map<String, dynamic>?;
+        _teacherWorkload = results[4] as List<dynamic>;
+        _attendanceReport = results[5] as Map<String, dynamic>?;
         _isLoading = false;
       });
     } catch (e) {
@@ -247,6 +256,134 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
     );
   }
 
+  void _showTeacherWorkloadDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Teacher Workload Distribution'),
+            StatusBadge(label: '${_teacherWorkload.length} Educators', variant: BadgeVariant.info),
+          ],
+        ),
+        content: SizedBox(
+          width: 650,
+          height: 420,
+          child: _teacherWorkload.isEmpty
+              ? const Center(child: Text('No active teacher timetable allocations found.'))
+              : ListView.separated(
+                  itemCount: _teacherWorkload.length,
+                  separatorBuilder: (ctx, i) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final t = _teacherWorkload[i];
+                    final periods = t['weeklyPeriodsCount'] ?? 0;
+                    final subjects = (t['assignedSubjects'] as List? ?? []).join(', ');
+                    final classes = (t['assignedClasses'] as List? ?? []).join(', ');
+
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: AppColors.secondarySubtle,
+                        child: Icon(Icons.person, color: AppColors.secondary, size: 18),
+                      ),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(t['staffName'] ?? 'Faculty Member', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          StatusBadge(
+                            label: '$periods Periods/Wk',
+                            variant: periods > 25 ? BadgeVariant.warning : BadgeVariant.success,
+                          ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        'Classes: ${classes.isEmpty ? 'General' : classes} • Subjects: ${subjects.isEmpty ? 'Core' : subjects}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showAttendanceComplianceDialog() {
+    final defaulters = (_attendanceReport?['condonationShortageList'] as List? ?? []);
+    final overall = _attendanceReport?['overallAttendanceRate'] ?? 100;
+    final threshold = _attendanceReport?['condonationThreshold'] ?? 75;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Institutional Attendance Compliance'),
+            StatusBadge(label: '$overall% Compliance', variant: BadgeVariant.success),
+          ],
+        ),
+        content: SizedBox(
+          width: 650,
+          height: 420,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Statutory Threshold: $threshold%', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text('Defaulters Below Condonation: ${defaulters.length}', style: TextStyle(fontWeight: FontWeight.bold, color: defaulters.isNotEmpty ? AppColors.error : AppColors.success)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: defaulters.isEmpty
+                    ? const Center(child: Text('All enrolled students meet the 75% condonation threshold.'))
+                    : ListView.separated(
+                        itemCount: defaulters.length,
+                        separatorBuilder: (ctx, i) => const Divider(height: 1),
+                        itemBuilder: (ctx, i) {
+                          final d = defaulters[i];
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.warning_amber, color: AppColors.error, size: 20),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${d['fullName']} (${d['admissionNo']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text('${d['attendanceRate']}% Attended', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            subtitle: Text(
+                              'Class: ${d['className']} (${d['sectionName']}) • Deficit: ${d['deficitSessions']} Sessions',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -335,51 +472,188 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
             // Executive KPI Cards
             LayoutBuilder(
               builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth >= 900;
+                final isDesktop = constraints.maxWidth >= 1000;
+                final totalCand = _examReport?['totalCandidates'] as int? ?? 0;
+                final passedCand = _examReport?['passedCandidates'] as int? ?? 0;
+                final passRateStr = totalCand > 0 ? '${((passedCand / totalCand) * 100).toStringAsFixed(0)}% Pass' : '100% Pass';
+
+                final publishedCount = _exams.where((e) => e['status'] == 'PUBLISHED').length;
+                final draftCount = _exams.where((e) => e['status'] != 'PUBLISHED').length;
+                final pendingLeaves = _leaveRequests.where((l) => l['status'] == 'PENDING').length;
+                final overallAtt = _attendanceReport?['overallAttendanceRate'] ?? 100;
+
                 final cards = [
                   MetricCard(
-                    title: 'Total Enrollment',
-                    value: '${stats['totalStudents'] ?? 0}',
-                    icon: Icons.people_outline,
-                    subtitle: 'Active matriculated students',
+                    title: 'Academic Performance',
+                    value: passRateStr,
+                    icon: Icons.school_outlined,
+                    subtitle: 'AY 2026-2027 Broadsheet',
                     color: AppColors.primary,
+                    onTap: () => _tabController.animateTo(1),
                   ),
                   MetricCard(
-                    title: 'Academic Faculty',
-                    value: '${stats['totalStaff'] ?? 0}',
+                    title: 'Attendance Compliance',
+                    value: '$overallAtt%',
+                    icon: Icons.verified_user_outlined,
+                    subtitle: 'Today: $attendanceStr (>=75% Threshold)',
+                    color: overallAtt >= 75 ? AppColors.success : AppColors.error,
+                    onTap: _showAttendanceComplianceDialog,
+                  ),
+                  MetricCard(
+                    title: 'Examination Status',
+                    value: '$publishedCount Pub / $draftCount Draft',
+                    icon: Icons.assignment_turned_in_outlined,
+                    subtitle: 'Moderation Workflow',
+                    color: AppColors.accent,
+                    onTap: () => _tabController.animateTo(1),
+                  ),
+                  MetricCard(
+                    title: 'Teacher Workload',
+                    value: '${stats['totalStaff'] ?? 0} Staff',
                     icon: Icons.badge_outlined,
-                    subtitle: 'Teaching & support staff',
+                    subtitle: '${stats['totalWeeklyPeriods'] ?? 0} Weekly Periods',
                     color: AppColors.secondary,
+                    onTap: _showTeacherWorkloadDialog,
                   ),
                   MetricCard(
-                    title: 'Today Attendance',
-                    value: attendanceStr,
-                    icon: Icons.check_circle_outline,
-                    subtitle: 'Campus-wide presence',
-                    color: todayRate != null ? AppColors.success : AppColors.textMuted,
-                  ),
-                  MetricCard(
-                    title: 'Pending Leaves',
-                    value: '${_leaveRequests.where((l) => l['status'] == 'PENDING').length}',
-                    icon: Icons.event_busy_outlined,
-                    subtitle: 'Awaiting moderation',
-                    color: AppColors.warning,
+                    title: 'Pending Approvals',
+                    value: '$pendingLeaves Leaves',
+                    icon: Icons.pending_actions_outlined,
+                    subtitle: 'Awaiting Executive Action',
+                    color: pendingLeaves > 0 ? AppColors.warning : AppColors.success,
+                    onTap: () => _tabController.animateTo(1),
                   ),
                 ];
 
-                if (isDesktop) {
-                  return Row(
-                    children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: AppSpacing.md), child: c))).toList(),
-                  );
-                } else {
-                  return Wrap(
-                    spacing: AppSpacing.md,
-                    runSpacing: AppSpacing.md,
-                    children: cards.map((c) => SizedBox(width: (constraints.maxWidth - AppSpacing.md) / 2, child: c)).toList(),
-                  );
-                }
+                return Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: cards.map((c) {
+                    final width = isDesktop
+                        ? (constraints.maxWidth - 2 * AppSpacing.md) / 3
+                        : (constraints.maxWidth - AppSpacing.md) / 2;
+                    return SizedBox(width: width, child: c);
+                  }).toList(),
+                );
               },
             ),
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Class Performance Comparisons Table
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: AppShadows.subtle,
+              ),
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.leaderboard_outlined, color: AppColors.primary, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            'Class Academic Performance Comparisons',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      StatusBadge(
+                        label: 'Academic Year 2026-2027',
+                        variant: BadgeVariant.info,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Builder(
+                    builder: (context) {
+                      final broadsheet = _examReport?['broadsheet'] as List? ?? [];
+                      if (broadsheet.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                          child: Text('No examination broadsheet compiled yet for comparative analysis.', style: TextStyle(color: AppColors.textSecondary)),
+                        );
+                      }
+
+                      // Group students by class
+                      final Map<String, List<dynamic>> classGroups = {};
+                      for (final st in broadsheet) {
+                        final key = '${st['className']} (${st['sectionName']})';
+                        classGroups.putIfAbsent(key, () => []).add(st);
+                      }
+
+                      return Table(
+                        columnWidths: const {
+                          0: FlexColumnWidth(2.5),
+                          1: FlexColumnWidth(1.5),
+                          2: FlexColumnWidth(1.5),
+                          3: FlexColumnWidth(2),
+                          4: FlexColumnWidth(1.5),
+                        },
+                        border: TableBorder(
+                          horizontalInside: BorderSide(color: AppColors.borderLight.withOpacity(0.5)),
+                        ),
+                        children: [
+                          TableRow(
+                            decoration: const BoxDecoration(color: AppColors.surfaceMuted),
+                            children: const [
+                              Padding(padding: EdgeInsets.all(AppSpacing.md), child: Text('Class & Section', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Padding(padding: EdgeInsets.all(AppSpacing.md), child: Text('Candidates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Padding(padding: EdgeInsets.all(AppSpacing.md), child: Text('Passed', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Padding(padding: EdgeInsets.all(AppSpacing.md), child: Text('Pass Rate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Padding(padding: EdgeInsets.all(AppSpacing.md), child: Text('Avg Score', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                            ],
+                          ),
+                          ...classGroups.entries.map((entry) {
+                            final group = entry.value;
+                            final passed = group.where((s) => s['resultStatus'] == 'PASS').length;
+                            final passRate = group.isNotEmpty ? ((passed / group.length) * 100).round() : 0;
+                            final totalPct = group.fold<num>(0, (acc, s) => acc + (s['percentage'] ?? 0));
+                            final avgPct = group.isNotEmpty ? (totalPct / group.length).toStringAsFixed(1) : '0';
+
+                            return TableRow(
+                              children: [
+                                Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                                Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Text('${group.length}', style: const TextStyle(fontSize: 13))),
+                                Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Text('$passed', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 13))),
+                                Padding(
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  child: Row(
+                                    children: [
+                                      Text('$passRate%', style: TextStyle(fontWeight: FontWeight.bold, color: passRate >= 75 ? AppColors.success : AppColors.error)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: passRate / 100,
+                                            minHeight: 6,
+                                            backgroundColor: AppColors.borderLight,
+                                            valueColor: AlwaysStoppedAnimation(passRate >= 75 ? AppColors.success : AppColors.error),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Text('$avgPct%', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                              ],
+                            );
+                          }).toList(),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
             const SizedBox(height: AppSpacing.xxl),
 
             // Recent Audit Events

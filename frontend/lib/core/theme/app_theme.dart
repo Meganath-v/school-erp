@@ -55,6 +55,9 @@ class AppColors {
   static const Color textSecondary = textMuted;
   static const Color tableHeaderBg = Color(0xFFF8FAFC);
   static const Color warningSubtle = warningBg;
+  static const Color errorSubtle = errorBg;
+  static const Color successSubtle = successBg;
+  static const Color infoSubtle = infoBg;
 }
 
 class AppSpacing {

@@ -14,12 +14,13 @@ export class ReportsService {
     // Invoices sum
     const invoices = await this.prisma.invoice.findMany({
       where: { schoolId },
-      select: { amountMinor: true, paidAmountMinor: true, dueAmountMinor: true },
+      select: { amountMinor: true, paidAmountMinor: true, dueAmountMinor: true, status: true },
     });
 
     const totalInvoiced = invoices.reduce((acc, curr) => acc + curr.amountMinor, 0) / 100;
     const totalCollected = invoices.reduce((acc, curr) => acc + curr.paidAmountMinor, 0) / 100;
     const totalDue = invoices.reduce((acc, curr) => acc + curr.dueAmountMinor, 0) / 100;
+    const pendingInvoicesCount = invoices.filter((i) => i.status === 'PENDING' || i.status === 'PARTIALLY_PAID').length;
 
     // Today Attendance
     const today = new Date();
@@ -41,6 +42,58 @@ export class ReportsService {
     const todayAttendanceRate = isAttendanceMarkedToday
       ? Math.round((presentAttendanceRecords / totalAttendanceRecords) * 100)
       : null;
+
+    // Today Fee Collections
+    const todayPayments = await this.prisma.payment.findMany({
+      where: { schoolId, status: 'SUCCESS', createdAt: { gte: today } },
+      select: { amountMinor: true },
+    });
+    const todayFeeCollected = todayPayments.reduce((acc, curr) => acc + curr.amountMinor, 0) / 100;
+
+    // Recent Receipts
+    const recentReceiptsData = await this.prisma.payment.findMany({
+      where: { schoolId, status: 'SUCCESS' },
+      include: {
+        invoice: {
+          include: {
+            student: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    });
+    const recentReceipts = recentReceiptsData.map((p) => ({
+      id: p.id,
+      receiptNo: p.receiptNo,
+      amount: p.amountMinor / 100,
+      method: p.method,
+      studentName: p.invoice?.student ? `${p.invoice.student.firstName} ${p.invoice.student.lastName}` : 'Enrolled Student',
+      admissionNo: p.invoice?.student?.admissionNo,
+      invoiceNo: p.invoice?.invoiceNo,
+      createdAt: p.createdAt,
+    }));
+
+    // Pending administrative work (pending leaves + pending tasks)
+    const pendingLeavesCount = await this.prisma.leaveRequest.count({
+      where: { schoolId, status: 'PENDING' },
+    });
+    const pendingTasksCount = await this.prisma.task.count({
+      where: { schoolId, status: 'PENDING' },
+    });
+
+    // Exams status
+    const publishedExamsCount = await this.prisma.exam.count({
+      where: { schoolId, status: 'PUBLISHED' },
+    });
+    const draftExamsCount = await this.prisma.exam.count({
+      where: { schoolId, status: 'DRAFT' },
+    });
+
+    // Timetable Workload
+    const totalWeeklyPeriods = await this.prisma.timetableEntry.count({
+      where: { schoolId },
+    });
 
     // Recent announcements
     const recentAnnouncements = await this.prisma.announcement.findMany({
@@ -67,7 +120,16 @@ export class ReportsService {
         totalInvoiced,
         totalCollected,
         totalDue,
+        todayFeeCollected,
+        pendingInvoicesCount,
+        pendingLeavesCount,
+        pendingTasksCount,
+        pendingAdminWork: pendingLeavesCount + pendingTasksCount,
+        publishedExamsCount,
+        draftExamsCount,
+        totalWeeklyPeriods,
       },
+      recentReceipts,
       recentAnnouncements,
       recentAuditLogs,
     };

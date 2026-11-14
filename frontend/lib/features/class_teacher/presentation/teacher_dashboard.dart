@@ -26,13 +26,16 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
   List<dynamic> _students = [];
   Map<String, String> _attendanceMap = {};
   List<dynamic> _leaveRequests = [];
+  List<dynamic> _assignments = [];
+  List<dynamic> _circulars = [];
   String _searchQuery = '';
+  bool _filterShortageOnly = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadTeacherData();
   }
 
@@ -48,8 +51,14 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
       _errorMessage = null;
     });
     try {
-      final attRes = await ApiClient().dio.get('/attendance/today');
-      final attData = attRes.data['data'];
+      final results = await Future.wait([
+        ApiClient().dio.get('/attendance/today'),
+        ApiClient().dio.get('/leave-requests'),
+        ApiClient().dio.get('/assignments'),
+        ApiClient().dio.get('/circulars'),
+      ]);
+
+      final attData = results[0].data['data'];
       final studentsList = attData['students'] as List? ?? [];
 
       _sectionId = attData['section']?['id'];
@@ -61,12 +70,12 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
         newMap[s['studentId']] = s['status'] ?? 'PRESENT';
       }
 
-      final leaveRes = await ApiClient().dio.get('/leave-requests');
-
       setState(() {
         _students = studentsList;
         _attendanceMap = newMap;
-        _leaveRequests = leaveRes.data['data'] ?? [];
+        _leaveRequests = results[1].data['data'] ?? [];
+        _assignments = results[2].data['data'] as List? ?? [];
+        _circulars = results[3].data as List? ?? [];
         _isLoading = false;
       });
     } catch (e) {
@@ -177,6 +186,8 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
                   tabs: const [
                     Tab(icon: Icon(Icons.fact_check_outlined, size: 18), text: 'Daily Class Attendance'),
                     Tab(icon: Icon(Icons.event_busy_outlined, size: 18), text: 'Student Leave Applications'),
+                    Tab(icon: Icon(Icons.assignment_outlined, size: 18), text: 'Class Assignments'),
+                    Tab(icon: Icon(Icons.forum_outlined, size: 18), text: 'Parent Communications'),
                   ],
                 ),
               ),
@@ -195,6 +206,8 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
             children: [
               _buildAttendanceView(presentCount, absentCount, lateCount),
               _buildLeaveRequestsView(),
+              _buildAssignmentsView(),
+              _buildCircularsView(),
             ],
           ),
         ),
@@ -204,6 +217,9 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
 
   Widget _buildAttendanceView(int present, int absent, int late) {
     final filteredStudents = _students.where((s) {
+      if (_filterShortageOnly && (s['isShortageRisk'] != true && (s['attendancePercentage'] ?? 100) >= 75)) {
+        return false;
+      }
       if (_searchQuery.trim().isEmpty) return true;
       final q = _searchQuery.toLowerCase();
       final name = (s['fullName'] ?? '').toString().toLowerCase();
@@ -213,6 +229,8 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
 
     final total = _students.length;
     final attendanceRate = total > 0 ? ((present / total) * 100).toStringAsFixed(1) : '0';
+    final shortageCount = _students.where((s) => s['isShortageRisk'] == true || (s['attendancePercentage'] ?? 100) < 75).length;
+    final pendingLeaves = _leaveRequests.where((l) => l['status'] == 'PENDING').length;
 
     return RefreshIndicator(
       onRefresh: _loadTeacherData,
@@ -225,7 +243,7 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
             PageHeader(
               breadcrumbs: const ['Classroom', 'Class Teacher', 'Daily Session'],
               title: 'Class Attendance: $_className - $_sectionName',
-              subtitle: 'Mark individual daily attendance. Dispatches real-time SMS & app alerts to parents upon locking.',
+              subtitle: 'Assigned Classroom • Academic Year 2026-2027 • Mark attendance and manage class learners.',
               actions: [
                 OutlinedButton.icon(
                   onPressed: _markAllPresent,
@@ -245,58 +263,80 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
             const SizedBox(height: AppSpacing.xl),
 
             // Summary Metric Cards
-            Row(
-              children: [
-                Expanded(
-                  child: MetricCard(
-                    title: 'Total Class Roster',
-                    value: '$total',
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 1000;
+                final cards = [
+                  MetricCard(
+                    title: 'Assigned Roster',
+                    value: '$total Students',
                     icon: Icons.groups_outlined,
-                    subtitle: 'Enrolled in section',
+                    subtitle: 'Grade: $_className - $_sectionName',
                     color: AppColors.primary,
+                    onTap: () => setState(() {
+                      _searchQuery = '';
+                      _filterShortageOnly = false;
+                    }),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Present Today',
-                    value: '$present',
+                  MetricCard(
+                    title: "Today's Attendance",
+                    value: '$present Present',
                     icon: Icons.check_circle_outline,
-                    subtitle: 'Attending learners',
+                    subtitle: 'Today • Morning Session ($absent Absent)',
                     color: AppColors.success,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Absent Learners',
-                    value: '$absent',
-                    icon: Icons.cancel_outlined,
-                    subtitle: 'Unexcused / Absent',
-                    color: AppColors.error,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Late / Tardy',
-                    value: '$late',
-                    icon: Icons.schedule_outlined,
-                    subtitle: 'Late arrival',
-                    color: AppColors.warning,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
-                    title: 'Section Fulfillment',
+                  MetricCard(
+                    title: 'Attendance Rate',
                     value: '$attendanceRate%',
                     icon: Icons.analytics_outlined,
-                    subtitle: 'Presence ratio',
+                    subtitle: 'Daily Presence Ratio',
                     color: AppColors.secondary,
                   ),
-                ),
-              ],
+                  MetricCard(
+                    title: 'Below Condonation (<75%)',
+                    value: '$shortageCount Defaulters',
+                    icon: Icons.warning_amber_outlined,
+                    subtitle: _filterShortageOnly ? 'Filtered: Tap to Show All' : 'Condonation Shortage Risk',
+                    color: shortageCount > 0 ? AppColors.error : AppColors.success,
+                    onTap: () => setState(() => _filterShortageOnly = !_filterShortageOnly),
+                  ),
+                  MetricCard(
+                    title: 'Pending Leaves',
+                    value: '$pendingLeaves Requests',
+                    icon: Icons.event_busy_outlined,
+                    subtitle: 'Awaiting Class Teacher',
+                    color: pendingLeaves > 0 ? AppColors.warning : AppColors.success,
+                    onTap: () => _tabController.animateTo(1),
+                  ),
+                  MetricCard(
+                    title: 'Class Assignments',
+                    value: '${_assignments.length} Tasks',
+                    icon: Icons.assignment_outlined,
+                    subtitle: 'Homework & Curricula',
+                    color: AppColors.accent,
+                    onTap: () => _tabController.animateTo(2),
+                  ),
+                  MetricCard(
+                    title: 'Parent Notices',
+                    value: '${_circulars.length} Broadcasts',
+                    icon: Icons.forum_outlined,
+                    subtitle: 'Communications to Guardians',
+                    color: AppColors.info,
+                    onTap: () => _tabController.animateTo(3),
+                  ),
+                ];
+
+                return Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: cards.map((c) {
+                    final width = isDesktop
+                        ? (constraints.maxWidth - 3 * AppSpacing.md) / 4
+                        : (constraints.maxWidth - AppSpacing.md) / 2;
+                    return SizedBox(width: width, child: c);
+                  }).toList(),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.xxl),
 
@@ -548,6 +588,137 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
                     },
                   ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignmentsView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PageHeader(
+            breadcrumbs: const ['Classroom', 'Academic Curriculum', 'Assignments'],
+            title: 'Class Homework & Coursework',
+            subtitle: 'Assignments assigned to learners in $_className - $_sectionName.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          if (_assignments.isEmpty)
+            const EmptyStateView(
+              icon: Icons.assignment_outlined,
+              title: 'No Active Class Assignments',
+              description: 'Subject teachers have not posted any pending coursework for this section yet.',
+            )
+          else
+            ..._assignments.map((a) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: AppShadows.subtle,
+                ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: AppColors.primarySubtle,
+                      child: Icon(Icons.assignment, color: AppColors.primary, size: 18),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(a['title'] ?? 'Assignment', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const SizedBox(width: AppSpacing.sm),
+                              StatusBadge.fromStatus(a['status'] ?? 'PUBLISHED'),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text('${a['description'] ?? 'No description'} • Max Marks: ${a['maxMarks'] ?? 100}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          const SizedBox(height: 2),
+                          Text('Due Date: ${a['dueDate'] ?? 'Open'}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircularsView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PageHeader(
+            breadcrumbs: const ['Classroom', 'Guardian Engagement', 'Parent Communications'],
+            title: 'Parent Notices & Circular Communications',
+            subtitle: 'Administrative notices and communications dispatched to guardians and learners.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          if (_circulars.isEmpty)
+            const EmptyStateView(
+              icon: Icons.forum_outlined,
+              title: 'No Parent Communications',
+              description: 'No administrative circulars have been broadcasted to parents yet.',
+            )
+          else
+            ..._circulars.map((c) {
+              final isUrgent = c['priority'] == 'URGENT';
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: AppShadows.subtle,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: isUrgent ? AppColors.errorSubtle : AppColors.secondarySubtle,
+                      child: Icon(isUrgent ? Icons.error_outline : Icons.campaign_outlined, color: isUrgent ? AppColors.error : AppColors.secondary, size: 20),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(c['title'] ?? 'Notice', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              StatusBadge(
+                                label: c['priority'] ?? 'STANDARD',
+                                variant: isUrgent ? BadgeVariant.error : BadgeVariant.info,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(c['content'] ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                          const SizedBox(height: 6),
+                          Text('Target: ${c['targetAudience']} • Dispatched: ${c['createdAt'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );

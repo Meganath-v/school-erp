@@ -232,6 +232,33 @@ export class FeesService {
     };
   }
 
+  async getRecentReceipts(schoolId: string) {
+    const payments = await this.prisma.payment.findMany({
+      where: { schoolId, status: 'SUCCESS' },
+      include: {
+        invoice: {
+          include: {
+            student: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+    });
+
+    return payments.map((p) => ({
+      id: p.id,
+      receiptNo: p.receiptNo,
+      amount: p.amountMinor / 100,
+      method: p.method,
+      studentName: p.invoice?.student ? `${p.invoice.student.firstName} ${p.invoice.student.lastName}` : 'Enrolled Student',
+      admissionNo: p.invoice?.student?.admissionNo,
+      invoiceNo: p.invoice?.invoiceNo,
+      invoiceTitle: p.invoice?.title,
+      createdAt: p.createdAt,
+    }));
+  }
+
   async payInvoice(schoolId: string, actor: { userId: string; name?: string }, data: RecordPaymentDto) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: data.invoiceId, schoolId },

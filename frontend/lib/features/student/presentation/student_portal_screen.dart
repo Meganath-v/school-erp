@@ -317,48 +317,74 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
           const SizedBox(height: AppSpacing.xl),
 
           // Student KPI Summary Cards
-          Row(
-            children: [
-              Expanded(
-                child: MetricCard(
-                  title: 'Term Attendance',
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1000;
+              final todayClasses = _timetable.where((t) => t['dayOfWeek'] == DateTime.now().weekday).length;
+              final examsCount = (_reportCard?['exams'] as List? ?? []).length;
+
+              final cards = [
+                MetricCard(
+                  title: "Today's Classes",
+                  value: '$todayClasses Periods',
+                  icon: Icons.schedule_outlined,
+                  subtitle: "Today's Schedule • Active Sessions",
+                  color: AppColors.primary,
+                  onTap: () => _tabController.animateTo(0),
+                ),
+                MetricCard(
+                  title: 'Attendance Standing',
                   value: '$attendancePct%',
                   icon: isShortage ? Icons.warning_amber : Icons.check_circle_outline,
-                  subtitle: isShortage ? '⚠️ Shortage Risk (<75%)' : 'Consistent attendance',
+                  subtitle: isShortage ? '⚠️ Shortage Deficit (<75%)' : 'Cumulative AY 2026-2027',
                   color: isShortage ? AppColors.error : AppColors.success,
+                  onTap: () => _tabController.animateTo(3),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Daily Periods',
-                  value: '${_timetable.length}',
-                  icon: Icons.schedule_outlined,
-                  subtitle: 'Lectures scheduled',
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Course Homework',
-                  value: '${_assignments.length}',
+                MetricCard(
+                  title: 'Pending Assignments',
+                  value: '${_assignments.length} Tasks',
                   icon: Icons.assignment_outlined,
-                  subtitle: 'Pending & active tasks',
+                  subtitle: 'Curriculum Deadlines',
+                  color: AppColors.warning,
+                  onTap: () => _tabController.animateTo(1),
+                ),
+                MetricCard(
+                  title: 'Published Results',
+                  value: '$examsCount Exams',
+                  icon: Icons.grade_outlined,
+                  subtitle: 'Academic Broadsheet & Marks',
                   color: AppColors.secondary,
+                  onTap: () => _tabController.animateTo(3),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Study Materials',
-                  value: '${_courseMaterials.length}',
+                MetricCard(
+                  title: 'Course Materials',
+                  value: '${_courseMaterials.length} Documents',
                   icon: Icons.menu_book_outlined,
-                  subtitle: 'Uploaded documents',
+                  subtitle: 'Class Learning Resources',
                   color: AppColors.info,
+                  onTap: () => _tabController.animateTo(2),
                 ),
-              ),
-            ],
+                MetricCard(
+                  title: 'School Notifications',
+                  value: '${_circulars.length} Circulars',
+                  icon: Icons.campaign_outlined,
+                  subtitle: 'Administrative Broadcasts',
+                  color: AppColors.accent,
+                  onTap: () => _tabController.animateTo(4),
+                ),
+              ];
+
+              return Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: cards.map((c) {
+                  final width = isDesktop
+                      ? (constraints.maxWidth - 2 * AppSpacing.md) / 3
+                      : (constraints.maxWidth - AppSpacing.md) / 2;
+                  return SizedBox(width: width, child: c);
+                }).toList(),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.xxl),
 

@@ -55,17 +55,34 @@ export class PlatformService {
   async getPlatformStats() {
     const totalSchools = await this.prisma.school.count();
     const activeSchools = await this.prisma.school.count({ where: { status: 'ACTIVE' } });
+    const suspendedSchools = await this.prisma.school.count({ where: { status: 'SUSPENDED' } });
     const totalStudents = await this.prisma.student.count();
     const totalStaff = await this.prisma.staff.count();
+    const totalClasses = await this.prisma.class.count();
     const plans = await this.prisma.subscriptionPlan.findMany();
+    const subscriptions = await this.prisma.subscription.findMany({
+      include: { plan: true },
+      take: 10,
+      orderBy: { startsAt: 'desc' },
+    });
 
     return {
       totalSchools,
       activeSchools,
+      suspendedSchools,
       totalStudents,
       totalStaff,
+      totalClasses,
       plansAvailable: plans.length,
-      estimatedArrMinor: 1499900 * activeSchools, // Mock ARR calculation based on active plans
+      estimatedArrMinor: 1499900 * activeSchools,
+      subscriptions: subscriptions.map((sub) => ({
+        id: sub.id,
+        planName: sub.plan.name,
+        planCode: sub.plan.code,
+        status: sub.status,
+        schoolId: sub.schoolId,
+        endsAt: sub.endsAt,
+      })),
     };
   }
 

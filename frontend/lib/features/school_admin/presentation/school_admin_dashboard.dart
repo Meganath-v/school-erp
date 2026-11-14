@@ -399,48 +399,74 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
             // Top Metric Cards Row
             LayoutBuilder(
               builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth >= 900;
+                final isDesktop = constraints.maxWidth >= 1000;
                 final cards = [
                   MetricCard(
-                    title: 'Enrolled Students',
+                    title: 'Total Students',
                     value: '${stats['totalStudents'] ?? 0}',
                     icon: Icons.people_outline,
-                    subtitle: 'Matriculated learners',
+                    subtitle: 'AY 2026-2027 Enrolled',
                     color: AppColors.primary,
+                    onTap: () => _tabController.animateTo(1),
                   ),
                   MetricCard(
-                    title: 'Teaching Faculty',
+                    title: 'Total Staff',
                     value: '${stats['totalStaff'] ?? 0}',
                     icon: Icons.badge_outlined,
-                    subtitle: 'Active educators',
+                    subtitle: 'Full Faculty Roster',
                     color: AppColors.secondary,
+                    onTap: () => _tabController.animateTo(3),
                   ),
                   MetricCard(
-                    title: 'Classrooms',
-                    value: '${stats['totalClasses'] ?? 0}',
+                    title: 'Classes & Sections',
+                    value: '${stats['totalClasses'] ?? 0} Classes',
                     icon: Icons.meeting_room_outlined,
-                    subtitle: 'Configured sections',
+                    subtitle: '${stats['totalSections'] ?? 0} Active Sections',
                     color: AppColors.accent,
+                    onTap: () => _tabController.animateTo(2),
                   ),
                   MetricCard(
-                    title: 'Today Attendance Rate',
+                    title: 'Admissions',
+                    value: '${_students.length}',
+                    icon: Icons.how_to_reg_outlined,
+                    subtitle: 'Enrolled Learners',
+                    color: AppColors.info,
+                    onTap: () => _tabController.animateTo(1),
+                  ),
+                  MetricCard(
+                    title: 'Attendance Overview',
                     value: attendanceStr,
                     icon: Icons.check_circle_outline,
-                    subtitle: 'Daily student presence',
+                    subtitle: 'Today • Morning Session',
                     color: todayRate != null ? AppColors.success : AppColors.textMuted,
+                    onTap: () => _tabController.animateTo(1),
                   ),
                   MetricCard(
                     title: 'Fee Collections',
                     value: '₹${(stats['totalCollected'] ?? 0).toStringAsFixed(0)}',
                     icon: Icons.payments_outlined,
-                    subtitle: 'Realized fee revenue',
+                    subtitle: '₹${(stats['totalDue'] ?? 0).toStringAsFixed(0)} Outstanding',
                     color: AppColors.warning,
+                    onTap: () => _tabController.animateTo(4),
+                  ),
+                  MetricCard(
+                    title: 'Pending Admin Work',
+                    value: '${stats['pendingAdminWork'] ?? 0}',
+                    icon: Icons.pending_actions_outlined,
+                    subtitle: 'Leaves & Due Invoices',
+                    color: (stats['pendingAdminWork'] ?? 0) > 0 ? AppColors.error : AppColors.success,
+                    onTap: () {
+                      _tabController.animateTo(4);
+                      setState(() => _selectedInvoiceStatusFilter = 'PENDING');
+                    },
                   ),
                 ];
 
                 if (isDesktop) {
-                  return Row(
-                    children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: AppSpacing.md), child: c))).toList(),
+                  return Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
+                    children: cards.map((c) => SizedBox(width: (constraints.maxWidth - (cards.length > 4 ? 3 : 2) * AppSpacing.md) / (cards.length > 4 ? 4 : 3), child: c)).toList(),
                   );
                 } else {
                   return Wrap(

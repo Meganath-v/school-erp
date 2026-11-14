@@ -29,11 +29,12 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
   List<dynamic> _homework = [];
   List<dynamic> _courseMaterials = [];
   List<dynamic> _teachingDiaries = [];
+  List<dynamic> _circulars = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _loadLinkedChildren();
   }
 
@@ -79,6 +80,7 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
         ApiClient().dio.get('/assignments'),
         ApiClient().dio.get('/academics/course-materials'),
         ApiClient().dio.get('/academics/teaching-diaries'),
+        ApiClient().dio.get('/circulars'),
       ]);
 
       setState(() {
@@ -89,10 +91,36 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
         _homework = results[4].data['data'] ?? [];
         _courseMaterials = results[5].data['data'] ?? [];
         _teachingDiaries = results[6].data['data'] ?? [];
+        _circulars = results[7].data as List? ?? [];
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _acknowledgeCircular(String circularId) async {
+    try {
+      await ApiClient().dio.post(
+        '/circulars/$circularId/acknowledge',
+        data: {'remarks': 'Signed & acknowledged by Guardian'},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Circular acknowledged and digitally signed!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      final circRes = await ApiClient().dio.get('/circulars');
+      setState(() {
+        _circulars = circRes.data as List? ?? [];
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign circular: $e'), backgroundColor: AppColors.error),
+      );
     }
   }
 
@@ -384,48 +412,71 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
           const SizedBox(height: AppSpacing.xl),
 
           // Child Overview Metrics
-          Row(
-            children: [
-              Expanded(
-                child: MetricCard(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1000;
+              final cards = [
+                MetricCard(
                   title: 'Attendance Record',
                   value: '$attendancePct%',
                   icon: isShortage ? Icons.warning_amber : Icons.check_circle_outline,
-                  subtitle: isShortage ? '⚠️ Condonation shortage (<75%)' : 'Good academic standing',
+                  subtitle: isShortage ? '⚠️ Condonation Deficit (<75%)' : 'AY 2026-2027 Good Standing',
                   color: isShortage ? AppColors.error : AppColors.success,
+                  onTap: () => _tabController.animateTo(0),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Outstanding Fees',
+                MetricCard(
+                  title: 'Upcoming Timetable',
+                  value: '${_timetable.where((t) => t['dayOfWeek'] == DateTime.now().weekday).length} Classes',
+                  icon: Icons.schedule_outlined,
+                  subtitle: "Today's Scheduled Periods",
+                  color: AppColors.primary,
+                  onTap: () => _tabController.animateTo(4),
+                ),
+                MetricCard(
+                  title: 'Exam Performance',
+                  value: '${_reportCard != null ? 'Results Published' : 'In Moderation'}',
+                  icon: Icons.school_outlined,
+                  subtitle: 'Academic Broadsheet',
+                  color: AppColors.accent,
+                  onTap: () => _tabController.animateTo(0),
+                ),
+                MetricCard(
+                  title: 'Fee Balances',
                   value: '₹${totalFeeDues.toStringAsFixed(0)}',
                   icon: Icons.payments_outlined,
-                  subtitle: totalFeeDues > 0 ? 'Pending invoice dues' : 'All fees cleared',
+                  subtitle: totalFeeDues > 0 ? 'Pending Invoice Dues' : 'All Invoices Cleared',
                   color: totalFeeDues > 0 ? AppColors.warning : AppColors.success,
+                  onTap: () => _tabController.animateTo(5),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+                MetricCard(
                   title: 'Active Homework',
-                  value: '${_homework.length}',
+                  value: '${_homework.length} Tasks',
                   icon: Icons.assignment_outlined,
-                  subtitle: 'Assignments assigned',
-                  color: AppColors.primary,
+                  subtitle: 'Curriculum Coursework',
+                  color: AppColors.info,
+                  onTap: () => _tabController.animateTo(3),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Study Materials',
-                  value: '${_courseMaterials.length}',
-                  icon: Icons.folder_shared_outlined,
-                  subtitle: 'Curriculum resources',
-                  color: AppColors.secondary,
+                MetricCard(
+                  title: 'Circulars & Notices',
+                  value: '${_circulars.where((c) => c['requiresAck'] == true).length} Pending',
+                  icon: Icons.campaign_outlined,
+                  subtitle: 'Digital Signature Sign-off',
+                  color: _circulars.where((c) => c['requiresAck'] == true).isNotEmpty ? AppColors.error : AppColors.secondary,
+                  onTap: () => _tabController.animateTo(6),
                 ),
-              ),
-            ],
+              ];
+
+              return Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: cards.map((c) {
+                  final width = isDesktop
+                      ? (constraints.maxWidth - 2 * AppSpacing.md) / 3
+                      : (constraints.maxWidth - AppSpacing.md) / 2;
+                  return SizedBox(width: width, child: c);
+                }).toList(),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.xxl),
 
@@ -451,6 +502,7 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                     Tab(icon: Icon(Icons.assignment_outlined, size: 18), text: 'Active Homework'),
                     Tab(icon: Icon(Icons.schedule_outlined, size: 18), text: 'Class Timetable'),
                     Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Fee Invoices & Receipts'),
+                    Tab(icon: Icon(Icons.campaign_outlined, size: 18), text: 'School Notices & Circulars'),
                   ],
                 ),
                 const Divider(height: 1, color: AppColors.borderLight),
@@ -465,6 +517,7 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                       _buildHomeworkTab(),
                       _buildTimetableTab(),
                       _buildFeesTab(),
+                      _buildCircularsTab(),
                     ],
                   ),
                 ),
@@ -777,6 +830,75 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                 )
               else
                 const StatusBadge(label: 'PAID & CLEARED', variant: BadgeVariant.success),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCircularsTab() {
+    if (_circulars.isEmpty) {
+      return const EmptyStateView(
+        icon: Icons.campaign_outlined,
+        title: 'No Broadcast Circulars',
+        description: 'No administrative notices or circulars require guardian action at this time.',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      itemCount: _circulars.length,
+      itemBuilder: (context, index) {
+        final circ = _circulars[index];
+        final requiresAck = circ['requiresAck'] == true;
+        final isUrgent = circ['priority'] == 'URGENT';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: isUrgent ? AppColors.errorSubtle : AppColors.secondarySubtle,
+                child: Icon(isUrgent ? Icons.warning_amber : Icons.campaign, color: isUrgent ? AppColors.error : AppColors.secondary, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(circ['title'] ?? 'School Circular', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        StatusBadge(
+                          label: circ['priority'] ?? 'STANDARD',
+                          variant: isUrgent ? BadgeVariant.error : BadgeVariant.info,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(circ['content'] ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    Text('Dispatched: ${circ['createdAt'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              if (requiresAck) ...[
+                const SizedBox(width: AppSpacing.md),
+                ElevatedButton.icon(
+                  onPressed: () => _acknowledgeCircular(circ['id']),
+                  icon: const Icon(Icons.draw, size: 16),
+                  label: const Text('Sign & Ack'),
+                ),
+              ],
             ],
           ),
         );

@@ -26,6 +26,8 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
   List<dynamic> _circulars = [];
   List<dynamic> _tasks = [];
   List<dynamic> _reminders = [];
+  List<dynamic> _receipts = [];
+  Map<String, dynamic>? _overview;
 
   String _invoiceSearchQuery = '';
   String _invoiceStatusFilter = 'ALL';
@@ -59,15 +61,19 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
         ApiClient().dio.get('/circulars').then((r) => r.data as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/tasks').then((r) => r.data as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/reminders').then((r) => r.data as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/receipts').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/reports/overview').then((r) => r.data['data'] as Map<String, dynamic>?).catchError((_) => null),
       ]);
 
       setState(() {
-        _invoices = results[0];
-        _students = results[1];
-        _classes = results[2];
-        _circulars = results[3];
-        _tasks = results[4];
-        _reminders = results[5];
+        _invoices = results[0] as List<dynamic>;
+        _students = results[1] as List<dynamic>;
+        _classes = results[2] as List<dynamic>;
+        _circulars = results[3] as List<dynamic>;
+        _tasks = results[4] as List<dynamic>;
+        _reminders = results[5] as List<dynamic>;
+        _receipts = results[6] as List<dynamic>;
+        _overview = results[7] as Map<String, dynamic>?;
         _isLoading = false;
       });
     } catch (e) {
@@ -96,6 +102,55 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
         SnackBar(content: Text('Scan failed: $e'), backgroundColor: AppColors.error),
       );
     }
+  }
+
+  void _showRecentReceiptsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Official Fee Receipts'),
+            StatusBadge(label: '${_receipts.length} Serialized Receipts', variant: BadgeVariant.success),
+          ],
+        ),
+        content: SizedBox(
+          width: 640,
+          height: 420,
+          child: _receipts.isEmpty
+              ? const Center(child: Text('No payment receipts issued yet.'))
+              : ListView.separated(
+                  itemCount: _receipts.length,
+                  separatorBuilder: (ctx, i) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final rec = _receipts[i];
+                    return ListTile(
+                      dense: true,
+                      leading: const CircleAvatar(
+                        backgroundColor: AppColors.primarySubtle,
+                        child: Icon(Icons.receipt, color: AppColors.primary, size: 18),
+                      ),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(rec['receiptNo'] ?? 'REC-XXXX', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          Text('₹${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 14)),
+                        ],
+                      ),
+                      subtitle: Text(
+                        '${rec['studentName']} (${rec['admissionNo'] ?? 'No Adm'}) • ${rec['method']} • Invoice: ${rec['invoiceNo'] ?? 'N/A'}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
   }
 
   void _showNewAdmissionDialog() {
@@ -668,49 +723,74 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          // Bursar Metrics
-          Row(
-            children: [
-              Expanded(
-                child: MetricCard(
-                  title: 'Outstanding Receivables',
+          // Bursar & Office Metrics Row
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1000;
+              final cards = [
+                MetricCard(
+                  title: 'New Admissions',
+                  value: '${_students.length}',
+                  icon: Icons.how_to_reg_outlined,
+                  subtitle: 'AY 2026-2027 Matriculated',
+                  color: AppColors.primary,
+                  onTap: () => _tabController.animateTo(1),
+                ),
+                MetricCard(
+                  title: 'Pending Records',
+                  value: '${_students.where((s) => s['enrollments'] == null || (s['enrollments'] as List).isEmpty).length}',
+                  icon: Icons.person_search_outlined,
+                  subtitle: 'Pending Section Allocation',
+                  color: AppColors.accent,
+                  onTap: () => _tabController.animateTo(1),
+                ),
+                MetricCard(
+                  title: "Today's Collections",
+                  value: '₹${(_overview?['stats']?['todayFeeCollected'] ?? 0).toStringAsFixed(0)}',
+                  icon: Icons.savings_outlined,
+                  subtitle: 'Today • Counter Receipts',
+                  color: AppColors.success,
+                  onTap: () => _tabController.animateTo(0),
+                ),
+                MetricCard(
+                  title: 'Outstanding Invoices',
                   value: '₹${totalDues.toStringAsFixed(0)}',
                   icon: Icons.pending_actions_outlined,
-                  subtitle: 'Pending fee balance',
+                  subtitle: '${_invoices.where((i) => (i['dueAmount'] ?? 0) > 0).length} Invoices Due',
                   color: AppColors.error,
+                  onTap: () {
+                    setState(() => _invoiceStatusFilter = 'PENDING');
+                  },
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Total Collected Fees',
-                  value: '₹${totalCollected.toStringAsFixed(0)}',
-                  icon: Icons.account_balance_wallet_outlined,
-                  subtitle: 'Realized fee revenue',
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Active Invoices',
-                  value: '${_invoices.length}',
+                MetricCard(
+                  title: 'Recent Receipts',
+                  value: '${_receipts.length} Issued',
                   icon: Icons.receipt_long_outlined,
-                  subtitle: 'Invoices on record',
-                  color: AppColors.primary,
+                  subtitle: 'Click to Inspect Receipts',
+                  color: AppColors.secondary,
+                  onTap: _showRecentReceiptsDialog,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
-                  title: 'Pending Reminders',
-                  value: '${_reminders.where((r) => r['status'] == 'PENDING').length}',
-                  icon: Icons.notifications_active_outlined,
-                  subtitle: 'Fee due alerts queued',
+                MetricCard(
+                  title: 'Pending Office Tasks',
+                  value: '${_tasks.where((t) => t['status'] == 'PENDING').length}',
+                  icon: Icons.checklist_outlined,
+                  subtitle: 'Action Items Queued',
                   color: AppColors.warning,
+                  onTap: () => _tabController.animateTo(3),
                 ),
-              ),
-            ],
+              ];
+
+              return Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: cards.map((c) {
+                  final width = isDesktop
+                      ? (constraints.maxWidth - 2 * AppSpacing.md) / 3
+                      : (constraints.maxWidth - AppSpacing.md) / 2;
+                  return SizedBox(width: width, child: c);
+                }).toList(),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.xxl),
 

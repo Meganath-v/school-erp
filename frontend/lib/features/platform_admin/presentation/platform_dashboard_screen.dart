@@ -18,6 +18,8 @@ class PlatformDashboardScreen extends ConsumerStatefulWidget {
 class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScreen> {
   Map<String, dynamic>? _stats;
   List<dynamic> _schools = [];
+  List<dynamic> _plans = [];
+  List<dynamic> _auditLogs = [];
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
@@ -38,11 +40,15 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
       final results = await Future.wait([
         ApiClient().dio.get('/platform/stats'),
         ApiClient().dio.get('/platform/schools'),
+        ApiClient().dio.get('/platform/plans').catchError((_) => null as dynamic),
+        ApiClient().dio.get('/audit-logs').catchError((_) => null as dynamic),
       ]);
 
       setState(() {
         _stats = results[0].data['data'];
         _schools = results[1].data['data'] ?? [];
+        _plans = results[2]?.data?['data'] ?? [];
+        _auditLogs = results[3]?.data?['data'] ?? [];
         _isLoading = false;
       });
     } catch (e) {
@@ -243,7 +249,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
     if (_errorMessage != null) {
       return ErrorStateView(
         title: 'Platform Control Plane Error',
-        message: _errorMessage,
+        errorMessage: _errorMessage,
         onRetry: _fetchPlatformData,
       );
     }
@@ -258,15 +264,19 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
       return matchesStatus && (name.contains(q) || code.contains(q) || email.contains(q));
     }).toList();
 
+    final suspendedCount = _stats?['suspendedSchools'] ?? _schools.where((s) => s['status'] == 'SUSPENDED').length;
+    final totalSchools = _stats?['totalSchools'] ?? _schools.length;
+    final activeSchools = _stats?['activeSchools'] ?? _schools.where((s) => s['status'] == 'ACTIVE').length;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PageHeader(
-            breadcrumbs: const ['Platform Admin', 'Multi-Tenant Control Plane'],
+            breadcrumbs: const ['Platform Owner', 'Multi-Tenant Control Plane'],
             title: 'SaaS Platform Control Plane',
-            subtitle: 'Multi-institutional tenant orchestration, provisioning, resource quotas, and ARR telemetry.',
+            subtitle: 'Multi-institutional tenant orchestration, provisioning, resource quotas, and ARR telemetry. (Click cards to filter)',
             actions: [
               OutlinedButton.icon(
                 onPressed: _fetchPlatformData,
@@ -283,24 +293,34 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          // Platform KPI Metric Cards
+          // Platform KPI Metric Cards with Interactive Filtering
           LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth >= 900;
               final cards = [
                 MetricCard(
-                  title: 'Total Institutions',
-                  value: '${_stats?['totalSchools'] ?? 0}',
+                  title: 'Registered Schools',
+                  value: '$totalSchools',
                   icon: Icons.domain_outlined,
-                  subtitle: 'Total registered schools',
+                  subtitle: 'All tenants • Click to view all',
                   color: AppColors.primary,
+                  onTap: () => setState(() => _selectedStatusFilter = 'ALL'),
                 ),
                 MetricCard(
-                  title: 'Active Tenants',
-                  value: '${_stats?['activeSchools'] ?? 0}',
+                  title: 'Active Schools',
+                  value: '$activeSchools',
                   icon: Icons.verified_outlined,
-                  subtitle: 'Operational campuses',
+                  subtitle: 'Operational • Click to filter',
                   color: AppColors.success,
+                  onTap: () => setState(() => _selectedStatusFilter = 'ACTIVE'),
+                ),
+                MetricCard(
+                  title: 'Suspended Schools',
+                  value: '$suspendedCount',
+                  icon: Icons.block_outlined,
+                  subtitle: 'Dormant • Click to filter',
+                  color: suspendedCount > 0 ? AppColors.error : AppColors.textMuted,
+                  onTap: () => setState(() => _selectedStatusFilter = 'SUSPENDED'),
                 ),
                 MetricCard(
                   title: 'Enrolled Students',
@@ -308,13 +328,6 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                   icon: Icons.school_outlined,
                   subtitle: 'Platform-wide enrollment',
                   color: AppColors.info,
-                ),
-                MetricCard(
-                  title: 'Academic Faculty',
-                  value: '${_stats?['totalStaff'] ?? 0}',
-                  icon: Icons.badge_outlined,
-                  subtitle: 'Active staff & teachers',
-                  color: AppColors.secondary,
                 ),
                 MetricCard(
                   title: 'Annualized ARR',
@@ -337,6 +350,27 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                 );
               }
             },
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          // Platform Usage Statistics
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppShadows.subtle,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildUsagePill('Platform Students', '${_stats?['totalStudents'] ?? 0}', Icons.people_outline, AppColors.primary),
+                _buildUsagePill('Academic Faculty', '${_stats?['totalStaff'] ?? 0}', Icons.badge_outlined, AppColors.secondary),
+                _buildUsagePill('Active Classrooms', '${_stats?['totalClasses'] ?? 0}', Icons.meeting_room_outlined, AppColors.accent),
+                _buildUsagePill('Subscription Tiers', '${_plans.isNotEmpty ? _plans.length : (_stats?['plansAvailable'] ?? 2)}', Icons.card_membership_outlined, AppColors.warning),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xxl),
 
@@ -482,8 +516,79 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     ),
                   ),
                 ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          // Recent Platform Events from Audit Logs
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: AppShadows.subtle,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.history_outlined, color: AppColors.primary, size: 20),
+                        SizedBox(width: AppSpacing.sm),
+                        Text('Recent Platform Events & Security Trail', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    Text('${_auditLogs.length} events logged', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (_auditLogs.isEmpty)
+                  const Text('No recent platform events recorded yet.', style: TextStyle(color: AppColors.textSecondary))
+                else
+                  ..._auditLogs.take(5).map((log) {
+                    final ts = (log['timestamp'] ?? '').toString();
+                    final formattedTs = ts.length >= 19 ? ts.replaceAll('T', ' ').substring(0, 19) : ts;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.circle, size: 8, color: AppColors.primary),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(log['action'] ?? 'EVENT', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text('by ${log['actorName'] ?? 'Operator'} • $formattedTs', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildUsagePill(String title, String value, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.sm)),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(title, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+      ],
     );
   }
 }
