@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateNotificationPreferencesDto {
   @ApiPropertyOptional({ example: true, description: 'Receive email notifications' })
@@ -33,3 +34,31 @@ export class UpdateNotificationPreferencesDto {
   examAlerts?: boolean;
 }
 
+export class GetNotificationsQueryDto {
+  @ApiPropertyOptional({ example: 'ALL', enum: ['ALL', 'UNREAD', 'READ', 'ARCHIVED'] })
+  @IsOptional()
+  @IsIn(['ALL', 'UNREAD', 'READ', 'ARCHIVED'])
+  status?: string;
+
+  @ApiPropertyOptional({ example: 'ALL', enum: ['ALL', 'LOW', 'NORMAL', 'HIGH', 'URGENT'] })
+  @IsOptional()
+  @IsIn(['ALL', 'LOW', 'NORMAL', 'HIGH', 'URGENT'])
+  priority?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'Page number (default: 1)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20, description: 'Page size limit (default: 20)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  limit?: number;
+
+  @ApiPropertyOptional({ example: 'invoice', description: 'Search term for title or body' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}

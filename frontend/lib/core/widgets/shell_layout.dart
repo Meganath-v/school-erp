@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../network/api_client.dart';
 import '../theme/app_typography.dart';
 import '../auth/auth_provider.dart';
 import '../theme/app_theme.dart';
@@ -51,6 +52,23 @@ class ShellLayout extends ConsumerStatefulWidget {
 class _ShellLayoutState extends ConsumerState<ShellLayout> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isSidebarCollapsed = false;
+  int _unreadNotificationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadNotificationCount();
+  }
+
+  Future<void> _fetchUnreadNotificationCount() async {
+    try {
+      final res = await ApiClient().dio.get('/notifications', queryParameters: {'limit': 1});
+      final count = res.data['data']?['unreadCount'] as int? ?? 0;
+      if (mounted) {
+        setState(() => _unreadNotificationCount = count);
+      }
+    } catch (_) {}
+  }
 
   void _openSearchDialog() {
     OmniSearchDialog.show(context, onNavigate: widget.onSearchNavigate);
@@ -333,9 +351,14 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
         // Notification Center Trigger
         IconButton(
           tooltip: 'Institutional Notifications',
-          icon: const Icon(Icons.notifications_none_outlined, size: 20, color: AppColors.textDark),
-          onPressed: () {
-            NotificationCenterDialog.show(context);
+          icon: Badge(
+            isLabelVisible: _unreadNotificationCount > 0,
+            label: Text('$_unreadNotificationCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            child: const Icon(Icons.notifications_none_outlined, size: 20, color: AppColors.textDark),
+          ),
+          onPressed: () async {
+            await NotificationCenterDialog.show(context);
+            _fetchUnreadNotificationCount();
           },
         ),
 

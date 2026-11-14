@@ -1,5 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
+
+export const REMINDER_CATEGORIES = [
+  'FEE_DUE',
+  'ATTENDANCE_LOW',
+  'EXAM_MARK_ENTRY',
+  'LEAVE_APPROVAL',
+  'ASSIGNMENT_DEADLINE',
+  'CIRCULAR_ACK',
+  'TASK_DUE',
+  'CUSTOM',
+] as const;
+
+export const REMINDER_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 
 export class CreateReminderDto {
   @ApiProperty({ example: 'Submit Term 1 Marks Broadsheet', description: 'Reminder title' })
@@ -12,14 +25,14 @@ export class CreateReminderDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 'CUSTOM', enum: ['FEE_DUE', 'ATTENDANCE_ALERT', 'EXAM_UPCOMING', 'CUSTOM'] })
+  @ApiPropertyOptional({ example: 'CUSTOM', enum: REMINDER_CATEGORIES })
   @IsOptional()
-  @IsIn(['FEE_DUE', 'ATTENDANCE_ALERT', 'EXAM_UPCOMING', 'CUSTOM'])
+  @IsIn(REMINDER_CATEGORIES)
   category?: string;
 
-  @ApiPropertyOptional({ example: 'HIGH', enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] })
+  @ApiPropertyOptional({ example: 'HIGH', enum: REMINDER_PRIORITIES })
   @IsOptional()
-  @IsIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+  @IsIn(REMINDER_PRIORITIES)
   priority?: string;
 
   @ApiPropertyOptional({ example: '2026-11-25T17:00:00.000Z' })
@@ -32,7 +45,7 @@ export class CreateReminderDto {
   @IsDateString()
   remindAt?: string;
 
-  @ApiPropertyOptional({ example: 'Exam' })
+  @ApiPropertyOptional({ example: 'ExamSubject' })
   @IsOptional()
   @IsString()
   entityType?: string;
@@ -49,3 +62,9 @@ export class UpdateReminderStatusDto {
   status: string;
 }
 
+export class TriggerWorkflowDto {
+  @ApiPropertyOptional({ example: false, description: 'Force re-evaluation of non-expired alerts' })
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
+}
