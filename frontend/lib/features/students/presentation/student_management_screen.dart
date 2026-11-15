@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
@@ -586,37 +587,29 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
             const SizedBox(height: AppSpacing.xl),
 
             // Top Summary Cards
-            Row(
+            ResponsiveMetricRow(
               children: [
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Total Enrolled',
                     value: '${_students.length}',
                     icon: Icons.groups_outlined,
                     subtitle: 'AY 2026-2027 Learners',
                     color: AppColors.primary,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Active Students',
                     value: '${_students.where((s) => s['status'] == 'ACTIVE').length}',
                     icon: Icons.check_circle_outline,
                     subtitle: 'Current matriculated learners',
                     color: AppColors.success,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Classes Configured',
                     value: '${_classes.length}',
                     icon: Icons.meeting_room_outlined,
                     subtitle: 'Academic divisions',
                     color: AppColors.secondary,
                   ),
-                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -710,7 +703,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                     if (MediaQuery.of(context).size.width < 600)
                       // Phones: one tappable row per learner instead of a six-column table.
                       for (final s in pagedStudents) ...[
-                        ListTile(
+                        Material(type: MaterialType.transparency, child: ListTile(
                           minVerticalPadding: 12,
                           leading: CircleAvatar(
                             backgroundColor: AppColors.primarySubtle,
@@ -729,7 +722,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                             _selectStudent(s['id']);
                             _tabController.animateTo(1);
                           },
-                        ),
+                        )),
                         const Divider(height: 1),
                       ]
                     else
@@ -900,10 +893,10 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Profile Action Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              Row(
+              Row(mainAxisSize: MainAxisSize.min,
                 children: [
                   CircleAvatar(
                     radius: 28,
@@ -914,7 +907,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                     ),
                   ),
                   const SizedBox(width: AppSpacing.lg),
-                  Column(
+                  Flexible(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
@@ -926,10 +919,10 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       ),
                       Text('Admission No: ${s['admissionNo']} • Class: ${s['enrollments'] != null && (s['enrollments'] as List).isNotEmpty ? s['enrollments'][0]['class']['name'] : 'Unassigned'} • DOB: ${s['dateOfBirth'] ?? 'N/A'}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
-                  ),
+                  )),
                 ],
               ),
-              Row(
+              Row(mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton.icon(
                     onPressed: _showPromoteDialog,
@@ -971,7 +964,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                         children: [
                           const Icon(Icons.badge, color: AppColors.primary, size: 20),
                           const SizedBox(width: AppSpacing.sm),
-                          Text('Personal & Enrollment Details', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Flexible(child: Text('Personal & Enrollment Details', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                         ],
                       ),
                       const Divider(height: 24),
@@ -995,8 +988,8 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                               color: AppColors.surfaceMuted,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                              alignment: WrapAlignment.spaceBetween,
                               children: [
                                 Text('${e['class']?['name']} (${e['section']?['name']}) • AY ${e['academicYear']?['name'] ?? '2026-2027'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                 StatusBadge.fromStatus(e['status'] ?? 'ACTIVE'),
@@ -1028,7 +1021,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                         children: [
                           const Icon(Icons.family_restroom, color: AppColors.secondary, size: 20),
                           const SizedBox(width: AppSpacing.sm),
-                          Text('Guardian & Emergency Contacts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Flexible(child: Text('Guardian & Emergency Contacts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                         ],
                       ),
                       const Divider(height: 24),
@@ -1068,14 +1061,14 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Row(mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.school, color: AppColors.accent, size: 20),
                         const SizedBox(width: AppSpacing.sm),
-                        Text('Academic History & Examination Broadsheet', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Flexible(child: Text('Academic History & Examination Broadsheet', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                       ],
                     ),
                     StatusBadge(
@@ -1101,8 +1094,8 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                            alignment: WrapAlignment.spaceBetween,
                             children: [
                               Text(ex['examName'] ?? 'Examination', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                               Text(
@@ -1145,14 +1138,14 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Row(mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.folder_shared, color: AppColors.primary, size: 20),
                         const SizedBox(width: AppSpacing.sm),
-                        Text('Student Document Repository', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Flexible(child: Text('Student Document Repository', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                       ],
                     ),
                     ElevatedButton.icon(
@@ -1202,8 +1195,8 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+        alignment: WrapAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),

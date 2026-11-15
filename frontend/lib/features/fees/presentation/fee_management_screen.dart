@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/report_adapters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
@@ -85,7 +87,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
         ApiClient().dio.get('/receipts').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/fees/plans').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reports/fees').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
+        fetchOutstandingFees().then<Map<String, dynamic>?>((m) => m).catchError((_) => null),
       ]);
 
       setState(() {
@@ -494,47 +496,36 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
             const SizedBox(height: AppSpacing.xl),
 
             // Bursar Financial Telemetry Row
-            Row(
+            ResponsiveMetricRow(
               children: [
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Outstanding Dues',
                     value: '₹${totalDues.toStringAsFixed(0)}',
                     icon: Icons.pending_actions_outlined,
                     subtitle: 'Pending Fee Balance',
                     color: AppColors.error,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Realized Revenue',
                     value: '₹${totalCollected.toStringAsFixed(0)}',
                     icon: Icons.savings_outlined,
                     subtitle: 'Fee Collections Received',
                     color: AppColors.success,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Invoices on File',
                     value: '${_invoices.length}',
                     icon: Icons.receipt_long_outlined,
                     subtitle: 'Billed Student Accounts',
                     color: AppColors.primary,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Serialized Receipts',
                     value: '${_receipts.length}',
                     icon: Icons.verified_outlined,
                     subtitle: 'Issued Payment Vouchers',
                     color: AppColors.secondary,
                   ),
-                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -697,17 +688,17 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
                       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.borderLight))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
                         children: [
                           Text('Showing ${startIndex + 1} to ${((startIndex + _pageSize) < totalCount ? (startIndex + _pageSize) : totalCount)} of $totalCount accounts', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          Row(
+                          Row(mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.chevron_left, size: 18),
                                 onPressed: safePage > 1 ? () => setState(() => _currentPage = safePage - 1) : null,
                               ),
-                              Text('Page $safePage of ${totalPages == 0 ? 1 : totalPages}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              Flexible(child: Text('Page $safePage of ${totalPages == 0 ? 1 : totalPages}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
                               IconButton(
                                 icon: const Icon(Icons.chevron_right, size: 18),
                                 onPressed: safePage < totalPages ? () => setState(() => _currentPage = safePage + 1) : null,
@@ -864,47 +855,36 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          Row(
+          ResponsiveMetricRow(
             children: [
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Total Invoiced',
                   value: '₹${grandTotals['invoiced'] ?? 0}',
                   icon: Icons.account_balance_wallet_outlined,
                   subtitle: 'Gross Invoiced Billing',
                   color: AppColors.primary,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Realized Collections',
                   value: '₹${grandTotals['collected'] ?? 0}',
                   icon: Icons.savings_outlined,
                   subtitle: 'Collected Revenue',
                   color: AppColors.success,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Collection Rate',
                   value: '${grandTotals['collectionRate'] ?? 100}%',
                   icon: Icons.analytics_outlined,
                   subtitle: 'Realization Efficiency',
                   color: AppColors.secondary,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Outstanding Defaulters',
                   value: '${defaulters.length}',
                   icon: Icons.warning_amber_outlined,
                   subtitle: 'Student Accounts Overdue',
                   color: defaulters.isNotEmpty ? AppColors.error : AppColors.success,
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),

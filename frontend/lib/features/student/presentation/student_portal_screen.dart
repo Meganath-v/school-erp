@@ -56,8 +56,8 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
         ApiClient().dio.get('/timetable/entries').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/assignments').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/academics/course-materials').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/circulars').then((r) => r.data as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/feedback').then((r) => r.data as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/circulars').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/feedback').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
       ]);
 
       setState(() {
@@ -517,8 +517,8 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
                 Text(a['description'], style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
               const SizedBox(height: AppSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                alignment: WrapAlignment.spaceBetween,
                 children: [
                   Text('Max Marks: ${a['maxMarks'] ?? 100}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   ElevatedButton.icon(

@@ -2,9 +2,11 @@ import '../../../core/widgets/adaptive_data_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/report_adapters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
@@ -74,7 +76,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
       final results = await Future.wait([
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/subjects').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reports/attendance').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
+        fetchAttendanceCompliance().then<Map<String, dynamic>?>((m) => m).catchError((_) => null),
       ]);
 
       _classes = results[0] as List<dynamic>;
@@ -382,57 +384,43 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
             const SizedBox(height: AppSpacing.xl),
 
             // Telemetry Metric Cards
-            Row(
+            ResponsiveMetricRow(
               children: [
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Total Learners',
                     value: '$total',
                     icon: Icons.groups_outlined,
                     subtitle: 'Section Roster',
                     color: AppColors.primary,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Present Today',
                     value: '$presentCount',
                     icon: Icons.check_circle_outline,
                     subtitle: 'Attending learners',
                     color: AppColors.success,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Absent Learners',
                     value: '$absentCount',
                     icon: Icons.cancel_outlined,
                     subtitle: 'Absence slips',
                     color: AppColors.error,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Late Arrivals',
                     value: '$lateCount',
                     icon: Icons.schedule_outlined,
                     subtitle: 'Tardy presence',
                     color: AppColors.warning,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Section Fulfillment',
                     value: '$rate%',
                     icon: Icons.analytics_outlined,
                     subtitle: 'Presence ratio',
                     color: AppColors.secondary,
                   ),
-                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xxl),
@@ -471,47 +459,84 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
                     final studentId = s['studentId'];
                     final status = _dailyAttendanceMap[studentId] ?? 'PRESENT';
 
+                    final identity = Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primarySubtle,
+                          child: Text('${s['rollNo'] ?? index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Text(s['fullName'] ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  if (s['isShortageRisk'] == true)
+                                    const StatusBadge(label: 'Shortage <75%', variant: BadgeVariant.error),
+                                ],
+                              ),
+                              Text('Adm No: ${s['admissionNo'] ?? 'N/A'} • Cumulative: ${s['attendancePercentage'] ?? 100}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                    const options = [
+                      ('PRESENT', 'Present', Icons.check),
+                      ('ABSENT', 'Absent', Icons.close),
+                      ('LATE', 'Late', Icons.schedule),
+                      ('HALF_DAY', 'Half Day', Icons.timelapse),
+                    ];
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.primarySubtle,
-                            child: Text('${s['rollNo'] ?? index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(s['fullName'] ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                    if (s['isShortageRisk'] == true) ...[
-                                      const SizedBox(width: 8),
-                                      const StatusBadge(label: 'Shortage <75%', variant: BadgeVariant.error),
-                                    ],
-                                  ],
-                                ),
-                                Text('Adm No: ${s['admissionNo'] ?? 'N/A'} • Cumulative: ${s['attendancePercentage'] ?? 100}%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                              ],
-                            ),
-                          ),
-                          SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(value: 'PRESENT', label: Text('Present'), icon: Icon(Icons.check, size: 14)),
-                              ButtonSegment(value: 'ABSENT', label: Text('Absent'), icon: Icon(Icons.close, size: 14)),
-                              ButtonSegment(value: 'LATE', label: Text('Late'), icon: Icon(Icons.schedule, size: 14)),
-                              ButtonSegment(value: 'HALF_DAY', label: Text('Half Day'), icon: Icon(Icons.timelapse, size: 14)),
+                      child: LayoutBuilder(builder: (context, constraints) {
+                        // Phones: status choices go on their own line under the name.
+                        if (constraints.maxWidth < 560) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              identity,
+                              const SizedBox(height: AppSpacing.sm),
+                              Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.xs,
+                                children: [
+                                  for (final o in options)
+                                    ChoiceChip(
+                                      label: Text(o.$2),
+                                      avatar: Icon(o.$3, size: 16),
+                                      showCheckmark: false,
+                                      selected: status == o.$1,
+                                      onSelected: (_) => setState(() => _dailyAttendanceMap[studentId] = o.$1),
+                                    ),
+                                ],
+                              ),
                             ],
-                            selected: {status},
-                            onSelectionChanged: (set) {
-                              setState(() => _dailyAttendanceMap[studentId] = set.first);
-                            },
-                          ),
-                        ],
-                      ),
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: identity),
+                            SegmentedButton<String>(
+                              segments: [
+                                for (final o in options)
+                                  ButtonSegment(value: o.$1, label: Text(o.$2), icon: Icon(o.$3, size: 14)),
+                              ],
+                              selected: {status},
+                              onSelectionChanged: (set) {
+                                setState(() => _dailyAttendanceMap[studentId] = set.first);
+                              },
+                            ),
+                          ],
+                        );
+                      }),
                     );
                   },
                 ),
@@ -797,37 +822,29 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          Row(
+          ResponsiveMetricRow(
             children: [
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Condonation Threshold',
                   value: '$threshold%',
                   icon: Icons.verified_outlined,
                   subtitle: 'Institutional Minimum',
                   color: AppColors.primary,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Defaulters at Risk',
                   value: '${defaulters.length}',
                   icon: Icons.warning_amber_outlined,
                   subtitle: 'Below $threshold% threshold',
                   color: defaulters.isNotEmpty ? AppColors.error : AppColors.success,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Overall Institution Rate',
                   value: '$overallRate%',
                   icon: Icons.analytics_outlined,
                   subtitle: 'Cumulative Presence Ratio',
                   color: overallRate >= 75 ? AppColors.success : AppColors.warning,
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),

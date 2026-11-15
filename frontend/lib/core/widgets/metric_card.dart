@@ -31,7 +31,7 @@ class MetricCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: AppRadius.mdBorderRadius,
       child: Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppRadius.mdBorderRadius,
@@ -40,7 +40,7 @@ class MetricCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -69,13 +69,19 @@ class MetricCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
-                letterSpacing: -0.5,
+            // Large values shrink to fit narrow cards instead of overflowing.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                  letterSpacing: -0.5,
+                ),
               ),
             ),
             if (subtitle != null || trailing != null) ...[

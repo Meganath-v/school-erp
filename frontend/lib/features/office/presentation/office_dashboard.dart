@@ -59,9 +59,9 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
         ApiClient().dio.get('/fees/invoices').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/circulars').then((r) => r.data as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/tasks').then((r) => r.data as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reminders').then((r) => r.data as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/circulars').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/tasks').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/reminders').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/receipts').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/reports/overview').then((r) => r.data['data'] as Map<String, dynamic>?).catchError((_) => null),
       ]);

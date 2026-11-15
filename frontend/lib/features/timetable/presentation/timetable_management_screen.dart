@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/state_views.dart';
 
@@ -78,7 +79,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
       ]);
 
       _classes = results[0];
-      _staffList = results[1];
+      _staffList = withStaffNames(results[1]);
       _subjects = results[2];
 
       if (_classes.isNotEmpty) {
@@ -664,27 +665,22 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          Row(
+          ResponsiveMetricRow(
             children: [
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Weekly Periods',
                   value: '${_teacherEntries.length}',
                   icon: Icons.schedule_outlined,
                   subtitle: 'Scheduled Teaching Slots',
                   color: AppColors.primary,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: MetricCard(
+              MetricCard(
                   title: 'Teaching Days',
                   value: '${_teacherEntries.map((e) => e['dayOfWeek']).toSet().length} Days',
                   icon: Icons.calendar_today_outlined,
                   subtitle: 'Active Days in Week',
                   color: AppColors.secondary,
                 ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -734,3 +730,15 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
     return _buildMatrixTab();
   }
 }
+
+/// The API returns `fullName`/`firstName`/`lastName`; this screen reads `name`.
+List<dynamic> withStaffNames(List<dynamic> list) => [
+      for (final s in list)
+        if (s is Map)
+          {
+            ...s,
+            'name': s['name'] ?? s['fullName'] ?? '${s['firstName'] ?? ''} ${s['lastName'] ?? ''}'.trim(),
+          }
+        else
+          s,
+    ];

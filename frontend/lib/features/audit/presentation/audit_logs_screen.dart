@@ -214,10 +214,10 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: AppSpacing.sm),
-                                    Text(
+                                    Flexible(child: Text(
                                       log['actorName'] ?? 'Operator',
                                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                    ),
+                                    )),
                                   ],
                                 ),
                               ),

@@ -789,14 +789,14 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
-                      Row(
+                      Row(mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.auto_graph, color: AppColors.primary, size: 22),
                           const SizedBox(width: AppSpacing.sm),
-                          Text('Curriculum Syllabus Fulfillment', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Flexible(child: Text('Curriculum Syllabus Fulfillment', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                         ],
                       ),
                       StatusBadge(
@@ -842,14 +842,14 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
                         children: [
-                          Row(
+                          Row(mainAxisSize: MainAxisSize.min,
                             children: [
                               StatusBadge(label: 'Unit ${p['unitNumber']}', variant: BadgeVariant.info),
                               const SizedBox(width: AppSpacing.md),
-                              Text(p['unitTitle'] ?? 'Unit Title', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Flexible(child: Text(p['unitTitle'] ?? 'Unit Title', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
                             ],
                           ),
                           StatusBadge.fromStatus(p['status'] ?? 'PENDING'),
@@ -862,8 +862,8 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         Text('Course Outcome: ${p['learningObjectives']}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                       const Divider(height: 24, color: AppColors.borderLight),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
                         children: [
                           Text('Instructional Hours: ${p['conductedHours']} / ${p['plannedHours']} hrs (${p['coveragePercent']}%)',
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),

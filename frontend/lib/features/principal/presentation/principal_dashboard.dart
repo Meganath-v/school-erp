@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/report_adapters.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
@@ -52,9 +53,9 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
         ApiClient().dio.get('/reports/overview').then((r) => r.data['data'] as Map<String, dynamic>?).catchError((_) => null),
         ApiClient().dio.get('/exams').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/leave-requests').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reports/examinations').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
-        ApiClient().dio.get('/reports/teacher-workload').then((r) => r.data as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reports/attendance').then((r) => r.data as Map<String, dynamic>?).catchError((_) => null),
+        fetchExamSummary().then<Map<String, dynamic>?>((m) => m).catchError((_) => null),
+        ApiClient().dio.get('/reports/teacher-workload').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        fetchAttendanceCompliance().then<Map<String, dynamic>?>((m) => m).catchError((_) => null),
       ]);
 
       setState(() {
@@ -551,17 +552,17 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
-                      Row(
+                      Row(mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.leaderboard_outlined, color: AppColors.primary, size: 20),
                           const SizedBox(width: AppSpacing.sm),
-                          Text(
+                          Flexible(child: Text(
                             'Class Academic Performance Comparisons',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
+                          )),
                         ],
                       ),
                       StatusBadge(
@@ -689,15 +690,15 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                           children: [
                             const Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
                             const SizedBox(width: AppSpacing.md),
-                            Text(
+                            Flexible(child: Text(
                               '${l['action']}',
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
+                            )),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(
+                            Flexible(child: Text(
                               'by ${l['actorName'] ?? 'Staff'} • ${l['timestamp']}',
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                            ),
+                            )),
                           ],
                         ),
                       );
@@ -770,10 +771,10 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                           children: [
                             Row(
                               children: [
-                                Text(
+                                Flexible(child: Text(
                                   ex['name'] ?? 'Term Exam',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
+                                )),
                                 const SizedBox(width: AppSpacing.sm),
                                 StatusBadge.fromStatus(isPublished ? 'PUBLISHED' : 'PENDING'),
                               ],
@@ -788,17 +789,19 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                               'Subjects Evaluated: ${(ex['subjects'] as List? ?? []).length} modules',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                             ),
+                            // Action sits under the details so the exam name keeps its width on phones.
+                            const SizedBox(height: AppSpacing.sm),
+                            if (!isPublished)
+                              ElevatedButton.icon(
+                                onPressed: () => _publishExam(ex['id']),
+                                icon: const Icon(Icons.verified_outlined, size: 16),
+                                label: const Text('Approve & Publish Results'),
+                              )
+                            else
+                              const StatusBadge(label: 'PUBLISHED TO PARENTS', variant: BadgeVariant.success),
                           ],
                         ),
                       ),
-                      if (!isPublished)
-                        ElevatedButton.icon(
-                          onPressed: () => _publishExam(ex['id']),
-                          icon: const Icon(Icons.verified_outlined, size: 16),
-                          label: const Text('Approve & Publish Results'),
-                        )
-                      else
-                        const StatusBadge(label: 'PUBLISHED TO PARENTS', variant: BadgeVariant.success),
                     ],
                   ),
                 );
@@ -807,8 +810,8 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
             const SizedBox(height: AppSpacing.xxl),
 
             // Student Leave Moderation Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 Text(
                   'Pending Student Leave Applications (${pendingLeaves.length})',

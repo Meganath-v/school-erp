@@ -53,38 +53,49 @@ class PageHeader extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
           ],
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.sm,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+          // Title wraps instead of running off narrow screens; actions sit beside it
+          // on wide layouts and drop below it on phones.
+          LayoutBuilder(builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 640;
+            final titleRow = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 22,
+                      fontSize: narrow ? 20 : 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textDark,
                       letterSpacing: -0.3,
+                      height: 1.2,
                     ),
                   ),
-                  if (badge != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    badge!,
-                  ],
-                ],
-              ),
-              if (actions != null && actions!.isNotEmpty)
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.xs,
-                  children: actions!,
                 ),
-            ],
-          ),
+                if (badge != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  badge!,
+                ],
+              ],
+            );
+            final hasActions = actions != null && actions!.isNotEmpty;
+            if (!hasActions) return titleRow;
+            final actionsWrap = Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: actions!);
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [titleRow, const SizedBox(height: AppSpacing.md), actionsWrap],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: titleRow),
+                const SizedBox(width: AppSpacing.md),
+                Flexible(child: Align(alignment: Alignment.centerRight, child: actionsWrap)),
+              ],
+            );
+          }),
           if (subtitle != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(

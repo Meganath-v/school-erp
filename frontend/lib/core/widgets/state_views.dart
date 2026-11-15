@@ -14,7 +14,7 @@ class LoadingStateView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxxl),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -29,6 +29,7 @@ class LoadingStateView extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Text(
               message,
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

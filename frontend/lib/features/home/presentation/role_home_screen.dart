@@ -385,7 +385,7 @@ class _RoleHomeScreenState extends ConsumerState<RoleHomeScreen> {
           if (snap.connectionState != ConnectionState.done) {
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: [header, const SizedBox(height: 120, child: LoadingStateView(message: 'Loading your summary...'))],
+              children: [header, const LoadingStateView(message: 'Loading your summary...')],
             );
           }
           if (snap.hasError) {

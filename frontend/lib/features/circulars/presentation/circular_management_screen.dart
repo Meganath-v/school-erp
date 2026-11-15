@@ -644,7 +644,8 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
             const SizedBox(height: AppSpacing.lg),
 
             // Checkbox for Digital Signature Requirement
-            CheckboxListTile(
+            // (own Material so the tile's ink and colors render inside the white card)
+            Material(type: MaterialType.transparency, child: CheckboxListTile(
               title: const Text('Require Explicit Digital Signature / Acknowledgement'),
               subtitle: const Text(
                 'Guardians and staff will receive a sign-off requirement prompt on their portal.',
@@ -656,7 +657,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
               onChanged: (val) {
                 setState(() => _createRequiresAck = val ?? false);
               },
-            ),
+            )),
             const SizedBox(height: AppSpacing.md),
 
             // Circular Content Body
@@ -678,8 +679,8 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
             const SizedBox(height: AppSpacing.xl),
 
             // Dispatch Action Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+              alignment: WrapAlignment.end,
               children: [
                 OutlinedButton(
                   onPressed: () {

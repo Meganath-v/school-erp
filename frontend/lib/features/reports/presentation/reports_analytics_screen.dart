@@ -492,7 +492,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
               children: [
                 const Icon(Icons.layers_outlined, size: 16, color: AppColors.primaryAccent),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
+                Flexible(child: Text(
                   'SELECT INSTITUTIONAL REGISTER / REPORT',
                   style: GoogleFonts.inter(
                     fontSize: 11,
@@ -500,12 +500,12 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                     color: AppColors.textMuted,
                     letterSpacing: 0.5,
                   ),
-                ),
+                )),
                 const Spacer(),
-                Text(
+                Flexible(child: Text(
                   '13 Real-Data Reports Available',
                   style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSubtle),
-                ),
+                )),
               ],
             ),
           ),

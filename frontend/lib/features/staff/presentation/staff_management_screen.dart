@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
@@ -109,11 +110,11 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
         ApiClient().dio.get('/staff').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/schools/subjects').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/reports/teacher-workload').then((r) => r.data as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/reports/teacher-workload').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
       ]);
 
       setState(() {
-        _staffList = results[0];
+        _staffList = withStaffNames(results[0]);
         _classes = results[1];
         _subjects = results[2];
         _workloadList = results[3];
@@ -309,37 +310,29 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            Row(
+            ResponsiveMetricRow(
               children: [
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Total Faculty',
                     value: '${_staffList.length}',
                     icon: Icons.groups_outlined,
                     subtitle: 'Full Institutional Staff',
                     color: AppColors.primary,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Teaching Faculty',
                     value: '${_staffList.where((s) => s['role'] == 'TEACHER').length}',
                     icon: Icons.school_outlined,
                     subtitle: 'Active Educators',
                     color: AppColors.success,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: MetricCard(
+                MetricCard(
                     title: 'Administrative Staff',
                     value: '${_staffList.where((s) => s['role'] != 'TEACHER').length}',
                     icon: Icons.admin_panel_settings_outlined,
                     subtitle: 'Office & Executives',
                     color: AppColors.secondary,
                   ),
-                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -980,3 +973,14 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
   }
 }
 
+/// The API returns `fullName`/`firstName`/`lastName`; this screen reads `name`.
+List<dynamic> withStaffNames(List<dynamic> list) => [
+      for (final s in list)
+        if (s is Map)
+          {
+            ...s,
+            'name': s['name'] ?? s['fullName'] ?? '${s['firstName'] ?? ''} ${s['lastName'] ?? ''}'.trim(),
+          }
+        else
+          s,
+    ];

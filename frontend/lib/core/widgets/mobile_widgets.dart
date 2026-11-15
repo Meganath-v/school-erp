@@ -166,6 +166,14 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Own Material so ink splashes show inside the white SectionCard.
+    return Material(
+      type: MaterialType.transparency,
+      child: _tile(),
+    );
+  }
+
+  Widget _tile() {
     return ListTile(
       onTap: onTap,
       minVerticalPadding: 10,

@@ -42,15 +42,15 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
       final results = await Future.wait([
         ApiClient().dio.get('/platform/stats'),
         ApiClient().dio.get('/platform/schools'),
-        ApiClient().dio.get('/platform/plans').catchError((_) => null as dynamic),
-        ApiClient().dio.get('/audit-logs').catchError((_) => null as dynamic),
+        ApiClient().dio.get('/platform/plans').then<dynamic>((r) => r.data).catchError((_) => null),
+        ApiClient().dio.get('/audit-logs').then<dynamic>((r) => r.data).catchError((_) => null),
       ]);
 
       setState(() {
         _stats = results[0].data['data'];
         _schools = results[1].data['data'] ?? [];
-        _plans = results[2].data is Map ? (results[2].data['data'] ?? []) : [];
-        _auditLogs = results[3].data is Map ? (results[3].data['data'] ?? []) : [];
+        _plans = results[2] is Map ? ((results[2] as Map)['data'] ?? []) : [];
+        _auditLogs = results[3] is Map ? ((results[3] as Map)['data'] ?? []) : [];
         _isLoading = false;
       });
     } catch (e) {
@@ -380,8 +380,8 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
               border: Border.all(color: AppColors.borderLight),
               boxShadow: AppShadows.subtle,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+              alignment: WrapAlignment.spaceAround,
               children: [
                 _buildUsagePill('Platform Students', '${_stats?['totalStudents'] ?? 0}', Icons.people_outline, AppColors.primary),
                 _buildUsagePill('Academic Faculty', '${_stats?['totalStaff'] ?? 0}', Icons.badge_outlined, AppColors.secondary),

@@ -579,32 +579,34 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
-                        Row(
+                        Row(mainAxisSize: MainAxisSize.min,
                           children: [
                             CircleAvatar(
                               backgroundColor: isPublished ? AppColors.successSubtle : AppColors.primarySubtle,
                               child: Icon(Icons.school, color: isPublished ? AppColors.success : AppColors.primary, size: 20),
                             ),
                             const SizedBox(width: AppSpacing.md),
-                            Column(
+                            Flexible(child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: AppSpacing.sm,
+                                  runSpacing: 4,
                                   children: [
                                     Text(ex['name'] ?? 'Term Exam', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    const SizedBox(width: AppSpacing.sm),
                                     StatusBadge.fromStatus(ex['status'] ?? 'DRAFT'),
                                   ],
                                 ),
                                 Text('Term: ${ex['term']} • Academic Year: ${ex['academicYear'] ?? '2026-2027'} • Dates: ${ex['startDate']?.toString().split('T')[0]} to ${ex['endDate']?.toString().split('T')[0]}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                               ],
-                            ),
+                            )),
                           ],
                         ),
-                        Row(
+                        Row(mainAxisSize: MainAxisSize.min,
                           children: [
                             OutlinedButton.icon(
                               onPressed: () => _showAddSubjectScheduleDialog(ex['id']),

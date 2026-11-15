@@ -502,7 +502,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                           children: [
                             const Icon(Icons.campaign, color: AppColors.primary, size: 20),
                             const SizedBox(width: AppSpacing.sm),
-                            Text('Campus Announcements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            Flexible(child: Text('Campus Announcements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -521,8 +521,8 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                                    alignment: WrapAlignment.spaceBetween,
                                     children: [
                                       Text(ann['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                       if (ann['priority'] == 'URGENT')
@@ -559,7 +559,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                           children: [
                             const Icon(Icons.history, color: AppColors.secondary, size: 20),
                             const SizedBox(width: AppSpacing.sm),
-                            Text('System Audit Trail', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            Flexible(child: Text('System Audit Trail', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.lg),
