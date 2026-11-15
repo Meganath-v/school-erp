@@ -157,7 +157,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Linways-Grade ERP',
+                  'Ark-ERP',
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -165,7 +165,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   ),
                 ),
                 Text(
-                  'Academic & Institutional Management',
+                  'Unified Institutional Management',
                   style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],

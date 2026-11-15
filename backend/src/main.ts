@@ -66,9 +66,9 @@ async function bootstrap() {
 
   // Swagger OpenAPI Documentation
   const config = new DocumentBuilder()
-    .setTitle('Linways-Grade Multi-Tenant School & Campus ERP API')
+    .setTitle('Ark-ERP Multi-Tenant Institutional Platform API')
     .setDescription(
-      'Complete production API documentation for Multi-Tenant School & Institutional Academic Management System (AMS / LMS / ERP)',
+      'Complete production API documentation for Ark-ERP Multi-Tenant Academic Management System (AMS / LMS / ERP)',
     )
     .setVersion('2.0')
     .addBearerAuth()
@@ -83,7 +83,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 Linways-Grade ERP API running at: http://localhost:${port}/api/v1`);
+  console.log(`🚀 Ark-ERP API running at: http://localhost:${port}/api/v1`);
   if (swaggerEnabled) {
     console.log(`📑 OpenAPI Documentation available at: http://localhost:${port}/api/docs`);
   }

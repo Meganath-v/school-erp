@@ -36,7 +36,7 @@ class SchoolErpApp extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return MaterialApp(
-      title: 'Multi-Tenant School ERP',
+      title: 'Ark-ERP',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: authState.isAuthenticated ? const AppShellScreen() : const DiscoveryScreen(),
@@ -403,7 +403,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
     final safeIndex = _selectedIndex < pages.length ? _selectedIndex : 0;
     final schoolName = authState.activeSchool?.name ?? 'Oakridge International';
     final activeLabel = destinations[safeIndex].label;
-    final breadcrumbs = [schoolName, 'Academic Suite', activeLabel];
+    final breadcrumbs = [schoolName, 'Ark-ERP Suite', activeLabel];
 
     return ShellLayout(
       selectedIndex: safeIndex,

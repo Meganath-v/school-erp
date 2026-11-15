@@ -506,7 +506,7 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          school?.name ?? 'School ERP',
+                          school?.name ?? 'Ark-ERP',
                           style: GoogleFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -710,7 +710,7 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        school?.name ?? 'School ERP',
+                        school?.name ?? 'Ark-ERP',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

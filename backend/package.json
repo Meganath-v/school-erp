@@ -1,7 +1,7 @@
 {
   "name": "school-erp-backend",
   "version": "1.0.0",
-  "description": "Multi-Tenant School ERP NestJS REST API",
+  "description": "Ark-ERP: Multi-Tenant Institutional Platform NestJS REST API",
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/main.ts",
