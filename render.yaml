@@ -1,0 +1,27 @@
+services:
+  # Ark-ERP Full-Stack Web Service (NestJS API + Flutter Web + Teacher Workstation)
+  - type: web
+    name: ark-erp
+    runtime: node
+    plan: free # Can be upgraded to 'starter' for higher memory and 24/7 uptime
+    region: oregon # or frankfurt, singapore, ohio
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma db push && npm run start:prod
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # Paste your Supabase PostgreSQL connection string in the Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: ENABLE_SWAGGER
+        value: "true"

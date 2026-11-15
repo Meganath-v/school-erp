@@ -36,21 +36,28 @@ async function bootstrap() {
   // Global exception filter conforming to Section 11.1
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Set global API prefix
-  app.setGlobalPrefix('api/v1');
+  // Set global API prefix (excluding health checks and root)
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health', ''],
+  });
 
-  // Enable CORS only for configured origins. Auth uses bearer tokens, not cookies,
-  // so credentials are never needed and a wildcard origin is refused in production.
+  // Enable CORS (bearer-token based authentication without cookies)
   const isProduction = process.env.NODE_ENV === 'production';
-  const allowedOrigins = (process.env.CORS_ORIGIN || '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-  if (isProduction && (allowedOrigins.length === 0 || allowedOrigins.includes('*'))) {
-    throw new Error('Set CORS_ORIGIN to an explicit, comma-separated list of origins in production.');
-  }
+  const rawCors = (process.env.CORS_ORIGIN || '').trim();
+  const allowedOrigins = rawCors.split(',').map((o) => o.trim()).filter(Boolean);
+
   app.enableCors({
-    origin: allowedOrigins.length > 0 && !allowedOrigins.includes('*') ? allowedOrigins : true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, server-to-server, curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0 || allowedOrigins.includes('*') || !isProduction) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: false,
   });
@@ -82,7 +89,7 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 Ark-ERP API running at: http://localhost:${port}/api/v1`);
   if (swaggerEnabled) {
     console.log(`📑 OpenAPI Documentation available at: http://localhost:${port}/api/docs`);

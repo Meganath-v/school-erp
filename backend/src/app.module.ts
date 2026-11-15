@@ -27,6 +27,7 @@ import { CircularsModule } from './modules/circulars/circulars.module';
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { AuditModule } from './modules/audit/audit.module';
     FilesModule,
     SearchModule,
   ],
+  controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
