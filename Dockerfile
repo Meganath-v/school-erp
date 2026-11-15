@@ -41,5 +41,5 @@ COPY --from=builder /app/backend/package.json ./package.json
 EXPOSE 10000
 
 # Push database schema and start production server
-CMD ["sh", "-c", "npx prisma db push && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/main.js"]
 
