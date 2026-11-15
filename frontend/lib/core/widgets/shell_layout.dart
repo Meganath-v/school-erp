@@ -207,23 +207,6 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryAccentSubtle,
-                        borderRadius: AppRadius.smBorderRadius,
-                        border: Border.all(color: AppColors.infoBorder),
-                      ),
-                      child: Text(
-                        'AY 2026-27 • Term 1',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryAccent,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -396,15 +379,6 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                           label: authState.activeRole ?? 'GUEST',
                           isSmall: true,
                           variant: BadgeVariant.info,
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.successBg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('JWT Active', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),

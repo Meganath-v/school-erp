@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -996,7 +997,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: DataTable(
+                child: AdaptiveDataTable(
                   headingRowColor: WidgetStateProperty.all(AppColors.tableHeaderBg),
                   columns: const [
                     DataColumn(label: Text('Rank', style: TextStyle(fontWeight: FontWeight.bold))),

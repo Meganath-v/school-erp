@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -616,7 +617,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    Table(
+                    AdaptiveTable(
                       columnWidths: const {
                         0: FlexColumnWidth(1.5),
                         1: FlexColumnWidth(2.2),
@@ -933,7 +934,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                     child: Center(child: Text('All student tuition and ancillary fees are settled in full!')),
                   )
                 else
-                  Table(
+                  AdaptiveTable(
                     columnWidths: const {
                       0: FlexColumnWidth(1.5),
                       1: FlexColumnWidth(2.2),

@@ -707,6 +707,32 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
+                    if (MediaQuery.of(context).size.width < 600)
+                      // Phones: one tappable row per learner instead of a six-column table.
+                      for (final s in pagedStudents) ...[
+                        ListTile(
+                          minVerticalPadding: 12,
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.primarySubtle,
+                            child: Text(
+                              ((s['fullName'] as String?) ?? '?').substring(0, 1).toUpperCase(),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                          ),
+                          title: Text(s['fullName'] ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(
+                            '${s['admissionNo'] ?? 'N/A'} · ${s['currentClass']} - ${s['currentSection']} · Roll ${s['rollNo'] ?? '—'}',
+                          ),
+                          trailing: StatusBadge.fromStatus(s['status'] ?? 'ACTIVE'),
+                          selected: _selectedStudent?['id'] == s['id'],
+                          onTap: () {
+                            _selectStudent(s['id']);
+                            _tabController.animateTo(1);
+                          },
+                        ),
+                        const Divider(height: 1),
+                      ]
+                    else
                     Table(
                       columnWidths: const {
                         0: FlexColumnWidth(1.2),
@@ -788,7 +814,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Showing ${startIndex + 1} to ${((startIndex + _pageSize) < totalCount ? (startIndex + _pageSize) : totalCount)} of $totalCount learners', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          Flexible(child: Text('Showing ${startIndex + 1} to ${((startIndex + _pageSize) < totalCount ? (startIndex + _pageSize) : totalCount)} of $totalCount learners', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
                           Row(
                             children: [
                               IconButton(

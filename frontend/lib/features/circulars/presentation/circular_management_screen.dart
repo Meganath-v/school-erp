@@ -92,7 +92,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
     try {
       final results = await Future.wait([
         ApiClient().dio.get('/circulars'),
-        ApiClient().dio.get('/academics/classes'),
+        ApiClient().dio.get('/schools/classes'),
       ]);
 
       final circularsList = (results[0].data['data'] ?? results[0].data) as List<dynamic>? ?? [];

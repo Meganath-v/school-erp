@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -166,8 +167,8 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     try {
       final results = await Future.wait([
-        ApiClient().dio.get('/academics/years').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/academics/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/schools/academic-years').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
+        ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/exams').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         ApiClient().dio.get('/students').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
       ]);
@@ -1147,7 +1148,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Student Strength by Class & Section',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Class Name')),
@@ -1213,7 +1214,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Institutional Admissions Ledger',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Admission No')),
@@ -1258,7 +1259,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Staff & Faculty Directory',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Employee ID')),
@@ -1295,7 +1296,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Attendance Register Summary by Class',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Class & Section')),
@@ -1349,7 +1350,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                 child: Text('All evaluated learners meet or exceed statutory 75% attendance compliance!'),
               ),
             )
-          : DataTable(
+          : AdaptiveDataTable(
               headingRowColor: WidgetStateProperty.all(AppColors.background),
               columns: const [
                 DataColumn(label: Text('Admission No')),
@@ -1398,7 +1399,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: '$examTitle - Subject Evaluation Analytics',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Subject Code & Name')),
@@ -1445,7 +1446,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
       title: 'Class Master Broadsheet (${_reportData!['examTitle'] ?? 'Exam'})',
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(
+        child: AdaptiveDataTable(
           headingRowColor: WidgetStateProperty.all(AppColors.background),
           columns: [
             const DataColumn(label: Text('Rank')),
@@ -1567,7 +1568,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
           const SizedBox(height: AppSpacing.xl),
 
           // Subject Marks Table
-          DataTable(
+          AdaptiveDataTable(
             headingRowColor: WidgetStateProperty.all(AppColors.background),
             columns: const [
               DataColumn(label: Text('Subject Code & Title')),
@@ -1646,7 +1647,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Institutional Fee Collections & Receipts Ledger',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Receipt No')),
@@ -1707,7 +1708,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
               padding: EdgeInsets.all(AppSpacing.xxl),
               child: Center(child: Text('Zero outstanding balances! All billed invoices have been settled in full.')),
             )
-          : DataTable(
+          : AdaptiveDataTable(
               headingRowColor: WidgetStateProperty.all(AppColors.background),
               columns: const [
                 DataColumn(label: Text('Invoice No')),
@@ -1750,7 +1751,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Faculty Weekly Teaching Workload Distribution',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Employee ID')),
@@ -1805,7 +1806,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Curricular Homework & Assignment Submission Performance',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Assignment Title')),
@@ -1843,7 +1844,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
 
     return _buildTableContainer(
       title: 'Stakeholder Feedback & Grievance Resolution Ledger',
-      child: DataTable(
+      child: AdaptiveDataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.background),
         columns: const [
           DataColumn(label: Text('Ticket ID')),

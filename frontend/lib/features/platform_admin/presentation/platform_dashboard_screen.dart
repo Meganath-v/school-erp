@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -421,7 +422,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     scrollDirection: Axis.horizontal,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 320),
-                      child: DataTable(
+                      child: AdaptiveDataTable(
                         headingRowColor: WidgetStateProperty.all(AppColors.tableHeaderBg),
                         dataRowMinHeight: 56,
                         dataRowMaxHeight: 68,

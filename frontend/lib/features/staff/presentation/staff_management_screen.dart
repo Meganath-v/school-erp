@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -397,7 +398,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    Table(
+                    AdaptiveTable(
                       columnWidths: const {
                         0: FlexColumnWidth(2.5),
                         1: FlexColumnWidth(1.5),
@@ -924,7 +925,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                     child: Text('No faculty workload analytics recorded.'),
                   )
                 else
-                  Table(
+                  AdaptiveTable(
                     columnWidths: const {
                       0: FlexColumnWidth(2.5),
                       1: FlexColumnWidth(2.5),

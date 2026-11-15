@@ -1,3 +1,4 @@
+import '../../../core/widgets/adaptive_data_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -717,7 +718,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: DataTable(
+                child: AdaptiveDataTable(
                   columnSpacing: 12,
                   headingRowColor: WidgetStateProperty.all(AppColors.tableHeaderBg),
                   columns: [

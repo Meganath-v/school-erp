@@ -1,45 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/auth/auth_provider.dart';
+import 'core/auth/roles.dart';
+import 'core/navigation/role_navigation.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/mobile_shell.dart';
 import 'core/widgets/shell_layout.dart';
-import 'features/school_discovery/presentation/discovery_screen.dart';
-import 'features/platform_admin/presentation/platform_dashboard_screen.dart';
-import 'features/school_admin/presentation/school_admin_dashboard.dart';
-import 'features/principal/presentation/principal_dashboard.dart';
-import 'features/class_teacher/presentation/teacher_dashboard.dart';
-import 'features/subject_teacher/presentation/subject_teacher_dashboard.dart';
-import 'features/parent/presentation/parent_portal_screen.dart';
-import 'features/office/presentation/office_dashboard.dart';
-import 'features/student/presentation/student_portal_screen.dart';
-import 'features/audit/presentation/audit_logs_screen.dart';
-import 'features/students/presentation/student_management_screen.dart';
-import 'features/staff/presentation/staff_management_screen.dart';
-import 'features/attendance/presentation/attendance_management_screen.dart';
-import 'features/examination/presentation/examination_management_screen.dart';
-import 'features/fees/presentation/fee_management_screen.dart';
-import 'features/timetable/presentation/timetable_management_screen.dart';
-import 'features/circulars/presentation/circular_management_screen.dart';
-import 'features/reports/presentation/reports_analytics_screen.dart';
 import 'core/widgets/omni_search_dialog.dart';
+import 'features/auth/presentation/login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: SchoolErpApp()));
 }
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 class SchoolErpApp extends ConsumerWidget {
   const SchoolErpApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
+    // Leaving the authenticated area closes every pushed route (dialogs, sheets,
+    // detail pages) so nothing from the old session stays reachable with Back.
+    ref.listen<AuthStatus>(authProvider.select((s) => s.status), (prev, next) {
+      if (prev == AuthStatus.authenticated && next != AuthStatus.authenticated) {
+        rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      }
+    });
+
+    final auth = ref.watch(authProvider);
+
+    final Widget home;
+    switch (auth.status) {
+      case AuthStatus.restoring:
+        home = const SplashScreen();
+      case AuthStatus.unauthenticated:
+        home = const LoginScreen();
+      case AuthStatus.authenticated:
+        // A new key per user/school/role rebuilds the shell from scratch.
+        home = AppShellScreen(key: ValueKey('${auth.user?.id}|${auth.activeSchool?.id}|${auth.activeRole}'));
+    }
 
     return MaterialApp(
       title: 'Ark-ERP',
+      navigatorKey: rootNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: authState.isAuthenticated ? const AppShellScreen() : const DiscoveryScreen(),
+      home: AnimatedSwitcher(duration: const Duration(milliseconds: 220), child: home),
+    );
+  }
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(color: AppColors.primaryAccent, borderRadius: BorderRadius.circular(18)),
+            child: const Icon(Icons.school, color: Colors.white, size: 34),
+          ),
+          const SizedBox(height: 24),
+          const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)),
+          const SizedBox(height: 12),
+          Semantics(liveRegion: true, child: const Text('Restoring your session...')),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Shown when the account's role has no screens in this app.
+class NoAccessScreen extends ConsumerWidget {
+  final String? role;
+  const NoAccessScreen({super.key, required this.role});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.lock_outline, size: 48, color: AppColors.textMuted),
+              const SizedBox(height: 16),
+              Text('No access in this app', style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(
+                'Your account (${AppRoles.label(role)}) has no screens in Ark-ERP mobile. '
+                'Contact your school administrator if you think this is wrong.',
+                textAlign: TextAlign.center,
+                style: text.bodyMedium?.copyWith(color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => ref.read(authProvider.notifier).logout(),
+                icon: const Icon(Icons.logout),
+                label: const Text('Sign out'),
+                style: FilledButton.styleFrom(minimumSize: const Size(200, 48)),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -72,338 +144,50 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
     }
   }
 
-  void _handleSearchResult(OmniSearchResult result, List<NavigationDestinationItem> destinations) {
-    int targetIndex = -1;
-    final target = result.routeTarget.toUpperCase();
-
-    if (target.contains('STUDENT')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('learner') ||
-          d.label.toLowerCase().contains('student') ||
-          d.label.toLowerCase().contains('admission'));
-    } else if (target.contains('STAFF')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('staff') ||
-          d.label.toLowerCase().contains('faculty'));
-    } else if (target.contains('ATTENDANCE')) {
-      targetIndex = destinations.indexWhere((d) => d.label.toLowerCase().contains('attendance'));
-    } else if (target.contains('EXAM')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('exam') ||
-          d.label.toLowerCase().contains('broadsheet') ||
-          d.label.toLowerCase().contains('mark'));
-    } else if (target.contains('FEE') || target.contains('INVOICE') || target.contains('RECEIPT')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('fee') ||
-          d.label.toLowerCase().contains('billing'));
-    } else if (target.contains('TIMETABLE')) {
-      targetIndex = destinations.indexWhere((d) => d.label.toLowerCase().contains('timetable'));
-    } else if (target.contains('CIRCULAR')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('circular') ||
-          d.label.toLowerCase().contains('notice'));
-    } else if (target.contains('REPORT') ||
-        target.contains('ANALYTIC') ||
-        target.contains('DEFAULTER') ||
-        target.contains('STRENGTH') ||
-        target.contains('EXPORT')) {
-      targetIndex = destinations.indexWhere((d) =>
-          d.label.toLowerCase().contains('report') ||
-          d.label.toLowerCase().contains('analytic'));
-    }
-
-    if (targetIndex != -1) {
-      _navigateToIndex(targetIndex);
+  void _handleSearchResult(OmniSearchResult result, RoleNavigation nav) {
+    final t = result.routeTarget.toUpperCase();
+    const map = {
+      'STUDENT': 'students',
+      'STAFF': 'staff',
+      'ATTENDANCE': 'attendance',
+      'EXAM': 'exams',
+      'FEE': 'fees',
+      'INVOICE': 'fees',
+      'RECEIPT': 'fees',
+      'TIMETABLE': 'timetable',
+      'CIRCULAR': 'circulars',
+      'REPORT': 'reports',
+      'ANALYTIC': 'reports',
+      'DEFAULTER': 'reports',
+      'STRENGTH': 'reports',
+      'EXPORT': 'reports',
+    };
+    for (final e in map.entries) {
+      final idx = nav.indexOf(e.value);
+      if (t.contains(e.key) && idx >= 0) {
+        _navigateToIndex(idx);
+        return;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final role = authState.activeRole ?? 'SCHOOL_ADMIN';
+    final nav = RoleNavigation.forRole(authState.activeRole);
+    if (nav == null) return NoAccessScreen(role: authState.activeRole);
 
-    final List<NavigationDestinationItem> destinations;
-    final List<Widget> pages;
-
-    switch (role) {
-      case 'PLATFORM_OWNER':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Platform Control Plane',
-            icon: Icons.domain_outlined,
-            selectedIcon: Icons.domain,
-          ),
-          NavigationDestinationItem(
-            label: 'System Audit Logs',
-            icon: Icons.history_outlined,
-            selectedIcon: Icons.history,
-          ),
-        ];
-        pages = const [
-          PlatformDashboardScreen(),
-          AuditLogsScreen(),
-        ];
-        break;
-
-      case 'PRINCIPAL':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Executive Cockpit',
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard,
-          ),
-          NavigationDestinationItem(
-            label: 'Institutional Reports',
-            icon: Icons.analytics_outlined,
-            selectedIcon: Icons.analytics,
-          ),
-          NavigationDestinationItem(
-            label: 'Attendance Register',
-            icon: Icons.fact_check_outlined,
-            selectedIcon: Icons.fact_check,
-          ),
-          NavigationDestinationItem(
-            label: 'Examinations & Results',
-            icon: Icons.grade_outlined,
-            selectedIcon: Icons.grade,
-          ),
-          NavigationDestinationItem(
-            label: 'Master Timetable',
-            icon: Icons.schedule_outlined,
-            selectedIcon: Icons.schedule,
-          ),
-          NavigationDestinationItem(
-            label: 'School Circulars',
-            icon: Icons.campaign_outlined,
-            selectedIcon: Icons.campaign,
-          ),
-          NavigationDestinationItem(
-            label: 'Compliance Audit',
-            icon: Icons.history_outlined,
-            selectedIcon: Icons.history,
-          ),
-        ];
-        pages = const [
-          PrincipalDashboard(),
-          ReportsAnalyticsScreen(),
-          AttendanceManagementScreen(),
-          ExaminationManagementScreen(),
-          TimetableManagementScreen(),
-          CircularManagementScreen(),
-          AuditLogsScreen(),
-        ];
-        break;
-
-      case 'CLASS_TEACHER':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Class Attendance & Roster',
-            icon: Icons.fact_check_outlined,
-            selectedIcon: Icons.fact_check,
-          ),
-          NavigationDestinationItem(
-            label: 'Attendance Register',
-            icon: Icons.calendar_month_outlined,
-            selectedIcon: Icons.calendar_month,
-          ),
-          NavigationDestinationItem(
-            label: 'Marks & Broadsheet',
-            icon: Icons.grade_outlined,
-            selectedIcon: Icons.grade,
-          ),
-          NavigationDestinationItem(
-            label: 'Class Timetable',
-            icon: Icons.schedule_outlined,
-            selectedIcon: Icons.schedule,
-          ),
-          NavigationDestinationItem(
-            label: 'Notices & Circulars',
-            icon: Icons.campaign_outlined,
-            selectedIcon: Icons.campaign,
-          ),
-        ];
-        pages = const [
-          ClassTeacherDashboard(),
-          AttendanceManagementScreen(),
-          ExaminationManagementScreen(),
-          TimetableManagementScreen(),
-          CircularManagementScreen(),
-        ];
-        break;
-
-      case 'SUBJECT_TEACHER':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Schedule & Homework',
-            icon: Icons.assignment_outlined,
-            selectedIcon: Icons.assignment,
-          ),
-          NavigationDestinationItem(
-            label: 'Period Attendance',
-            icon: Icons.fact_check_outlined,
-            selectedIcon: Icons.fact_check,
-          ),
-          NavigationDestinationItem(
-            label: 'Marks Entry',
-            icon: Icons.grade_outlined,
-            selectedIcon: Icons.grade,
-          ),
-          NavigationDestinationItem(
-            label: 'Faculty Timetable',
-            icon: Icons.schedule_outlined,
-            selectedIcon: Icons.schedule,
-          ),
-        ];
-        pages = const [
-          SubjectTeacherDashboard(),
-          AttendanceManagementScreen(),
-          ExaminationManagementScreen(),
-          TimetableManagementScreen(),
-        ];
-        break;
-
-      case 'PARENT':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Parent & Ward Portal',
-            icon: Icons.family_restroom_outlined,
-            selectedIcon: Icons.family_restroom,
-          ),
-        ];
-        pages = const [
-          ParentPortalScreen(),
-        ];
-        break;
-
-      case 'OFFICE':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Office Operations',
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard,
-          ),
-          NavigationDestinationItem(
-            label: 'Institutional Reports',
-            icon: Icons.analytics_outlined,
-            selectedIcon: Icons.analytics,
-          ),
-          NavigationDestinationItem(
-            label: 'Fee Billing & Receipts',
-            icon: Icons.receipt_long_outlined,
-            selectedIcon: Icons.receipt_long,
-          ),
-          NavigationDestinationItem(
-            label: 'Admissions & Students',
-            icon: Icons.school_outlined,
-            selectedIcon: Icons.school,
-          ),
-          NavigationDestinationItem(
-            label: 'Circulars & Notices',
-            icon: Icons.campaign_outlined,
-            selectedIcon: Icons.campaign,
-          ),
-          NavigationDestinationItem(
-            label: 'Audit Records',
-            icon: Icons.history_outlined,
-            selectedIcon: Icons.history,
-          ),
-        ];
-        pages = const [
-          OfficeDashboard(),
-          ReportsAnalyticsScreen(),
-          FeeManagementScreen(),
-          StudentManagementScreen(),
-          CircularManagementScreen(),
-          AuditLogsScreen(),
-        ];
-        break;
-
-      case 'STUDENT':
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Student Academic Portal',
-            icon: Icons.school_outlined,
-            selectedIcon: Icons.school,
-          ),
-        ];
-        pages = const [
-          StudentPortalScreen(),
-        ];
-        break;
-
-      case 'SCHOOL_ADMIN':
-      default:
-        destinations = const [
-          NavigationDestinationItem(
-            label: 'Campus Dashboard',
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard,
-          ),
-          NavigationDestinationItem(
-            label: 'Institutional Reports',
-            icon: Icons.analytics_outlined,
-            selectedIcon: Icons.analytics,
-          ),
-          NavigationDestinationItem(
-            label: 'Learners Directory',
-            icon: Icons.school_outlined,
-            selectedIcon: Icons.school,
-          ),
-          NavigationDestinationItem(
-            label: 'Faculty & Staff',
-            icon: Icons.badge_outlined,
-            selectedIcon: Icons.badge,
-          ),
-          NavigationDestinationItem(
-            label: 'Attendance Register',
-            icon: Icons.fact_check_outlined,
-            selectedIcon: Icons.fact_check,
-          ),
-          NavigationDestinationItem(
-            label: 'Examinations & Results',
-            icon: Icons.grade_outlined,
-            selectedIcon: Icons.grade,
-          ),
-          NavigationDestinationItem(
-            label: 'Fee Billing & Ledger',
-            icon: Icons.receipt_long_outlined,
-            selectedIcon: Icons.receipt_long,
-          ),
-          NavigationDestinationItem(
-            label: 'Master Timetable',
-            icon: Icons.schedule_outlined,
-            selectedIcon: Icons.schedule,
-          ),
-          NavigationDestinationItem(
-            label: 'Notices & Circulars',
-            icon: Icons.campaign_outlined,
-            selectedIcon: Icons.campaign,
-          ),
-          NavigationDestinationItem(
-            label: 'System Audit Logs',
-            icon: Icons.history_outlined,
-            selectedIcon: Icons.history,
-          ),
-        ];
-        pages = const [
-          SchoolAdminDashboard(),
-          ReportsAnalyticsScreen(),
-          StudentManagementScreen(),
-          StaffManagementScreen(),
-          AttendanceManagementScreen(),
-          ExaminationManagementScreen(),
-          FeeManagementScreen(),
-          TimetableManagementScreen(),
-          CircularManagementScreen(),
-          AuditLogsScreen(),
-        ];
-        break;
+    // Phones get a dedicated layout instead of a shrunken desktop shell.
+    if (MediaQuery.of(context).size.width < 768) {
+      return MobileShell(navigation: nav);
     }
 
-    final safeIndex = _selectedIndex < pages.length ? _selectedIndex : 0;
-    final schoolName = authState.activeSchool?.name ?? 'Oakridge International';
-    final activeLabel = destinations[safeIndex].label;
-    final breadcrumbs = [schoolName, 'Ark-ERP Suite', activeLabel];
+    final destinations = [
+      for (final s in nav.sections)
+        NavigationDestinationItem(label: s.label, icon: s.icon, selectedIcon: s.selectedIcon),
+    ];
+    final safeIndex = _selectedIndex < nav.sections.length ? _selectedIndex : 0;
+    final schoolName = authState.activeSchool?.name ?? '';
 
     return ShellLayout(
       selectedIndex: safeIndex,
@@ -411,9 +195,9 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen> {
       destinations: destinations,
       canNavigateBack: _history.length > 1,
       onBack: _navigateBack,
-      breadcrumbs: breadcrumbs,
-      onSearchNavigate: (res) => _handleSearchResult(res, destinations),
-      child: pages[safeIndex],
+      breadcrumbs: [if (schoolName.isNotEmpty) schoolName, 'Ark-ERP', nav.sections[safeIndex].label],
+      onSearchNavigate: (res) => _handleSearchResult(res, nav),
+      child: Builder(builder: nav.sections[safeIndex].builder),
     );
   }
 }
