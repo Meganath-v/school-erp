@@ -1,5 +1,28 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+String resolveDefaultBaseUrl() {
+  const envUrl = String.fromEnvironment('API_BASE_URL');
+  if (envUrl.isNotEmpty) return envUrl;
+
+  if (kIsWeb) {
+    try {
+      final host = Uri.base.host;
+      if (host.isNotEmpty && host != 'localhost') {
+        return 'http://$host:3000/api/v1';
+      }
+    } catch (_) {}
+    return 'http://localhost:3000/api/v1';
+  }
+
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    // Android emulator's loopback alias to host machine
+    return 'http://10.0.2.2:3000/api/v1';
+  }
+
+  return 'http://localhost:3000/api/v1';
+}
 
 class ApiException implements Exception {
   final String message;
@@ -34,7 +57,7 @@ class ApiClient {
   final List<Completer<void>> _refreshWaiters = [];
 
   ApiClient._internal() {
-    const String defaultBaseUrl = 'http://localhost:3000/api/v1';
+    final defaultBaseUrl = resolveDefaultBaseUrl();
 
     final options = BaseOptions(
       baseUrl: defaultBaseUrl,
@@ -220,4 +243,11 @@ class ApiClient {
   String? get token => _token;
   String? get refreshToken => _refreshToken;
   String? get schoolId => _schoolId;
+
+  void setBaseUrl(String url) {
+    dio.options.baseUrl = url;
+    _tokenRefreshDio.options.baseUrl = url;
+  }
+
+  String get baseUrl => dio.options.baseUrl;
 }
