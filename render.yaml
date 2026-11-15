@@ -6,7 +6,7 @@ services:
     plan: free # Can be upgraded to 'starter' for higher memory and 24/7 uptime
     region: oregon # or frankfurt, singapore, ohio
     rootDir: backend
-    buildCommand: npm install --legacy-peer-deps && npx prisma generate && npm run build
+    buildCommand: npm install --legacy-peer-deps --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma db push && npm run start:prod
     healthCheckPath: /health
     autoDeploy: true

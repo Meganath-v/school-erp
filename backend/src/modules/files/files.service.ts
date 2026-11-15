@@ -1,3 +1,4 @@
+import 'multer';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
