@@ -47,8 +47,8 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
       setState(() {
         _stats = results[0].data['data'];
         _schools = results[1].data['data'] ?? [];
-        _plans = results[2]?.data?['data'] ?? [];
-        _auditLogs = results[3]?.data?['data'] ?? [];
+        _plans = results[2].data is Map ? (results[2].data['data'] ?? []) : [];
+        _auditLogs = results[3].data is Map ? (results[3].data['data'] ?? []) : [];
         _isLoading = false;
       });
     } catch (e) {
