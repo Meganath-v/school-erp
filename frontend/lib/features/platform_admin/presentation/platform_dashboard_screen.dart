@@ -8,6 +8,7 @@ import '../../../core/widgets/metric_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
+import 'admin_password_dialogs.dart';
 
 class PlatformDashboardScreen extends ConsumerStatefulWidget {
   const PlatformDashboardScreen({super.key});
@@ -60,6 +61,14 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
     }
   }
 
+  Future<void> _resetAdminPassword(Map<String, dynamic> school) async {
+    final result = await ResetAdminPasswordDialog.show(context, school);
+    if (result != null && mounted) {
+      await showAdminCredentialResult(context, title: 'Admin password reset', credentials: result);
+      _fetchPlatformData();
+    }
+  }
+
   void _showOnboardSchoolDialog() {
     final nameCtrl = TextEditingController();
     final codeCtrl = TextEditingController();
@@ -67,6 +76,8 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
     final emailCtrl = TextEditingController();
     final firstNameCtrl = TextEditingController();
     final lastNameCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool obscurePassword = true;
     String selectedPlan = 'GROWTH';
 
     showDialog(
@@ -149,9 +160,26 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'Official Work Email',
                         hintText: 'principal@institution.edu',
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(
+                      controller: passwordCtrl,
+                      obscureText: obscurePassword,
+                      autofillHints: const [AutofillHints.newPassword],
+                      decoration: InputDecoration(
+                        labelText: 'Initial Password (optional)',
+                        helperText: 'Leave blank to generate a one-time temporary password. Ignored if the email already has an account.',
+                        helperMaxLines: 3,
+                        suffixIcon: IconButton(
+                          tooltip: obscurePassword ? 'Show password' : 'Hide password',
+                          icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -187,6 +215,11 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     );
                     return;
                   }
+                  final passwordProblem = validateOptionalPassword(passwordCtrl.text);
+                  if (passwordProblem != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(passwordProblem)));
+                    return;
+                  }
 
                   try {
                     final res = await ApiClient().dio.post('/platform/schools', data: {
@@ -197,38 +230,22 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                       'adminFirstName': firstNameCtrl.text.trim().isEmpty ? 'Admin' : firstNameCtrl.text.trim(),
                       'adminLastName': lastNameCtrl.text.trim().isEmpty ? 'User' : lastNameCtrl.text.trim(),
                       'planCode': selectedPlan,
+                      if (passwordCtrl.text.isNotEmpty) 'adminPassword': passwordCtrl.text,
                     });
                     final creds = res.data['data']?['adminCredentials'];
-                    final tempPassword = creds?['temporaryPassword'];
 
                     if (mounted) {
                       Navigator.pop(ctx);
                       _fetchPlatformData();
-                      showDialog(
-                        context: context,
-                        builder: (dCtx) => AlertDialog(
-                          title: const Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppColors.success),
-                              SizedBox(width: AppSpacing.sm),
-                              Text('Institution Provisioned'),
-                            ],
-                          ),
-                          content: SelectableText(
-                            tempPassword != null
-                                ? 'School Administrator: ${creds['email']}\nTemporary Password: $tempPassword\n\n'
-                                    'This temporary credential is generated once. Securely transmit it to the school authority.'
-                                : 'Existing account ${creds?['email'] ?? ''} granted School Administrator role. Password remains unchanged.',
-                          ),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Done')),
-                          ],
-                        ),
+                      showAdminCredentialResult(
+                        context,
+                        title: 'School created',
+                        credentials: creds is Map ? Map<String, dynamic>.from(creds) : null,
                       );
                     }
                   } catch (err) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to onboard school. Code or slug might already exist.')),
+                      SnackBar(content: Text('Could not create the school: ${apiErrorMessage(err)}')),
                     );
                   }
                 },
@@ -437,6 +454,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                           DataColumn(label: Text('Faculty', style: TextStyle(fontWeight: FontWeight.w600))),
                           DataColumn(label: Text('Classes', style: TextStyle(fontWeight: FontWeight.w600))),
                           DataColumn(label: Text('Contact Work Email', style: TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(label: Text('Admin Access', style: TextStyle(fontWeight: FontWeight.w600))),
                         ],
                         rows: filteredSchools.map((s) {
                           final code = (s['code'] ?? 'SC').toString();
@@ -510,6 +528,13 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                 ),
                               ),
+                              DataCell(
+                                TextButton.icon(
+                                  icon: const Icon(Icons.key_outlined, size: 18),
+                                  label: const Text('Reset admin password'),
+                                  onPressed: () => _resetAdminPassword(Map<String, dynamic>.from(s as Map)),
+                                ),
+                              ),
                             ],
                           );
                         }).toList(),
@@ -532,16 +557,14 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.history_outlined, color: AppColors.primary, size: 20),
-                        SizedBox(width: AppSpacing.sm),
-                        Text('Recent Platform Events & Security Trail', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      ],
+                    const Icon(Icons.history_outlined, color: AppColors.primary, size: 20),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(
+                      child: Text('Recent Platform Events & Security Trail', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
-                    Text('${_auditLogs.length} events logged', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text('${_auditLogs.length} events', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -555,12 +578,28 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.circle, size: 8, color: AppColors.primary),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Icon(Icons.circle, size: 8, color: AppColors.primary),
+                          ),
                           const SizedBox(width: AppSpacing.sm),
-                          Text(log['action'] ?? 'EVENT', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text('by ${log['actorName'] ?? 'Operator'} • $formattedTs', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          // Wraps on narrow screens instead of overflowing.
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(children: [
+                                TextSpan(
+                                  text: '${log['action'] ?? 'EVENT'}  ',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textDark),
+                                ),
+                                TextSpan(
+                                  text: 'by ${log['actorName'] ?? 'Operator'} • $formattedTs',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ]),
+                            ),
+                          ),
                         ],
                       ),
                     );

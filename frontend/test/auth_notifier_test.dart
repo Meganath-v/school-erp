@@ -234,6 +234,46 @@ void main() {
     });
   });
 
+  group('change password', () {
+    test('success swaps in the fresh tokens so this device stays signed in', () async {
+      storage.session = savedSession();
+      final fresh = fakeJwt(sub: 'after-change');
+      adapter.handler = (o) {
+        if (o.path.endsWith('/auth/me')) return FakeResponse(200, meBody('SCHOOL_ADMIN'));
+        if (o.path.endsWith('/auth/change-password')) {
+          return FakeResponse(201, {'data': {'message': 'ok', 'accessToken': fresh, 'refreshToken': 'r2'}});
+        }
+        return const FakeResponse(200, {'data': []});
+      };
+      final n = newNotifier();
+      await n.restoreSession();
+      final error = await n.changePassword(currentPassword: 'old-pass', newPassword: 'new-pass-123');
+
+      expect(error, isNull);
+      final body = adapter.requests.last.data as Map;
+      expect(body['oldPassword'], 'old-pass');
+      expect(body['newPassword'], 'new-pass-123');
+      expect(api.token, fresh);
+      expect(api.refreshToken, 'r2');
+      expect(storage.session!.accessToken, fresh);
+      expect(n.state.isAuthenticated, isTrue);
+    });
+
+    test('wrong current password gives a clear message and keeps the session', () async {
+      storage.session = savedSession();
+      adapter.handler = (o) => o.path.endsWith('/auth/change-password')
+          ? FakeResponse(400, errorBody(400, 'Current password does not match', 'Bad Request'))
+          : FakeResponse(200, meBody('SCHOOL_ADMIN'));
+      final n = newNotifier();
+      await n.restoreSession();
+      final before = api.token;
+      expect(await n.changePassword(currentPassword: 'wrong', newPassword: 'new-pass-123'),
+          'Your current password is incorrect.');
+      expect(api.token, before);
+      expect(n.state.isAuthenticated, isTrue);
+    });
+  });
+
   test('jwtExpiry reads exp and treats garbage as expired', () {
     expect(isJwtExpired(fakeJwt()), isFalse);
     expect(isJwtExpired(fakeJwt(expiresIn: const Duration(seconds: -1))), isTrue);

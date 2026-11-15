@@ -5,6 +5,7 @@ import '../network/api_client.dart';
 import '../theme/app_typography.dart';
 import '../auth/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../../features/auth/presentation/change_password_dialog.dart';
 import 'notification_center.dart';
 import 'status_badge.dart';
 import 'omni_search_dialog.dart';
@@ -355,6 +356,14 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
             onSelected: (val) {
               if (val == 'LOGOUT') {
                 ref.read(authProvider.notifier).logout();
+              } else if (val == 'CHANGE_PASSWORD') {
+                ChangePasswordDialog.show(context).then((changed) {
+                  if (changed == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password changed. Other devices were signed out.')),
+                    );
+                  }
+                });
               }
             },
             itemBuilder: (ctx) => [
@@ -386,6 +395,16 @@ class _ShellLayoutState extends ConsumerState<ShellLayout> {
                 ),
               ),
               const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'CHANGE_PASSWORD',
+                child: Row(
+                  children: [
+                    const Icon(Icons.password_outlined, size: 16, color: AppColors.textDark),
+                    const SizedBox(width: 10),
+                    Text('Change Password', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
               PopupMenuItem<String>(
                 value: 'LOGOUT',
                 child: Row(

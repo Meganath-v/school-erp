@@ -405,6 +405,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Changes the signed-in user's password. The server revokes all other sessions and
+  /// returns fresh tokens, which replace the current ones so this device stays signed in.
+  /// Returns null on success, or a message describing the problem.
+  Future<String?> changePassword({required String currentPassword, required String newPassword}) async {
+    try {
+      final res = await _api.dio.post('/auth/change-password', data: {
+        'oldPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+      final data = res.data is Map ? res.data['data'] : null;
+      final token = data is Map ? data['accessToken'] as String? : null;
+      final refresh = data is Map ? data['refreshToken'] as String? : null;
+      if (token != null) {
+        _api.setAuth(token, state.activeSchool?.id, refreshToken: refresh);
+        state = state.copyWith(token: token, refreshToken: refresh);
+        await _persist();
+      }
+      return null;
+    } catch (e) {
+      final ex = toApiException(e);
+      if (ex.message.toLowerCase().contains('current password does not match')) {
+        return 'Your current password is incorrect.';
+      }
+      return ex.message;
+    }
+  }
+
   /// Signs out: revokes the session on the server (best effort) and wipes local tokens.
   Future<void> logout() async {
     if (_api.token != null) {

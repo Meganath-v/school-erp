@@ -7,6 +7,7 @@ import '../auth/roles.dart';
 import '../navigation/role_navigation.dart';
 import '../network/api_client.dart';
 import '../theme/app_theme.dart';
+import '../../features/auth/presentation/change_password_dialog.dart';
 import 'notification_center.dart';
 import 'omni_search_dialog.dart';
 
@@ -205,6 +206,21 @@ class _MobileShellState extends ConsumerState<MobileShell> {
                     ),
                 ],
                 const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.password_outlined),
+                  title: const Text('Change password'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final changed = await ChangePasswordDialog.show(context);
+                    if (changed == true && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Password changed. Other devices were signed out.')),
+                      );
+                    }
+                  },
+                ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.dns_outlined),

@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSchoolDto {
@@ -51,6 +51,29 @@ export class CreateSchoolDto {
   @IsOptional()
   @IsString()
   planCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Initial password for a newly created admin (min 8 chars). Omit to generate a one-time temporary password.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  adminPassword?: string;
+}
+
+export class ResetSchoolAdminPasswordDto {
+  @ApiPropertyOptional({ description: 'Which school admin to reset; required when the school has more than one.' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'New password (min 8 chars). Omit to generate a one-time temporary password.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  newPassword?: string;
 }
 
 export class UpdateSchoolStatusDto {

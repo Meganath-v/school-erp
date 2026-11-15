@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateSchoolDto, CreateSubscriptionPlanDto } from './platform.dto';
+import { CreateSchoolDto, CreateSubscriptionPlanDto, ResetSchoolAdminPasswordDto } from './platform.dto';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
@@ -151,9 +151,10 @@ export class PlatformService {
       where: dto.planCode ? { code: dto.planCode } : { code: 'GROWTH' },
     });
 
-    // One-time random password for a newly created admin; returned once so it can be handed over securely.
-    const temporaryPassword = randomBytes(12).toString('base64url');
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    // Use the password chosen by the platform owner, or a one-time random password that is returned once.
+    const chosenPassword = dto.adminPassword;
+    const temporaryPassword = chosenPassword ? null : randomBytes(12).toString('base64url');
+    const passwordHash = await bcrypt.hash(chosenPassword ?? temporaryPassword!, 10);
 
     const { school, createdNewUser } = await this.prisma.$transaction(async (tx) => {
       // Create school, admin user, membership, and initial subscription in transaction
@@ -257,10 +258,96 @@ export class PlatformService {
 
     return {
       ...school,
-      adminCredentials: createdNewUser
-        ? { email: dto.adminEmail, temporaryPassword, note: 'Shown once. Share securely and change after first sign-in.' }
-        : { email: dto.adminEmail, note: 'Existing user was granted SCHOOL_ADMIN; their password is unchanged.' },
+      adminCredentials: !createdNewUser
+        ? { email: dto.adminEmail, note: 'Existing user was granted SCHOOL_ADMIN; their password is unchanged.' }
+        : chosenPassword
+          ? { email: dto.adminEmail, passwordSet: true, note: 'The admin can sign in with the password you entered.' }
+          : { email: dto.adminEmail, temporaryPassword, note: 'Shown once. Share securely and change after first sign-in.' },
     };
+  }
+
+  /** School admins of a school (used by the platform console to pick whom to reset). */
+  async getSchoolAdmins(schoolId: string) {
+    const school = await this.prisma.school.findUnique({ where: { id: schoolId }, select: { id: true } });
+    if (!school) throw new NotFoundException('School not found');
+    const memberships = await this.prisma.userSchoolMembership.findMany({
+      where: { schoolId, defaultRole: 'SCHOOL_ADMIN' },
+      include: { user: { select: { id: true, email: true, firstName: true, lastName: true, status: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return memberships.map((m) => ({
+      userId: m.user.id,
+      email: m.user.email,
+      name: `${m.user.firstName} ${m.user.lastName}`.trim(),
+      userStatus: m.user.status,
+      membershipStatus: m.status,
+    }));
+  }
+
+  /**
+   * Sets a new password for a school's admin (chosen, or a one-time temporary one),
+   * signs that user out on every device and records an audit entry.
+   */
+  async resetSchoolAdminPassword(
+    schoolId: string,
+    dto: ResetSchoolAdminPasswordDto,
+    actor?: { userId?: string; name?: string },
+  ) {
+    const school = await this.prisma.school.findUnique({ where: { id: schoolId }, select: { id: true, code: true } });
+    if (!school) throw new NotFoundException('School not found');
+
+    const admins = await this.prisma.userSchoolMembership.findMany({
+      where: { schoolId, defaultRole: 'SCHOOL_ADMIN' },
+      include: { user: true },
+    });
+    const matches = dto.email
+      ? admins.filter((m) => m.user.email.toLowerCase() === dto.email!.toLowerCase())
+      : admins;
+
+    if (matches.length === 0) {
+      throw new NotFoundException(
+        dto.email ? `No school admin with email ${dto.email} in this school` : 'This school has no school admin account',
+      );
+    }
+    if (matches.length > 1) {
+      throw new BadRequestException(
+        `This school has ${matches.length} admins (${matches.map((m) => m.user.email).join(', ')}). Specify which email to reset.`,
+      );
+    }
+
+    const user = matches[0].user;
+    const temporaryPassword = dto.newPassword ? null : randomBytes(12).toString('base64url');
+    const passwordHash = await bcrypt.hash(dto.newPassword ?? temporaryPassword!, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          schoolId,
+          actorId: actor?.userId || 'PLATFORM_SUPERADMIN',
+          actorName: actor?.name || 'Platform Administrator',
+          action: 'PASSWORD_RESET',
+          entity: 'User',
+          entityId: user.id,
+          details: JSON.stringify({
+            email: user.email,
+            schoolCode: school.code,
+            mode: dto.newPassword ? 'SET_BY_PLATFORM' : 'TEMPORARY_GENERATED',
+          }),
+        },
+      }),
+    ]);
+
+    return dto.newPassword
+      ? { email: user.email, passwordSet: true, note: 'Password updated. Existing sessions for this user were signed out.' }
+      : {
+          email: user.email,
+          temporaryPassword,
+          note: 'Shown once. Share securely and change after first sign-in. Existing sessions were signed out.',
+        };
   }
 
   async updateMembershipRole(

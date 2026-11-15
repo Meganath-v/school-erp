@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PlatformService } from './platform.service';
-import { CreateSchoolDto, UpdateSchoolStatusDto, CreateSubscriptionPlanDto } from './platform.dto';
+import { CreateSchoolDto, UpdateSchoolStatusDto, CreateSubscriptionPlanDto, ResetSchoolAdminPasswordDto } from './platform.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, PLATFORM_ADMINS } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -52,6 +52,32 @@ export class PlatformController {
   ) {
     this.assertSuperAdmin(role);
     const data = await this.platformService.updateSchoolStatus(id, dto.status, { userId: user?.userId, name: user?.name });
+    return { data };
+  }
+
+  @Roles(...PLATFORM_ADMINS)
+  @ApiOperation({ summary: 'List the school admin accounts of a school' })
+  @ApiParam({ name: 'id', description: 'School UUID' })
+  @Get('schools/:id/admins')
+  async getSchoolAdmins(@CurrentUser('role') role: string, @Param('id') id: string) {
+    this.assertSuperAdmin(role);
+    const data = await this.platformService.getSchoolAdmins(id);
+    return { data };
+  }
+
+  @Roles(...PLATFORM_ADMINS)
+  @ApiOperation({ summary: "Set or reset a school admin's password (signs that user out everywhere)" })
+  @ApiParam({ name: 'id', description: 'School UUID' })
+  @ApiResponse({ status: 201, description: 'Password updated; a temporary password is returned once when none was supplied' })
+  @Post('schools/:id/admins/reset-password')
+  async resetSchoolAdminPassword(
+    @CurrentUser('role') role: string,
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: ResetSchoolAdminPasswordDto,
+  ) {
+    this.assertSuperAdmin(role);
+    const data = await this.platformService.resetSchoolAdminPassword(id, dto, { userId: user?.userId, name: user?.name });
     return { data };
   }
 
