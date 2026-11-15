@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { clearAuthCache } from '../../common/auth-cache';
 import {
   UpdateSchoolDto,
   CreateAcademicYearDto,
@@ -46,7 +47,7 @@ export class SchoolsService {
   }
 
   async updateSchool(schoolId: string, data: UpdateSchoolDto) {
-    return this.prisma.school.update({
+    const updated = await this.prisma.school.update({
       where: { id: schoolId },
       data: {
         ...(data.name && { name: data.name }),
@@ -57,6 +58,8 @@ export class SchoolsService {
         ...(data.timezone && { timezone: data.timezone }),
       },
     });
+    clearAuthCache(); // cached auth records embed the school row
+    return updated;
   }
 
   // Campuses

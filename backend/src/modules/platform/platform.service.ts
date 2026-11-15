@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { clearAuthCache, invalidateAuthUser } from '../../common/auth-cache';
 import { CreateSchoolDto, CreateSubscriptionPlanDto, ResetSchoolAdminPasswordDto } from './platform.dto';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
@@ -120,6 +121,7 @@ export class PlatformService {
       where: { id: schoolId },
       data: { status },
     });
+    clearAuthCache();
 
     await this.prisma.auditLog.create({
       data: {
@@ -340,6 +342,7 @@ export class PlatformService {
         },
       }),
     ]);
+    invalidateAuthUser(user.id);
 
     return dto.newPassword
       ? { email: user.email, passwordSet: true, note: 'Password updated. Existing sessions for this user were signed out.' }
@@ -368,6 +371,7 @@ export class PlatformService {
       where: { id: membershipId },
       data: { defaultRole: role },
     });
+    invalidateAuthUser(updated.userId);
 
     await this.prisma.auditLog.create({
       data: {

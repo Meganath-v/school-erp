@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getCachedAuthUser, setCachedAuthUser } from '../../common/auth-cache';
 
 const MIN_SECRET_LENGTH = 32;
 const KNOWN_LEAKED_SECRETS = [
@@ -40,14 +41,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
-    // Refresh tokens (or tokens minted before this change) are not valid for API access.
-    if (payload.typ !== ACCESS_TOKEN_TYPE) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+  private loadUser(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
       include: {
         memberships: {
           where: { status: 'ACTIVE' },
@@ -57,6 +53,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         },
       },
     });
+  }
+
+  async validate(payload: any) {
+    // Refresh tokens (or tokens minted before this change) are not valid for API access.
+    if (payload.typ !== ACCESS_TOKEN_TYPE) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    type UserWithMemberships = Awaited<ReturnType<typeof this.loadUser>>;
+    let user = getCachedAuthUser<UserWithMemberships>(payload.sub);
+    if (!user) {
+      user = await this.loadUser(payload.sub);
+      if (user) setCachedAuthUser(payload.sub, user);
+    }
 
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User account is invalid or suspended');

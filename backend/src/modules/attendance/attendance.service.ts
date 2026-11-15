@@ -23,31 +23,38 @@ export class AttendanceService {
       return { session: null, students: [] };
     }
 
-    // Find active enrollments in this section
-    const enrollments = await this.prisma.enrollment.findMany({
-      where: {
-        schoolId,
-        sectionId: targetSection.id,
-        status: 'ACTIVE',
-      },
-      include: {
-        student: true,
-      },
-      orderBy: { rollNo: 'asc' },
-    });
+    const condonationThreshold = Number(process.env.ATTENDANCE_CONDONATION_THRESHOLD || 75);
 
-    // Check if session exists for today
-    const session = await this.prisma.attendanceSession.findFirst({
-      where: {
-        schoolId,
-        sectionId: targetSection.id,
-        date: today,
-        sessionType: 'DAILY',
-      },
-      include: {
-        records: true,
-      },
-    });
+    // Enrollments, today's session and past sessions only depend on the section,
+    // so fetch them concurrently (one database round trip instead of three).
+    const [enrollments, session, pastSessions] = await Promise.all([
+      this.prisma.enrollment.findMany({
+        where: {
+          schoolId,
+          sectionId: targetSection.id,
+          status: 'ACTIVE',
+        },
+        include: {
+          student: true,
+        },
+        orderBy: { rollNo: 'asc' },
+      }),
+      this.prisma.attendanceSession.findFirst({
+        where: {
+          schoolId,
+          sectionId: targetSection.id,
+          date: today,
+          sessionType: 'DAILY',
+        },
+        include: {
+          records: true,
+        },
+      }),
+      this.prisma.attendanceSession.findMany({
+        where: { schoolId, sectionId: targetSection.id },
+        include: { records: true },
+      }),
+    ]);
 
     const recordsMap = new Map();
     if (session) {
@@ -56,12 +63,6 @@ export class AttendanceService {
       }
     }
 
-    // Compute cumulative attendance percentage and condonation shortage risk
-    const condonationThreshold = Number(process.env.ATTENDANCE_CONDONATION_THRESHOLD || 75);
-    const pastSessions = await this.prisma.attendanceSession.findMany({
-      where: { schoolId, sectionId: targetSection.id },
-      include: { records: true },
-    });
     const totalSessionsConducted = pastSessions.length;
 
     const students = enrollments.map((e) => {

@@ -5,7 +5,10 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // One SQL query per include tree instead of one round trip per relation level
+  // (the database is ~200 ms away, so nested includes were the main latency cost).
+  previewFeatures = ["relationJoins"]
 }
 
 // ----------------------------------------------------

@@ -8,30 +8,63 @@ export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
   async getOverview(schoolId: string) {
-    const totalStudents = await this.prisma.student.count({ where: { schoolId, status: 'ACTIVE' } });
-    const totalStaff = await this.prisma.staff.count({ where: { schoolId, status: 'ACTIVE' } });
-    const totalClasses = await this.prisma.class.count({ where: { schoolId } });
-    const totalSections = await this.prisma.section.count({ where: { schoolId } });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Invoices sum
-    const invoices = await this.prisma.invoice.findMany({
-      where: { schoolId },
-      select: { amountMinor: true, paidAmountMinor: true, dueAmountMinor: true, status: true },
-    });
+    // The queries are independent, so run them concurrently: with the database a
+    // ~200 ms round trip away this turns ~16 sequential trips into a few.
+    const [
+      totalStudents,
+      totalStaff,
+      totalClasses,
+      totalSections,
+      invoices,
+      todaySessions,
+      todayPayments,
+      recentReceiptsData,
+      pendingLeavesCount,
+      pendingTasksCount,
+      publishedExamsCount,
+      draftExamsCount,
+      totalWeeklyPeriods,
+      recentAnnouncements,
+      recentAuditLogs,
+    ] = await Promise.all([
+      this.prisma.student.count({ where: { schoolId, status: 'ACTIVE' } }),
+      this.prisma.staff.count({ where: { schoolId, status: 'ACTIVE' } }),
+      this.prisma.class.count({ where: { schoolId } }),
+      this.prisma.section.count({ where: { schoolId } }),
+      this.prisma.invoice.findMany({
+        where: { schoolId },
+        select: { amountMinor: true, paidAmountMinor: true, dueAmountMinor: true, status: true },
+      }),
+      this.prisma.attendanceSession.findMany({
+        where: { schoolId, date: today },
+        include: { records: true },
+      }),
+      this.prisma.payment.findMany({
+        where: { schoolId, status: 'SUCCESS', createdAt: { gte: today } },
+        select: { amountMinor: true },
+      }),
+      this.prisma.payment.findMany({
+        where: { schoolId, status: 'SUCCESS' },
+        include: { invoice: { include: { student: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+      }),
+      this.prisma.leaveRequest.count({ where: { schoolId, status: 'PENDING' } }),
+      this.prisma.task.count({ where: { schoolId, status: 'PENDING' } }),
+      this.prisma.exam.count({ where: { schoolId, status: 'PUBLISHED' } }),
+      this.prisma.exam.count({ where: { schoolId, status: 'DRAFT' } }),
+      this.prisma.timetableEntry.count({ where: { schoolId } }),
+      this.prisma.announcement.findMany({ where: { schoolId }, orderBy: { publishedAt: 'desc' }, take: 4 }),
+      this.prisma.auditLog.findMany({ where: { schoolId }, orderBy: { timestamp: 'desc' }, take: 5 }),
+    ]);
 
     const totalInvoiced = invoices.reduce((acc, curr) => acc + curr.amountMinor, 0) / 100;
     const totalCollected = invoices.reduce((acc, curr) => acc + curr.paidAmountMinor, 0) / 100;
     const totalDue = invoices.reduce((acc, curr) => acc + curr.dueAmountMinor, 0) / 100;
     const pendingInvoicesCount = invoices.filter((i) => i.status === 'PENDING' || i.status === 'PARTIALLY_PAID').length;
-
-    // Today Attendance
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const todaySessions = await this.prisma.attendanceSession.findMany({
-      where: { schoolId, date: today },
-      include: { records: true },
-    });
 
     let totalAttendanceRecords = 0;
     let presentAttendanceRecords = 0;
@@ -39,32 +72,13 @@ export class ReportsService {
       totalAttendanceRecords += s.records.length;
       presentAttendanceRecords += s.records.filter((r) => r.status === 'PRESENT').length;
     }
-
     const isAttendanceMarkedToday = totalAttendanceRecords > 0;
     const todayAttendanceRate = isAttendanceMarkedToday
       ? Math.round((presentAttendanceRecords / totalAttendanceRecords) * 100)
       : null;
 
-    // Today Fee Collections
-    const todayPayments = await this.prisma.payment.findMany({
-      where: { schoolId, status: 'SUCCESS', createdAt: { gte: today } },
-      select: { amountMinor: true },
-    });
     const todayFeeCollected = todayPayments.reduce((acc, curr) => acc + curr.amountMinor, 0) / 100;
 
-    // Recent Receipts
-    const recentReceiptsData = await this.prisma.payment.findMany({
-      where: { schoolId, status: 'SUCCESS' },
-      include: {
-        invoice: {
-          include: {
-            student: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 6,
-    });
     const recentReceipts = recentReceiptsData.map((p) => ({
       id: p.id,
       receiptNo: p.receiptNo,
@@ -75,41 +89,6 @@ export class ReportsService {
       invoiceNo: p.invoice?.invoiceNo,
       createdAt: p.createdAt,
     }));
-
-    // Pending administrative work (pending leaves + pending tasks)
-    const pendingLeavesCount = await this.prisma.leaveRequest.count({
-      where: { schoolId, status: 'PENDING' },
-    });
-    const pendingTasksCount = await this.prisma.task.count({
-      where: { schoolId, status: 'PENDING' },
-    });
-
-    // Exams status
-    const publishedExamsCount = await this.prisma.exam.count({
-      where: { schoolId, status: 'PUBLISHED' },
-    });
-    const draftExamsCount = await this.prisma.exam.count({
-      where: { schoolId, status: 'DRAFT' },
-    });
-
-    // Timetable Workload
-    const totalWeeklyPeriods = await this.prisma.timetableEntry.count({
-      where: { schoolId },
-    });
-
-    // Recent announcements
-    const recentAnnouncements = await this.prisma.announcement.findMany({
-      where: { schoolId },
-      orderBy: { publishedAt: 'desc' },
-      take: 4,
-    });
-
-    // Recent audit events
-    const recentAuditLogs = await this.prisma.auditLog.findMany({
-      where: { schoolId },
-      orderBy: { timestamp: 'desc' },
-      take: 5,
-    });
 
     return {
       stats: {

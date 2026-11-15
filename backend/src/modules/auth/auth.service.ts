@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { invalidateAuthUser } from '../../common/auth-cache';
 import { AuditService } from '../audit/audit.service';
 import { LoginDto, SwitchSchoolDto, RefreshTokenDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto } from './auth.dto';
 import * as bcrypt from 'bcryptjs';
@@ -293,6 +294,7 @@ export class AuthService {
       data: { tokenVersion: { increment: 1 } },
       select: { id: true, firstName: true, lastName: true },
     });
+    invalidateAuthUser(userId);
     await this.auditService.log({
       actorId: userId,
       actorName: `${updated.firstName} ${updated.lastName}`,
@@ -311,6 +313,7 @@ export class AuthService {
       data: { tokenVersion: { increment: 1 } },
       select: { id: true, firstName: true, lastName: true, tokenVersion: true },
     });
+    invalidateAuthUser(userId);
     await this.auditService.log({
       actorId: userId,
       actorName: `${updated.firstName} ${updated.lastName}`,
@@ -360,6 +363,7 @@ export class AuthService {
         tokenVersion: { increment: 1 },
       },
     });
+    invalidateAuthUser(userId);
 
     // Resolve active school context for fresh tokens
     const activeSchoolId = currentSchoolId || user.memberships[0]?.schoolId;
@@ -463,6 +467,7 @@ export class AuthService {
         },
       });
     });
+    invalidateAuthUser(resetRecord.userId);
 
     await this.auditService.log({
       actorId: resetRecord.userId,
