@@ -21,8 +21,8 @@ export class ExamsService {
     if (query?.search && query.search.trim()) {
       const s = query.search.trim();
       where.OR = [
-        { name: { contains: s } },
-        { term: { contains: s } },
+        { name: { contains: s, mode: 'insensitive' } },
+        { term: { contains: s, mode: 'insensitive' } },
       ];
     }
 

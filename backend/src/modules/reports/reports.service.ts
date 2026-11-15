@@ -325,11 +325,11 @@ export class ReportsService {
     if (filter?.search && filter.search.trim()) {
       const s = filter.search.trim();
       where.OR = [
-        { firstName: { contains: s } },
-        { lastName: { contains: s } },
-        { email: { contains: s } },
-        { department: { contains: s } },
-        { designation: { contains: s } },
+        { firstName: { contains: s, mode: 'insensitive' } },
+        { lastName: { contains: s, mode: 'insensitive' } },
+        { email: { contains: s, mode: 'insensitive' } },
+        { department: { contains: s, mode: 'insensitive' } },
+        { designation: { contains: s, mode: 'insensitive' } },
       ];
     }
 

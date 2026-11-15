@@ -48,11 +48,11 @@ export class FeesService {
     if (query.search && query.search.trim()) {
       const s = query.search.trim();
       where.OR = [
-        { invoiceNo: { contains: s } },
-        { title: { contains: s } },
-        { student: { firstName: { contains: s } } },
-        { student: { lastName: { contains: s } } },
-        { student: { admissionNo: { contains: s } } },
+        { invoiceNo: { contains: s, mode: 'insensitive' } },
+        { title: { contains: s, mode: 'insensitive' } },
+        { student: { firstName: { contains: s, mode: 'insensitive' } } },
+        { student: { lastName: { contains: s, mode: 'insensitive' } } },
+        { student: { admissionNo: { contains: s, mode: 'insensitive' } } },
       ];
     }
 

@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('Tenant Discovery & School Resolution')
@@ -12,12 +13,12 @@ export class TenantDiscoveryController {
   @ApiResponse({ status: 200, description: 'Matching active school tenants' })
   @Get('tenant-discovery')
   async searchTenants(@Query('query') query?: string) {
-    const where = query
+    const where: Prisma.SchoolWhereInput = query
       ? {
           OR: [
-            { name: { contains: query } },
-            { code: { contains: query } },
-            { slug: { contains: query } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { code: { contains: query, mode: 'insensitive' } },
+            { slug: { contains: query, mode: 'insensitive' } },
           ],
           status: 'ACTIVE',
         }

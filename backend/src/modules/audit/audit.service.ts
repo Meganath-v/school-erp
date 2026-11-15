@@ -65,10 +65,10 @@ export class AuditService {
     if (query?.search && query.search.trim()) {
       const s = query.search.trim();
       where.OR = [
-        { action: { contains: s } },
-        { entity: { contains: s } },
-        { actorName: { contains: s } },
-        { details: { contains: s } },
+        { action: { contains: s, mode: 'insensitive' } },
+        { entity: { contains: s, mode: 'insensitive' } },
+        { actorName: { contains: s, mode: 'insensitive' } },
+        { details: { contains: s, mode: 'insensitive' } },
       ];
     }
 

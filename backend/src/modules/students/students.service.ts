@@ -38,9 +38,9 @@ export class StudentsService {
       }
       if (query.search) {
         where.OR = [
-          { firstName: { contains: query.search } },
-          { lastName: { contains: query.search } },
-          { admissionNo: { contains: query.search } },
+          { firstName: { contains: query.search, mode: 'insensitive' } },
+          { lastName: { contains: query.search, mode: 'insensitive' } },
+          { admissionNo: { contains: query.search, mode: 'insensitive' } },
         ];
       }
     }

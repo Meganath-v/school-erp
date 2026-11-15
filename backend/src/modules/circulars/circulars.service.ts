@@ -17,10 +17,10 @@ export class CircularsService {
     if (filters?.search && filters.search.trim()) {
       const s = filters.search.trim();
       where.OR = [
-        { title: { contains: s } },
-        { circularNumber: { contains: s } },
-        { content: { contains: s } },
-        { senderName: { contains: s } },
+        { title: { contains: s, mode: 'insensitive' } },
+        { circularNumber: { contains: s, mode: 'insensitive' } },
+        { content: { contains: s, mode: 'insensitive' } },
+        { senderName: { contains: s, mode: 'insensitive' } },
       ];
     }
 

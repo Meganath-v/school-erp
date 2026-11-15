@@ -33,9 +33,9 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { firstName: { contains: q } },
-            { lastName: { contains: q } },
-            { admissionNo: { contains: q } },
+            { firstName: { contains: q, mode: 'insensitive' } },
+            { lastName: { contains: q, mode: 'insensitive' } },
+            { admissionNo: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -68,12 +68,12 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { firstName: { contains: q } },
-            { lastName: { contains: q } },
-            { employeeNo: { contains: q } },
-            { department: { contains: q } },
-            { email: { contains: q } },
-            { designation: { contains: q } },
+            { firstName: { contains: q, mode: 'insensitive' } },
+            { lastName: { contains: q, mode: 'insensitive' } },
+            { employeeNo: { contains: q, mode: 'insensitive' } },
+            { department: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+            { designation: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -98,8 +98,8 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { name: { contains: q } },
-            { code: { contains: q } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { code: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -125,8 +125,8 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { name: { contains: q } },
-            { code: { contains: q } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { code: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -150,9 +150,9 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { circularNumber: { contains: q } },
-            { title: { contains: q } },
-            { content: { contains: q } },
+            { circularNumber: { contains: q, mode: 'insensitive' } },
+            { title: { contains: q, mode: 'insensitive' } },
+            { content: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -177,8 +177,8 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { title: { contains: q } },
-            { description: { contains: q } },
+            { title: { contains: q, mode: 'insensitive' } },
+            { description: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,
@@ -204,10 +204,10 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { invoiceNo: { contains: q } },
-            { title: { contains: q } },
-            { student: { firstName: { contains: q } } },
-            { student: { lastName: { contains: q } } },
+            { invoiceNo: { contains: q, mode: 'insensitive' } },
+            { title: { contains: q, mode: 'insensitive' } },
+            { student: { firstName: { contains: q, mode: 'insensitive' } } },
+            { student: { lastName: { contains: q, mode: 'insensitive' } } },
           ],
         },
         take: limit,
@@ -233,10 +233,10 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { receiptNo: { contains: q } },
-            { notes: { contains: q } },
-            { invoice: { student: { firstName: { contains: q } } } },
-            { invoice: { student: { lastName: { contains: q } } } },
+            { receiptNo: { contains: q, mode: 'insensitive' } },
+            { notes: { contains: q, mode: 'insensitive' } },
+            { invoice: { student: { firstName: { contains: q, mode: 'insensitive' } } } },
+            { invoice: { student: { lastName: { contains: q, mode: 'insensitive' } } } },
           ],
         },
         take: limit,
@@ -265,8 +265,8 @@ export class SearchService {
         where: {
           schoolId,
           OR: [
-            { name: { contains: q } },
-            { term: { contains: q } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { term: { contains: q, mode: 'insensitive' } },
           ],
         },
         take: limit,

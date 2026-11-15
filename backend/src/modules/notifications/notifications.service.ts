@@ -20,8 +20,8 @@ export class NotificationsService {
     if (query?.search && query.search.trim()) {
       const s = query.search.trim();
       where.OR = [
-        { title: { contains: s } },
-        { body: { contains: s } },
+        { title: { contains: s, mode: 'insensitive' } },
+        { body: { contains: s, mode: 'insensitive' } },
       ];
     }
 
