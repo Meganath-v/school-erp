@@ -8,7 +8,7 @@ COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
 # Install dependencies including Prisma CLI
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma Client for Linux runtime
 RUN npx prisma generate
@@ -42,3 +42,4 @@ EXPOSE 10000
 
 # Push database schema and start production server
 CMD ["sh", "-c", "npx prisma db push && node dist/src/main.js"]
+

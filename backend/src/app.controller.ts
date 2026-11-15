@@ -21,3 +21,4 @@ export class AppController {
     return this.healthCheck();
   }
 }
+
