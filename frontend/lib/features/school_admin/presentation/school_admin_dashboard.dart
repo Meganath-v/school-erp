@@ -126,7 +126,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedClassId,
                             decoration: const InputDecoration(labelText: 'Grade / Class'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
@@ -143,7 +143,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
                             items: currentClassSections.map<DropdownMenuItem<String>>((s) {
@@ -641,7 +641,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
             countLabel: 'Students Active',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _selectedClassFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: [
@@ -758,14 +758,14 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
-                        Row(
+                        Row(mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.class_outlined, color: AppColors.primary, size: 22),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(c['name'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Flexible(child: Text(c['name'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
                             const SizedBox(width: AppSpacing.sm),
                             StatusBadge(label: 'Code: ${c['code']}', variant: BadgeVariant.neutral),
                           ],
@@ -964,7 +964,7 @@ class _SchoolAdminDashboardState extends ConsumerState<SchoolAdminDashboard> wit
             countLabel: 'Invoices Recorded',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _selectedInvoiceStatusFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: const [

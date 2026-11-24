@@ -182,7 +182,7 @@
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>Database Sync Active</span>
         </span>
-        <span class="font-mono text-[10px] text-slate-500">v2.6-Linways</span>
+        <span class="font-mono text-[10px] text-slate-500">v2.6</span>
       </div>
     </aside>
 
@@ -402,7 +402,7 @@
               <span>Monthly Class Attendance Workstation</span>
             </h2>
             <p class="text-xs text-slate-500 mt-0.5">
-              Click any cell to edit status • Linways condonation threshold ($< 75\%$) automatically flagged
+              Click any cell to edit status • Attendance condonation threshold ($< 75\%$) automatically flagged
             </p>
           </div>
 
@@ -1545,7 +1545,7 @@
             }).join('')}
             <th class="py-3 px-3 text-center">Total Attended</th>
             <th class="py-3 px-3 text-center">Attendance %</th>
-            <th class="py-3 px-3 text-center">75% Linways Status</th>
+            <th class="py-3 px-3 text-center">75% Condonation Status</th>
           </tr>
         `;
 
@@ -1839,7 +1839,7 @@
           }),
         });
 
-        alert('✅ Teaching diary entry saved to Linways academic course registry!');
+        alert('✅ Teaching diary entry saved to the academic course registry!');
         document.getElementById('diaryTopic').value = '';
         document.getElementById('diaryRemarks').value = '';
         closeTeachingDiaryModal();

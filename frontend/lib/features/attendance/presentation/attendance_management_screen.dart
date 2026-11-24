@@ -333,7 +333,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField<String>(isExpanded: true, 
                     value: _selectedClassId,
                     decoration: const InputDecoration(labelText: 'Grade / Class'),
                     items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -357,7 +357,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField<String>(isExpanded: true, 
                     value: _selectedSectionId,
                     decoration: const InputDecoration(labelText: 'Section Division'),
                     items: (_selectedClassId != null
@@ -585,7 +585,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<int>(
+                      child: DropdownButtonFormField<int>(isExpanded: true, 
                         value: _selectedPeriod,
                         decoration: const InputDecoration(labelText: 'Class Period (1 to 8)'),
                         items: [1, 2, 3, 4, 5, 6, 7, 8].map((p) => DropdownMenuItem(value: p, child: Text('Period $p'))).toList(),
@@ -594,7 +594,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: _selectedSubjectId,
                         decoration: const InputDecoration(labelText: 'Subject Taught'),
                         items: _subjects.map<DropdownMenuItem<String>>((sub) => DropdownMenuItem(value: sub['id'] as String, child: Text(sub['name']))).toList(),
@@ -634,18 +634,13 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(
                         radius: 14,
                         backgroundColor: AppColors.secondarySubtle,
                         child: Text('${s['rollNo'] ?? index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary, fontSize: 12)),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
+                      ), const SizedBox(width: AppSpacing.md), Expanded(
                         child: Text(s['fullName'] ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                      SegmentedButton<String>(
+                      )]), const SizedBox(height: AppSpacing.sm), SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: 'PRESENT', label: Text('Present')),
                           ButtonSegment(value: 'ABSENT', label: Text('Absent')),
@@ -653,9 +648,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
                         ],
                         selected: {status},
                         onSelectionChanged: (set) => setState(() => _periodAttendanceMap[studentId] = set.first),
-                      ),
-                    ],
-                  ),
+                      )]),
                 );
               },
             ),
@@ -693,7 +686,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
+                child: DropdownButtonFormField<int>(isExpanded: true, 
                   value: _selectedMonth,
                   decoration: const InputDecoration(labelText: 'Month'),
                   items: List.generate(12, (i) => i + 1)
@@ -709,7 +702,7 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: DropdownButtonFormField<int>(
+                child: DropdownButtonFormField<int>(isExpanded: true, 
                   value: _selectedYear,
                   decoration: const InputDecoration(labelText: 'Year'),
                   items: [2026, 2027].map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
@@ -860,8 +853,11 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Text('Learners Requiring Condonation Intervention', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     StatusBadge(label: '${defaulters.length} Defaulters', variant: defaulters.isNotEmpty ? BadgeVariant.error : BadgeVariant.success),

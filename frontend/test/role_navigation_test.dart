@@ -127,7 +127,11 @@ void main() {
       await tester.tap(find.text('More'));
       await tester.pumpAndSettle();
       final drawerSignOut = find.descendant(of: find.byType(Drawer), matching: find.text('Sign out'));
-      await tester.ensureVisible(drawerSignOut);
+      await tester.scrollUntilVisible(
+        drawerSignOut,
+        200,
+        scrollable: find.descendant(of: find.byType(Drawer), matching: find.byType(Scrollable)).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(drawerSignOut);
       await tester.pumpAndSettle();

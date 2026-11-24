@@ -1,5 +1,5 @@
 /**
- * Linways AMS & Multi-Tenant School ERP
+ * Ark-ERP Academic Management System & Multi-Tenant School ERP
  * Automated End-to-End API Test Suite
  */
 
@@ -104,7 +104,7 @@ async function runTest(
 
 async function main() {
   console.log('===============================================================');
-  console.log('   LINWAYS ACADEMIC MANAGEMENT SYSTEM - API TEST SUITE        ');
+  console.log('   ARK-ERP ACADEMIC MANAGEMENT SYSTEM - API TEST SUITE        ');
   console.log('===============================================================\n');
 
   let superadminToken = '';
@@ -220,10 +220,10 @@ async function main() {
     }
   });
 
-  // 4. Linways Academic Management System
-  console.log('\n--- 4. Linways Academic Management System ---');
+  // 4. Academic Management System
+  console.log('\n--- 4. Academic Management System ---');
   let firstLessonPlanId = '';
-  await runTest('Linways Academics', 'Retrieve Course Delivery Plans (OBE Lesson Plans)', async () => {
+  await runTest('Academics', 'Retrieve Course Delivery Plans (OBE Lesson Plans)', async () => {
     const res = await request('GET', '/academics/lesson-plans', undefined, {
       Authorization: `Bearer ${subjectTeacherToken}`,
       'x-school-id': oakridgeSchoolId,
@@ -240,7 +240,7 @@ async function main() {
     }
   });
 
-  await runTest('Linways Academics', 'Update Course Delivery Plan progress', async () => {
+  await runTest('Academics', 'Update Course Delivery Plan progress', async () => {
     const updateRes = await request(
       'PATCH',
       `/academics/lesson-plans/${firstLessonPlanId}/progress`,
@@ -259,7 +259,7 @@ async function main() {
     }
   });
 
-  await runTest('Linways Academics', 'Fetch and log Faculty Teaching Diary', async () => {
+  await runTest('Academics', 'Fetch and log Faculty Teaching Diary', async () => {
     const getRes = await request('GET', '/academics/teaching-diaries', undefined, {
       Authorization: `Bearer ${subjectTeacherToken}`,
       'x-school-id': oakridgeSchoolId,
@@ -286,7 +286,7 @@ async function main() {
     if (!postRes.body.id) throw new Error('Diary entry ID missing');
   });
 
-  await runTest('Linways Academics', 'Fetch Course Study Materials Repository', async () => {
+  await runTest('Academics', 'Fetch Course Study Materials Repository', async () => {
     const res = await request('GET', '/academics/course-materials', undefined, {
       Authorization: `Bearer ${parentToken}`,
       'x-school-id': oakridgeSchoolId,
@@ -297,7 +297,7 @@ async function main() {
     }
   });
 
-  await runTest('Linways Academics', 'Calculate Attendance Condonation Shortage Risk (<75%)', async () => {
+  await runTest('Academics', 'Calculate Attendance Condonation Shortage Risk (<75%)', async () => {
     const res = await request('GET', '/academics/attendance-analytics', undefined, {
       Authorization: `Bearer ${classTeacherToken}`,
       'x-school-id': oakridgeSchoolId,
@@ -496,7 +496,7 @@ async function main() {
     }
     process.exit(1);
   } else {
-    console.log('🏆 ALL E2E AND LINWAYS AMS SUITES PASSED FLAWLESSLY!');
+    console.log('🏆 ALL E2E AND ACADEMIC MANAGEMENT SUITES PASSED FLAWLESSLY!');
     process.exit(0);
   }
 }

@@ -1,11 +1,11 @@
-# 🏫 Multi-Tenant School ERP & Linways Academic Management System (AMS)
+# 🏫 Ark-ERP: Multi-Tenant School ERP & Academic Management System (AMS)
 ## Complete Project Architecture, Modules & Features Guide
 
 ---
 
 ## 📌 Executive Summary
 
-This project is an enterprise-grade, multi-tenant **School ERP & Academic Management System (AMS / LMS / SIS)** modeled after institutional software standards (such as Linways). It provides end-to-end management for K-12 schools, colleges, and multi-campus educational institutions with strict multi-tenancy isolation, role-based access control (RBAC), and automated workflows.
+This project is an enterprise-grade, multi-tenant **School ERP & Academic Management System (AMS / LMS / SIS)** built to institutional software standards. It provides end-to-end management for K-12 schools, colleges, and multi-campus educational institutions with strict multi-tenancy isolation, role-based access control (RBAC), and automated workflows.
 
 ### 🛠️ Technology Stack
 * **Backend REST API**: NestJS 11, TypeScript 5.7, Express, Passport.js, Helmet, Compression, Throttler.
@@ -120,9 +120,9 @@ Designed specifically for screen-intensive desktop/laptop workflows in staff roo
    * Color-coded preview table before committing.
 3. **Consolidated Class Attendance Register & Condonation Matrix**:
    * Month-long calendar register showing daily status (`P`, `A`, `L`) for all 40+ students simultaneously.
-   * Highlights in red students who drop below the **75% Linways condonation threshold**.
+   * Highlights in red students who drop below the **75% attendance condonation threshold**.
    * One-click "Export Condonation Defaulters List" and "Send Warning Reminders".
-4. **Linways OBE Syllabus & Teaching Diary**:
+4. **OBE Syllabus & Teaching Diary**:
    * Unit-by-unit syllabus completion progress bars.
    * Lesson log entries: period number, topic, methodology (Lecture, Lab, Flipped Classroom), and observations.
 5. **Print-Ready Broadsheet Studio**:
@@ -140,15 +140,25 @@ Designed specifically for screen-intensive desktop/laptop workflows in staff roo
   * Prevents parent client-side self-marking of unpaid invoices.
   * Generates immutable, serialized official receipts (e.g. `REC-2026-001`) with unique database constraints.
 
-### 8. 📋 Attendance & Linways Condonation (`/attendance`)
+### 8. 📋 Attendance & Condonation (`/attendance`)
 * Supports both Daily Morning Attendance and Period-wise Attendance.
 * Bulk marking capabilities: "Mark All Present" with quick absentee toggles.
 * Automated attendance percentage tracking against working days.
 
-### 9. 📚 Linways Academic Management Suite (OBE & Repository)
+### 9. 📚 Academic Management Suite (OBE & Repository)
 * **Outcome-Based Education (OBE)**: Course Outcomes (COs) mapped to Bloom’s Taxonomy levels (Remember, Understand, Apply, Analyze, Evaluate, Create).
 * **Course Delivery Plans**: Planned vs conducted hours tracking.
 * **Course Materials Repository**: Categorized study materials (PDFs, PPT slides, lecture videos) organized by unit.
+
+### 10. 🎯 Outcomes & Attainment (`/outcomes`)
+Staff (School Admin, Principal, Class & Subject Teachers) open **Outcomes & Attainment** from the menu.
+* **Programs & program outcomes**: programs (degree / stream / grade band) with Program Outcomes (PO), Program-Specific Outcomes (PSO) and Program Educational Objectives (PEO); classes are linked to a program. Managed by School Admin / Principal.
+* **Course outcomes & CO–PO mapping**: course outcomes per subject (Bloom level, target %), mapped to program outcomes with correlation strength 1 (low), 2 (medium), 3 (high).
+* **Question bank**: questions tagged with a course outcome, Bloom level, marks and type.
+* **Question papers**: sectioned papers (e.g. Part A / Part B) built from the bank for any exam subject or assignment; the paper total cannot exceed the assessment's maximum marks and is locked once marks are entered.
+* **Question-wise marks**: marks entered per question, per student; totals are kept in sync with the regular exam marks and assignment submissions.
+* **Attainment** (threshold method): a student attains a CO when scoring at least the target % on its questions; the share of students attaining it gives level 1/2/3. Direct attainment combines internal and external assessments by weight; the final level adds the course exit survey (indirect, 0–3). PO attainment = Σ(correlation × CO level) ÷ Σ correlation. Rules are configurable per subject with a school-wide default.
+* **Permissions**: teachers edit only the subjects they are assigned to; parents and students have no access.
 
 ---
 
@@ -218,8 +228,10 @@ node dist/src/main.js
 ### 2. Run the Automated API Test Suite
 ```bash
 cd backend
-npx ts-node test-linways-api.ts
+npx ts-node test-academics-api.ts
 npx ts-node test-new-services.ts
+npx ts-node test-attainment.ts                  # outcome attainment arithmetic (no database)
+SEED_PW=<seed password> node test-outcomes-api.mjs   # outcomes API end to end (cleans up after itself)
 ```
 
 ### 3. Run the Flutter Cross-Platform Client

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_typography.dart';
 
 class AppColors {
-  // Institutional Slate Navy Palette (Linways & Enterprise SaaS Inspired)
+  // Institutional Slate Navy Palette (Enterprise SaaS style)
   static const Color primary = Color(0xFF0F172A); // Slate 900
   static const Color primaryNavy = Color(0xFF1E293B); // Slate 800
   static const Color primaryAccent = Color(0xFF2563EB); // Royal Blue 600

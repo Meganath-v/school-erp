@@ -632,7 +632,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                     border: Border.all(color: AppColors.border),
                     color: AppColors.background,
                   ),
-                  child: DropdownButton<String>(
+                  child: DropdownButton<String>(isExpanded: true, 
                     value: _selectedAcademicYearId,
                     hint: const Text('Academic Year'),
                     style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),
@@ -661,7 +661,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                       border: Border.all(color: AppColors.border),
                       color: AppColors.background,
                     ),
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String>(isExpanded: true, 
                       value: _selectedClassId,
                       hint: const Text('All Classes'),
                       style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),
@@ -696,7 +696,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                       border: Border.all(color: AppColors.border),
                       color: AppColors.background,
                     ),
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String>(isExpanded: true, 
                       value: _selectedSectionId,
                       hint: const Text('All Sections'),
                       style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),
@@ -728,7 +728,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                       border: Border.all(color: AppColors.border),
                       color: AppColors.background,
                     ),
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String>(isExpanded: true, 
                       value: _selectedExamId,
                       hint: const Text('Select Exam'),
                       style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),
@@ -757,7 +757,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                       border: Border.all(color: AppColors.border),
                       color: AppColors.background,
                     ),
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String>(isExpanded: true, 
                       value: _selectedStudentId,
                       hint: const Text('Select Student'),
                       style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),
@@ -787,7 +787,7 @@ class _ReportsAnalyticsScreenState extends ConsumerState<ReportsAnalyticsScreen>
                       border: Border.all(color: AppColors.border),
                       color: AppColors.background,
                     ),
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String>(isExpanded: true, 
                       value: _selectedDepartment,
                       hint: const Text('All Departments'),
                       style: GoogleFonts.inter(fontSize: 12, color: AppColors.textPrimary),

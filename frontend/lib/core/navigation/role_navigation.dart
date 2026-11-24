@@ -7,6 +7,7 @@ import '../../features/class_teacher/presentation/teacher_dashboard.dart';
 import '../../features/examination/presentation/examination_management_screen.dart';
 import '../../features/fees/presentation/fee_management_screen.dart';
 import '../../features/office/presentation/office_dashboard.dart';
+import '../../features/outcomes/presentation/outcomes_screen.dart';
 import '../../features/parent/presentation/parent_portal_screen.dart';
 import '../../features/platform_admin/presentation/platform_dashboard_screen.dart';
 import '../../features/principal/presentation/principal_dashboard.dart';
@@ -71,6 +72,7 @@ class RoleNavigation {
           _s('staff', 'Faculty & Staff', 'Staff', Icons.badge_outlined, Icons.badge, (_) => const StaffManagementScreen()),
           _attendance,
           _exams,
+          _outcomes,
           _fees,
           _timetable,
           _circulars,
@@ -82,6 +84,7 @@ class RoleNavigation {
           _reports,
           _attendance,
           _exams,
+          _outcomes,
           _timetable,
           _circulars,
           _audit,
@@ -100,6 +103,7 @@ class RoleNavigation {
           _s('myclass', 'My Class', 'My class', Icons.groups_outlined, Icons.groups, (_) => const ClassTeacherDashboard()),
           _attendance,
           _exams,
+          _outcomes,
           _timetable,
           _circulars,
         ]);
@@ -108,6 +112,7 @@ class RoleNavigation {
           _s('teaching', 'Lessons & Homework', 'Teaching', Icons.assignment_outlined, Icons.assignment, (_) => const SubjectTeacherDashboard()),
           _attendance,
           _exams,
+          _outcomes,
           _timetable,
         ]);
       case AppRoles.parent:
@@ -130,6 +135,7 @@ class RoleNavigation {
   static final _students = _s('students', 'Students & Admissions', 'Students', Icons.school_outlined, Icons.school, (_) => const StudentManagementScreen());
   static final _attendance = _s('attendance', 'Attendance', 'Attendance', Icons.fact_check_outlined, Icons.fact_check, (_) => const AttendanceManagementScreen());
   static final _exams = _s('exams', 'Exams & Marks', 'Marks', Icons.grade_outlined, Icons.grade, (_) => const ExaminationManagementScreen());
+  static final _outcomes = _s('outcomes', 'Outcomes & Attainment', 'Outcomes', Icons.track_changes_outlined, Icons.track_changes, (_) => const OutcomesScreen());
   static final _fees = _s('fees', 'Fees & Receipts', 'Fees', Icons.receipt_long_outlined, Icons.receipt_long, (_) => const FeeManagementScreen());
   static final _timetable = _s('timetable', 'Timetable', 'Timetable', Icons.schedule_outlined, Icons.schedule, (_) => const TimetableManagementScreen());
   static final _circulars = _s('circulars', 'Circulars & Notices', 'Notices', Icons.campaign_outlined, Icons.campaign, (_) => const CircularManagementScreen());

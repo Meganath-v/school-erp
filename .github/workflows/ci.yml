@@ -36,14 +36,19 @@ jobs:
         working-directory: backend
         run: npx tsc --noEmit
 
-      - name: Seed Test Database & Run Linways E2E Tests
+      - name: Outcome Attainment Unit Tests
+        working-directory: backend
+        run: npx ts-node test-attainment.ts
+
+      - name: Seed Test Database & Run Academics E2E Tests
         working-directory: backend
         run: |
           npx prisma db push
           npx ts-node prisma/seed.ts
           npm run start &
           sleep 8
-          npx ts-node test-linways-api.ts
+          npx ts-node test-academics-api.ts
+          SEED_PW=password123 node test-outcomes-api.mjs
 
   frontend-test:
     name: Frontend Analyze, Test & Web Build

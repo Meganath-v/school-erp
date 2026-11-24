@@ -119,7 +119,7 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
             countLabel: 'Events Recorded',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _selectedActionFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: distinctActions.map((action) {

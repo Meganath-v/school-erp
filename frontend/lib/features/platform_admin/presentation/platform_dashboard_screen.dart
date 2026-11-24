@@ -188,7 +188,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(isExpanded: true, 
                       value: selectedPlan,
                       decoration: const InputDecoration(labelText: 'Service Tier'),
                       items: const [
@@ -400,7 +400,7 @@ class _PlatformDashboardScreenState extends ConsumerState<PlatformDashboardScree
             countLabel: 'Institutions Found',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _selectedStatusFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: const [

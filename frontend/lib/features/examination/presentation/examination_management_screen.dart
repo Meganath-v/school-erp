@@ -371,14 +371,14 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String>(isExpanded: true, 
                   value: selectedClassId,
                   decoration: const InputDecoration(labelText: 'Grade / Class'),
                   items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
                   onChanged: (val) => setDialogState(() => selectedClassId = val),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String>(isExpanded: true, 
                   value: selectedSubId,
                   decoration: const InputDecoration(labelText: 'Curriculum Subject'),
                   items: _subjects.map<DropdownMenuItem<String>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['name']))).toList(),
@@ -534,7 +534,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
             },
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _examTermFilter,
                   items: const [
                     DropdownMenuItem(value: 'ALL', child: Text('All Terms')),
@@ -606,7 +606,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
                             )),
                           ],
                         ),
-                        Row(mainAxisSize: MainAxisSize.min,
+                        Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             OutlinedButton.icon(
                               onPressed: () => _showAddSubjectScheduleDialog(ex['id']),
@@ -695,7 +695,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _selectedTerm,
                           decoration: const InputDecoration(labelText: 'Academic Term'),
                           items: const [
@@ -951,7 +951,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: DropdownButtonFormField<String>(isExpanded: true, 
                   value: _selectedExam?['id'],
                   decoration: const InputDecoration(labelText: 'Select Examination Series'),
                   items: _exams.map<DropdownMenuItem<String>>((e) => DropdownMenuItem(value: e['id'] as String, child: Text(e['name']))).toList(),
@@ -965,7 +965,7 @@ class _ExaminationManagementScreenState extends ConsumerState<ExaminationManagem
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: DropdownButtonFormField<String>(isExpanded: true, 
                   value: _broadsheetClassId,
                   decoration: const InputDecoration(labelText: 'Select Class'),
                   items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),

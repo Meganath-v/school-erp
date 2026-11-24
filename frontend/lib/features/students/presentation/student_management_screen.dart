@@ -231,7 +231,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String>(isExpanded: true, 
                   value: docType,
                   decoration: const InputDecoration(labelText: 'Document Type'),
                   items: const [
@@ -350,7 +350,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: targetClassId,
                           decoration: const InputDecoration(labelText: 'Promotion Class'),
                           items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -367,7 +367,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: targetSectionId,
                           decoration: const InputDecoration(labelText: 'Section'),
                           items: curSections.map<DropdownMenuItem<String>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['name']))).toList(),
@@ -632,7 +632,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
               countLabel: 'Learners Found',
               filters: [
                 DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
+                  child: DropdownButton<String?>(isExpanded: true, 
                     value: _selectedClassFilter,
                     hint: const Text('All Classes'),
                     items: [
@@ -659,7 +659,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       );
                       final sections = selectedClassObj != null ? (selectedClassObj['sections'] as List? ?? []) : [];
                       return DropdownButtonHideUnderline(
-                        child: DropdownButton<String?>(
+                        child: DropdownButton<String?>(isExpanded: true, 
                           value: _selectedSectionFilter,
                           hint: const Text('All Sections'),
                           items: [
@@ -1263,7 +1263,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _genderCtrl.text,
                           decoration: const InputDecoration(labelText: 'Gender'),
                           items: const [
@@ -1278,7 +1278,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _bloodGroupCtrl.text,
                           decoration: const InputDecoration(labelText: 'Blood Group'),
                           items: const ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
@@ -1309,7 +1309,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                       return Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: DropdownButtonFormField<String>(isExpanded: true, 
                               value: _admissionClassId,
                               decoration: const InputDecoration(labelText: 'Target Class / Grade *'),
                               items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -1325,7 +1325,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: DropdownButtonFormField<String>(isExpanded: true, 
                               value: _admissionSectionId,
                               decoration: const InputDecoration(labelText: 'Section Division'),
                               items: curSections.map<DropdownMenuItem<String>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['name']))).toList(),
@@ -1371,7 +1371,7 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _guardianRelCtrl.text,
                           decoration: const InputDecoration(labelText: 'Relationship'),
                           items: const [
@@ -1395,8 +1395,8 @@ class _StudentManagementScreenState extends ConsumerState<StudentManagementScree
                   ),
                   const SizedBox(height: AppSpacing.xxl),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    alignment: WrapAlignment.end, spacing: 8, runSpacing: 8,
                     children: [
                       OutlinedButton(
                         onPressed: () => _tabController.animateTo(0),

@@ -336,7 +336,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
             });
           },
           filters: [
-            DropdownButton<String>(
+            DropdownButton<String>(isExpanded: true, 
               value: _selectedAudienceFilter,
               underline: const SizedBox(),
               items: const [
@@ -350,7 +350,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
               },
             ),
             const SizedBox(width: AppSpacing.sm),
-            DropdownButton<String>(
+            DropdownButton<String>(isExpanded: true, 
               value: _selectedPriorityFilter,
               underline: const SizedBox(),
               items: const [
@@ -564,7 +564,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
               children: [
                 ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 240, maxWidth: 300),
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField<String>(isExpanded: true, 
                     initialValue: _createTargetAudience,
                     decoration: const InputDecoration(
                       labelText: 'Target Audience *',
@@ -587,7 +587,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
                 ),
                 ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 200, maxWidth: 260),
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField<String>(isExpanded: true, 
                     initialValue: _createPriority,
                     decoration: const InputDecoration(
                       labelText: 'Priority Level *',
@@ -605,7 +605,7 @@ class _CircularManagementScreenState extends ConsumerState<CircularManagementScr
                 if (_createTargetAudience == 'CLASS')
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
-                    child: DropdownButtonFormField<String>(
+                    child: DropdownButtonFormField<String>(isExpanded: true, 
                       initialValue: _createSelectedClassId,
                       decoration: const InputDecoration(
                         labelText: 'Select Class *',

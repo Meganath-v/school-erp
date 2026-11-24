@@ -151,6 +151,8 @@ void main() {
             final tabs = find.byType(Tab);
             if (i >= tabs.evaluate().length) break;
             current = '${entry.key} › tab ${i + 1}';
+            await tester.ensureVisible(tabs.at(i)); // tabs past the edge of a scrollable tab strip
+            await tester.pump(const Duration(milliseconds: 300));
             await tester.tap(tabs.at(i), warnIfMissed: false);
             await settle(tester);
           }

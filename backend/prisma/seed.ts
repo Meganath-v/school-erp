@@ -1057,7 +1057,7 @@ async function main() {
     ],
   });
 
-  // 20. Linways OBE: Course Delivery Plans (Lesson Plans)
+  // 20. OBE: Course Delivery Plans (Lesson Plans)
   await prisma.lessonPlan.createMany({
     data: [
       {
@@ -1128,7 +1128,7 @@ async function main() {
     ],
   });
 
-  // 21. Linways Faculty Teaching Diary (Course Log)
+  // 21. Faculty Teaching Diary (Course Log)
   await prisma.teachingDiaryEntry.createMany({
     data: [
       {
@@ -1170,7 +1170,7 @@ async function main() {
     ],
   });
 
-  // 22. Linways Digital Course Repository (Learning Materials)
+  // 22. Digital Course Repository (Learning Materials)
   await prisma.courseMaterial.createMany({
     data: [
       {

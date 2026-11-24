@@ -37,7 +37,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
 
 async function runSecuritySuite() {
   console.log('================================================================');
-  console.log('🔒 EXECUTING LINWAYS-GRADE COMPREHENSIVE SECURITY TEST SUITE');
+  console.log('🔒 EXECUTING COMPREHENSIVE SECURITY TEST SUITE');
   console.log('================================================================\n');
 
   // 1. Password Handling & Failed Login Audit

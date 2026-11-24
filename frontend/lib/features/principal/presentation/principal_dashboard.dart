@@ -194,7 +194,7 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: targetRole,
                           decoration: const InputDecoration(labelText: 'Target Audience'),
                           items: const [
@@ -207,7 +207,7 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: priority,
                           decoration: const InputDecoration(labelText: 'Priority Level'),
                           items: const [
@@ -969,15 +969,15 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                              alignment: WrapAlignment.spaceBetween,
                               children: [
-                                Row(
+                                Row(mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
+                                    Flexible(child: Text(
                                       n['title'] ?? 'Official Notice',
                                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                    ),
+                                    )),
                                     const SizedBox(width: AppSpacing.sm),
                                     if (isUrgent)
                                       const StatusBadge(label: 'URGENT', variant: BadgeVariant.error)
@@ -985,7 +985,7 @@ class _PrincipalDashboardState extends ConsumerState<PrincipalDashboard> with Si
                                       const StatusBadge(label: 'OFFICIAL', variant: BadgeVariant.info),
                                   ],
                                 ),
-                                Row(
+                                Row(mainAxisSize: MainAxisSize.min,
                                   children: [
                                     StatusBadge(
                                       label: 'Audience: ${n['targetRole'] ?? 'ALL'}',

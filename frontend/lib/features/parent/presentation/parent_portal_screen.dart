@@ -170,7 +170,7 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<String>(isExpanded: true, 
                     value: method,
                     decoration: const InputDecoration(labelText: 'Payment Gateway Method'),
                     items: const [
@@ -681,10 +681,12 @@ class _ParentPortalScreenState extends ConsumerState<ParentPortalScreen> with Si
                       const SizedBox(height: 4),
                       Text('Faculty Note: ${d['remarks']}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                     ],
+                    // Under the text so a long method name never squeezes the entry.
+                    const SizedBox(height: 6),
+                    StatusBadge(label: d['methodology'] ?? 'LECTURE', variant: BadgeVariant.neutral),
                   ],
                 ),
               ),
-              StatusBadge(label: d['methodology'] ?? 'LECTURE', variant: BadgeVariant.neutral),
             ],
           ),
         );

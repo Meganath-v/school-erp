@@ -18,6 +18,7 @@ import { LeaveModule } from './modules/leave/leave.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AcademicsModule } from './modules/academics/academics.module';
+import { OutcomesModule } from './modules/outcomes/outcomes.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
@@ -54,6 +55,7 @@ import { AppController } from './app.controller';
     AnnouncementsModule,
     ReportsModule,
     AcademicsModule,
+    OutcomesModule,
     ParentModule,
     NotificationsModule,
     RemindersModule,

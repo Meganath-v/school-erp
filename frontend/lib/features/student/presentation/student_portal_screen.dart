@@ -123,7 +123,7 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField<String>(isExpanded: true, 
                         value: category,
                         decoration: const InputDecoration(labelText: 'Category'),
                         items: const [
@@ -613,8 +613,8 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
                       Text(exam['examName'] ?? 'Examination', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       StatusBadge(
@@ -721,8 +721,8 @@ class _StudentPortalScreenState extends ConsumerState<StudentPortalScreen> with 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+            alignment: WrapAlignment.spaceBetween,
             children: [
               Text('My Logged Queries (${_feedbacks.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ElevatedButton.icon(

@@ -64,6 +64,11 @@ model School {
   courseMaterials     CourseMaterial[]
   courseOutcomes      CourseOutcome[]
   studentDocuments    StudentDocument[]
+  programs            Program[]
+  programOutcomes     ProgramOutcome[]
+  questions           Question[]
+  questionPapers      QuestionPaper[]
+  attainmentRules     AttainmentRule[]
   notificationLogs    NotificationDeliveryLog[]
 }
 
@@ -280,8 +285,10 @@ model Class {
   name       String   // e.g. "Grade 10"
   code       String   // e.g. "G10"
   orderIndex Int      @default(0)
+  programId  String?  // outcome-based education: the program (stream/degree) this class belongs to
 
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  program            Program?            @relation(fields: [programId], references: [id], onDelete: SetNull)
   sections           Section[]
   enrollments        Enrollment[]
   classSubjects      ClassSubject[]
@@ -335,6 +342,8 @@ model Subject {
   teachingDiaries    TeachingDiaryEntry[]
   courseMaterials    CourseMaterial[]
   courseOutcomes     CourseOutcome[]
+  questions          Question[]
+  attainmentRules    AttainmentRule[]
 
   @@index([schoolId])
 }
@@ -386,6 +395,7 @@ model Student {
   invoices          Invoice[]
   leaveRequests     LeaveRequest[]
   documents         StudentDocument[]
+  questionMarks     QuestionMark[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -612,6 +622,7 @@ model Assignment {
   subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher     Staff        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   submissions Submission[]
+  questionPaper QuestionPaper?
 
   @@index([schoolId])
   @@index([classId, sectionId])
@@ -671,8 +682,10 @@ model ExamSubject {
   examDate  DateTime
   maxMarks  Int      @default(100)
   passMarks Int      @default(35)
+  assessmentType String @default("INTERNAL") // INTERNAL (continuous assessment) or EXTERNAL (end-semester / board)
 
-  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam          Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionPaper QuestionPaper?
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   marks   Mark[]
@@ -869,7 +882,7 @@ model Notification {
 }
 
 // ----------------------------------------------------
-// 11. LINWAYS ACADEMIC SUITE (OBE, COURSE DIARY & REPOSITORY)
+// 11. ACADEMIC SUITE (OBE, COURSE DIARY & REPOSITORY)
 // ----------------------------------------------------
 
 model LessonPlan {
@@ -948,10 +961,15 @@ model CourseOutcome {
   description      String
   bloomLevel       String   // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, CREATE
   targetAttainment Int      @default(70)
+  orderIndex       Int      @default(0)
+  // Indirect attainment (0-3) from the course exit survey; null when no survey was run.
+  indirectLevel    Float?
   createdAt        DateTime @default(now())
 
-  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject    Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  poMappings CoPoMapping[]
+  questions  Question[]
 
   @@unique([subjectId, code])
   @@index([schoolId])
@@ -1114,4 +1132,169 @@ model NotificationDeliveryLog {
   @@index([executedAt])
 }
 
+// ----------------------------------------------------
+// 12. OUTCOME-BASED EDUCATION (PROGRAM OUTCOMES, CO-PO MAPPING, QUESTION-WISE ASSESSMENT)
+// ----------------------------------------------------
 
+/// A program (degree, stream or grade band) whose outcomes the courses map to.
+model Program {
+  id          String   @id @default(uuid())
+  schoolId    String
+  code        String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school   School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  outcomes ProgramOutcome[]
+  classes  Class[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+/// Program Outcome (PO), Program Specific Outcome (PSO) or Program Educational Objective (PEO).
+model ProgramOutcome {
+  id          String  @id @default(uuid())
+  schoolId    String
+  programId   String
+  type        String // PO, PSO, PEO
+  code        String // e.g. "PO1", "PSO2"
+  title       String?
+  description String
+  orderIndex  Int     @default(0)
+
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  program    Program       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  coMappings CoPoMapping[]
+
+  @@unique([programId, code])
+  @@index([schoolId])
+  @@index([programId])
+}
+
+/// Correlation of a course outcome with a program outcome: 1 = low, 2 = medium, 3 = high.
+model CoPoMapping {
+  id               String @id @default(uuid())
+  courseOutcomeId  String
+  programOutcomeId String
+  strength         Int
+
+  courseOutcome  CourseOutcome  @relation(fields: [courseOutcomeId], references: [id], onDelete: Cascade)
+  programOutcome ProgramOutcome @relation(fields: [programOutcomeId], references: [id], onDelete: Cascade)
+
+  @@unique([courseOutcomeId, programOutcomeId])
+  @@index([programOutcomeId])
+}
+
+/// How attainment levels are computed. subjectId = null is the school-wide default.
+model AttainmentRule {
+  id                   String   @id @default(uuid())
+  schoolId             String
+  subjectId            String?
+  studentTargetPercent Float    @default(60) // a student attains a CO when scoring at least this % on its questions
+  level1Percent        Float    @default(40) // % of students attaining the CO needed for level 1
+  level2Percent        Float    @default(50)
+  level3Percent        Float    @default(60)
+  internalWeight       Float    @default(40) // weights inside direct attainment (renormalised if one side has no data)
+  externalWeight       Float    @default(60)
+  directWeight         Float    @default(80) // direct vs indirect (course exit survey) in the final attainment
+  indirectWeight       Float    @default(20)
+  targetLevel          Float    @default(2)  // expected level; outcomes below it are flagged
+  updatedAt            DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, subjectId])
+  @@index([schoolId])
+}
+
+/// Question bank entry tagged with its course outcome and Bloom's taxonomy level.
+model Question {
+  id              String   @id @default(uuid())
+  schoolId        String
+  subjectId       String
+  courseOutcomeId String?
+  text            String
+  marks           Float
+  bloomLevel      String   // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, CREATE
+  type            String   @default("DESCRIPTIVE") // DESCRIPTIVE, SHORT_ANSWER, MCQ
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  school        School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject       Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  courseOutcome CourseOutcome?      @relation(fields: [courseOutcomeId], references: [id], onDelete: SetNull)
+  paperItems    QuestionPaperItem[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([courseOutcomeId])
+}
+
+/// A question paper for one exam subject or one assignment.
+model QuestionPaper {
+  id              String   @id @default(uuid())
+  schoolId        String
+  examSubjectId   String?  @unique
+  assignmentId    String?  @unique
+  title           String
+  durationMinutes Int?
+  instructions    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  school      School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  examSubject ExamSubject?           @relation(fields: [examSubjectId], references: [id], onDelete: Cascade)
+  assignment  Assignment?            @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  sections    QuestionPaperSection[]
+
+  @@index([schoolId])
+}
+
+model QuestionPaperSection {
+  id           String  @id @default(uuid())
+  paperId      String
+  title        String
+  instructions String?
+  orderIndex   Int     @default(0)
+
+  paper QuestionPaper       @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  items QuestionPaperItem[]
+
+  @@index([paperId])
+}
+
+model QuestionPaperItem {
+  id         String @id @default(uuid())
+  sectionId  String
+  questionId String
+  label      String // e.g. "1a"
+  marks      Float  // may differ from the bank default
+  orderIndex Int    @default(0)
+
+  section      QuestionPaperSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  question     Question             @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  marksEntries QuestionMark[]
+
+  @@index([sectionId])
+  @@index([questionId])
+}
+
+/// Marks a student scored on one question of a paper.
+model QuestionMark {
+  id            String   @id @default(uuid())
+  paperItemId   String
+  studentId     String
+  marksObtained Float
+  updatedAt     DateTime @updatedAt
+
+  paperItem QuestionPaperItem @relation(fields: [paperItemId], references: [id], onDelete: Cascade)
+  student   Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([paperItemId, studentId])
+  @@index([studentId])
+}

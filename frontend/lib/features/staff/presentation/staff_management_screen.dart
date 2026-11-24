@@ -354,7 +354,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
               countLabel: 'Staff Members Listed',
               filters: [
                 DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
+                  child: DropdownButton<String?>(isExpanded: true, 
                     value: _selectedRoleFilter,
                     hint: const Text('All Roles'),
                     items: const [
@@ -711,7 +711,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _selectedRole,
                           decoration: const InputDecoration(labelText: 'Institutional Role'),
                           items: const [
@@ -813,7 +813,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: _allocStaffId,
                         decoration: const InputDecoration(labelText: 'Select Educator'),
                         items: _staffList.map<DropdownMenuItem<String>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['name']))).toList(),
@@ -822,7 +822,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: _allocClassId,
                         decoration: const InputDecoration(labelText: 'Grade / Class'),
                         items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -837,7 +837,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: _allocSectionId,
                         decoration: const InputDecoration(labelText: 'Section'),
                         items: (_allocClassId != null
@@ -854,7 +854,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: _allocSubjectId,
                         decoration: const InputDecoration(labelText: 'Subject Allocation'),
                         items: [

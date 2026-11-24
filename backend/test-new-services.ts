@@ -37,7 +37,7 @@ async function request(method: string, path: string, data?: any, token?: string)
 }
 
 async function runTests() {
-  console.log('🧪 Starting Linways ERP New Services Verification Test...');
+  console.log('🧪 Starting Ark-ERP New Services Verification Test...');
 
   // 1. Authenticate as Class Teacher
   const loginRes = await request('POST', '/auth/login', {
@@ -133,7 +133,7 @@ async function runTests() {
   });
   console.log('7. Teacher Desktop Webpage served:', webpageRes.status, webpageRes.contentType);
 
-  console.log('🎉 ALL Linways ERP New Services Verified Successfully!');
+  console.log('🎉 ALL Ark-ERP New Services Verified Successfully!');
 }
 
 runTests().catch((e) => {

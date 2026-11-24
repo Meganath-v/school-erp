@@ -44,9 +44,11 @@ export class AssignmentsService {
 
   async createAssignment(schoolId: string, data: any, user?: any) {
     let teacherId = data.teacherId;
-    if (!teacherId && user?.id) {
+    // JwtStrategy exposes the signed-in user's id as `userId`.
+    const actorUserId = user?.userId ?? user?.id;
+    if (!teacherId && actorUserId) {
       const staff = await this.prisma.staff.findFirst({
-        where: { schoolId, userId: user.id },
+        where: { schoolId, userId: actorUserId },
       });
       if (staff) teacherId = staff.id;
     }
@@ -79,7 +81,7 @@ export class AssignmentsService {
         subjectId,
         teacherId,
         title: data.title,
-        description: data.description,
+        description: data.description ?? '', // optional in the API, required column
         dueDate: data.dueDate ? new Date(data.dueDate) : new Date(Date.now() + 7 * 86400000),
         maxMarks: Number(data.maxMarks) || 100,
         status: 'ACTIVE',

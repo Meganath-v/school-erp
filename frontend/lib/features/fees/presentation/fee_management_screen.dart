@@ -151,7 +151,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                   decoration: const InputDecoration(labelText: 'Amount Received (₹)'),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String>(isExpanded: true, 
                   value: method,
                   decoration: const InputDecoration(labelText: 'Payment Instrument'),
                   items: const [
@@ -326,7 +326,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String>(isExpanded: true, 
                   value: selectedStudentId,
                   decoration: const InputDecoration(labelText: 'Billed Student'),
                   items: _students.map<DropdownMenuItem<String>>((s) => DropdownMenuItem(value: s['id'] as String, child: Text('${s['fullName']} (${s['admissionNo']})'))).toList(),
@@ -342,7 +342,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                     Expanded(child: TextField(controller: amountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount (₹)'))),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(isExpanded: true, 
                         value: category,
                         decoration: const InputDecoration(labelText: 'Category'),
                         items: const [
@@ -547,7 +547,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
               countLabel: 'Invoices Found',
               filters: [
                 DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: DropdownButton<String>(isExpanded: true, 
                     value: _invoiceStatusFilter,
                     items: const [
                       DropdownMenuItem(value: 'ALL', child: Text('All Statuses')),
@@ -568,7 +568,7 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: DropdownButton<String>(isExpanded: true, 
                     value: _invoiceCategoryFilter,
                     items: const [
                       DropdownMenuItem(value: 'ALL', child: Text('All Categories')),
@@ -815,8 +815,8 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
                       backgroundColor: AppColors.primarySubtle,
                       child: Icon(Icons.receipt, color: AppColors.primary, size: 18),
                     ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    title: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
                         Text(rec['receiptNo'] ?? 'REC-XXXX', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         Text('₹${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 15)),
@@ -900,8 +900,8 @@ class _FeeManagementScreenState extends ConsumerState<FeeManagementScreen> with 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 6,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
                     Text('Outstanding Fee Accounts Ledger', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     StatusBadge(label: '${defaulters.length} Defaulters', variant: defaulters.isNotEmpty ? BadgeVariant.error : BadgeVariant.success),

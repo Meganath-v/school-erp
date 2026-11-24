@@ -347,7 +347,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: DropdownButtonFormField<String>(isExpanded: true, 
                   value: _selectedClassId,
                   decoration: const InputDecoration(labelText: 'Grade / Class'),
                   items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -365,7 +365,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: DropdownButtonFormField<String>(
+                child: DropdownButtonFormField<String>(isExpanded: true, 
                   value: _selectedSectionId,
                   decoration: const InputDecoration(labelText: 'Section'),
                   items: (_selectedClassId != null
@@ -486,7 +486,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _editClassId,
                           decoration: const InputDecoration(labelText: 'Grade / Class'),
                           items: _classes.map<DropdownMenuItem<String>>((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['name']))).toList(),
@@ -501,7 +501,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _editSectionId,
                           decoration: const InputDecoration(labelText: 'Section Division'),
                           items: (_editClassId != null
@@ -518,7 +518,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<int>(
+                        child: DropdownButtonFormField<int>(isExpanded: true, 
                           value: _editDay,
                           decoration: const InputDecoration(labelText: 'Day of Week'),
                           items: List.generate(6, (i) => DropdownMenuItem(value: i + 1, child: Text(_daysOfWeek[i]))),
@@ -532,7 +532,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<int>(
+                        child: DropdownButtonFormField<int>(isExpanded: true, 
                           value: _editPeriod,
                           decoration: const InputDecoration(labelText: 'Period Number (1 to 8)'),
                           items: [1, 2, 3, 4, 5, 6, 7, 8].map((p) => DropdownMenuItem(value: p, child: Text('Period $p'))).toList(),
@@ -553,7 +553,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _editSubjectId,
                           decoration: const InputDecoration(labelText: 'Curriculum Subject'),
                           items: _subjects.map<DropdownMenuItem<String>>((sub) => DropdownMenuItem(value: sub['id'] as String, child: Text(sub['name']))).toList(),
@@ -562,7 +562,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String>(isExpanded: true, 
                           value: _editStaffId,
                           decoration: const InputDecoration(labelText: 'Teacher / Faculty'),
                           items: _staffList.map<DropdownMenuItem<String>>((st) => DropdownMenuItem(value: st['id'] as String, child: Text(st['name']))).toList(),
@@ -613,8 +613,8 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
 
                   const SizedBox(height: AppSpacing.xxl),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    alignment: WrapAlignment.end, spacing: 8, runSpacing: 8,
                     children: [
                       OutlinedButton(
                         onPressed: () => _tabController.animateTo(0),
@@ -652,7 +652,7 @@ class _TimetableManagementScreenState extends ConsumerState<TimetableManagementS
           ),
           const SizedBox(height: AppSpacing.xl),
 
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<String>(isExpanded: true, 
             value: _selectedTeacherId,
             decoration: const InputDecoration(labelText: 'Select Educator / Teacher'),
             items: _staffList.map<DropdownMenuItem<String>>((st) => DropdownMenuItem(value: st['id'] as String, child: Text('${st['name']} (${st['department'] ?? 'Faculty'})'))).toList(),

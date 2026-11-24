@@ -114,7 +114,7 @@ export class AcademicsController {
     return { data };
   }
 
-  @ApiOperation({ summary: 'Linways Attendance Shortage Analytics (<75% Risk Detector)' })
+  @ApiOperation({ summary: 'Attendance Shortage Analytics (<75% Risk Detector)' })
   @ApiResponse({ status: 200, description: 'Attendance condonation risk analysis' })
   @Get('attendance-analytics')
   async getAttendanceAnalytics(@CurrentSchoolId() schoolId: string) {

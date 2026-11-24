@@ -119,7 +119,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedClassId,
                             decoration: const InputDecoration(labelText: 'Class'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
@@ -138,7 +138,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
                             items: curSections.map<DropdownMenuItem<String>>((s) {
@@ -153,7 +153,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSubjectId,
                             decoration: const InputDecoration(labelText: 'Subject'),
                             items: _subjects.map<DropdownMenuItem<String>>((s) {
@@ -164,7 +164,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<int>(
+                          child: DropdownButtonFormField<int>(isExpanded: true, 
                             value: periodNumber,
                             decoration: const InputDecoration(labelText: 'Period'),
                             items: [1, 2, 3, 4, 5, 6, 7, 8].map((p) => DropdownMenuItem(value: p, child: Text('Period $p'))).toList(),
@@ -174,7 +174,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(isExpanded: true, 
                       value: methodology,
                       decoration: const InputDecoration(labelText: 'Teaching Methodology'),
                       items: const [
@@ -270,7 +270,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(isExpanded: true, 
                       value: selectedSubjectId,
                       decoration: const InputDecoration(labelText: 'Subject'),
                       items: _subjects.map<DropdownMenuItem<String>>((s) {
@@ -286,7 +286,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<int>(
+                          child: DropdownButtonFormField<int>(isExpanded: true, 
                             value: unitNumber,
                             decoration: const InputDecoration(labelText: 'Curriculum Unit'),
                             items: [1, 2, 3, 4, 5, 6].map((u) => DropdownMenuItem(value: u, child: Text('Unit $u'))).toList(),
@@ -295,7 +295,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: fileType,
                             decoration: const InputDecoration(labelText: 'Document Format'),
                             items: const [
@@ -387,7 +387,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedClassId,
                             decoration: const InputDecoration(labelText: 'Class'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
@@ -406,7 +406,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
                             items: curSections.map<DropdownMenuItem<String>>((s) {
@@ -421,7 +421,7 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSubjectId,
                             decoration: const InputDecoration(labelText: 'Subject'),
                             items: _subjects.map<DropdownMenuItem<String>>((s) {
@@ -947,11 +947,13 @@ class _SubjectTeacherDashboardState extends ConsumerState<SubjectTeacherDashboar
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
+                                    Wrap(
+                                      spacing: AppSpacing.sm,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         Text('${d['subjectName']} • ${d['className']} (${d['sectionName']})',
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                        const SizedBox(width: AppSpacing.sm),
                                         StatusBadge(label: d['methodology'] ?? 'LECTURE', variant: BadgeVariant.neutral),
                                       ],
                                     ),

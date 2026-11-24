@@ -93,7 +93,7 @@ export class AcademicsService {
     });
   }
 
-  // 2. Faculty Teaching Diary (Linways Course Log)
+  // 2. Faculty Teaching Diary (Course Log)
   async getTeachingDiaries(schoolId: string, query: { classId?: string; subjectId?: string; teacherId?: string }) {
     const where: any = { schoolId };
     if (query.classId) where.classId = query.classId;
@@ -201,7 +201,7 @@ export class AcademicsService {
     });
   }
 
-  // 4. Linways Attendance Shortage Analytics (<75% Risk Detector)
+  // 4. Attendance Shortage Analytics (<75% Risk Detector)
   async getAttendanceShortageAnalytics(schoolId: string) {
     const students = await this.prisma.student.findMany({
       where: { schoolId, status: 'ACTIVE' },

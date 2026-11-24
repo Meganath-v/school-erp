@@ -203,7 +203,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedClassId,
                             decoration: const InputDecoration(labelText: 'Class / Grade'),
                             items: _classes.map<DropdownMenuItem<String>>((c) {
@@ -220,7 +220,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: selectedSectionId,
                             decoration: const InputDecoration(labelText: 'Section'),
                             items: currentSections.map<DropdownMenuItem<String>>((s) {
@@ -330,7 +330,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                       decoration: const InputDecoration(labelText: 'Amount Received (₹)'),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(isExpanded: true, 
                       value: method,
                       decoration: const InputDecoration(labelText: 'Payment Instrument'),
                       items: const [
@@ -421,7 +421,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<String>(isExpanded: true, 
                       value: selectedStudentId,
                       decoration: const InputDecoration(labelText: 'Select Student'),
                       items: _students.map<DropdownMenuItem<String>>((s) {
@@ -451,7 +451,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: DropdownButtonFormField<String>(isExpanded: true, 
                             value: category,
                             decoration: const InputDecoration(labelText: 'Billing Category'),
                             items: const [
@@ -536,7 +536,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: DropdownButtonFormField<String>(isExpanded: true, 
                               value: targetAudience,
                               decoration: const InputDecoration(labelText: 'Target Recipients'),
                               items: const [
@@ -551,7 +551,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: DropdownButtonFormField<String>(isExpanded: true, 
                               value: priority,
                               decoration: const InputDecoration(labelText: 'Priority Level'),
                               items: const [
@@ -803,7 +803,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
             countLabel: 'Invoices Found',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _invoiceStatusFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: const [
@@ -933,7 +933,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
             countLabel: 'Students Matriculated',
             filters: [
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: DropdownButton<String>(isExpanded: true, 
                   value: _selectedClassFilter,
                   style: Theme.of(context).textTheme.bodyMedium,
                   items: [
@@ -1126,8 +1126,10 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
           const SizedBox(height: AppSpacing.xl),
 
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // Side by side on wide screens; stacked (each pane scrolls) on phones.
+            child: Flex(
+              direction: MediaQuery.of(context).size.width < 700 ? Axis.vertical : Axis.horizontal,
+              crossAxisAlignment: MediaQuery.of(context).size.width < 700 ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
               children: [
                 // Tasks Column
                 Expanded(
@@ -1147,7 +1149,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                           children: [
                             const Icon(Icons.checklist, color: AppColors.primary, size: 20),
                             const SizedBox(width: AppSpacing.sm),
-                            Text('Operational Tasks (${_tasks.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Flexible(child: Text('Operational Tasks (${_tasks.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -1208,7 +1210,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xl),
+                const SizedBox(width: AppSpacing.xl, height: AppSpacing.xl),
 
                 // Reminders Telemetry Column
                 Expanded(
@@ -1228,7 +1230,7 @@ class _OfficeDashboardState extends ConsumerState<OfficeDashboard> with SingleTi
                           children: [
                             const Icon(Icons.notifications_active, color: AppColors.warning, size: 20),
                             const SizedBox(width: AppSpacing.sm),
-                            Text('Dispatched Reminders (${_reminders.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Flexible(child: Text('Dispatched Reminders (${_reminders.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.md),

@@ -85,23 +85,28 @@ class StatusBadge extends StatelessWidget {
         borderRadius: AppRadius.smBorderRadius,
         border: Border.all(color: border, width: 1),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      // One rich text (not a Row) so a long label shortens with an ellipsis when space
+      // is tight, and still works where the width is unbounded (e.g. table cells).
+      child: Text.rich(
+        TextSpan(children: [
           if (icon != null) ...[
-            Icon(icon, size: isSmall ? 10 : 12, color: text),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: isSmall ? 10 : 11,
-              fontWeight: FontWeight.w600,
-              color: text,
-              letterSpacing: 0.2,
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Icon(icon, size: isSmall ? 10 : 12, color: text),
             ),
-          ),
-        ],
+            const TextSpan(text: ' '),
+          ],
+          TextSpan(text: label),
+        ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        style: GoogleFonts.inter(
+          fontSize: isSmall ? 10 : 11,
+          fontWeight: FontWeight.w600,
+          color: text,
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
