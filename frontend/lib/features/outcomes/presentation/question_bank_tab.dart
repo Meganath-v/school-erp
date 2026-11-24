@@ -64,6 +64,11 @@ class _QuestionBankTabState extends State<QuestionBankTab> with AutomaticKeepAli
     var bloom = (q?['bloomLevel'] as String?) ?? 'UNDERSTAND';
     String? co = q?['courseOutcome']?['id'] as String? ?? _filterCo;
     var type = (q?['type'] as String?) ?? 'DESCRIPTIVE';
+    final options = [
+      for (final o in (q?['options'] as List? ?? const ['', ''])) TextEditingController(text: '$o'),
+    ];
+    if (options.length < 2) options.addAll(List.generate(2 - options.length, (_) => TextEditingController()));
+    var correct = (q?['correctOption'] as int?) ?? 0;
     final saved = await showFormDialog(
       context,
       title: q == null ? 'New question' : 'Edit question',
@@ -110,6 +115,48 @@ class _QuestionBankTabState extends State<QuestionBankTab> with AutomaticKeepAli
           ],
           onChanged: (v) => setLocal(() => type = v ?? type),
         ),
+        if (type == 'MCQ') ...[
+          const SizedBox(height: AppSpacing.md),
+          RadioGroup<int>(
+            groupValue: correct,
+            onChanged: (v) => setLocal(() => correct = v ?? correct),
+            child: Column(children: [
+          for (final (i, ctl) in options.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(children: [
+                Radio<int>(value: i),
+                Expanded(
+                  child: TextFormField(
+                    controller: ctl,
+                    decoration: InputDecoration(labelText: 'Option ${String.fromCharCode(65 + i)}${correct == i ? ' (correct)' : ''}'),
+                    validator: (v) => (v ?? '').trim().isEmpty ? 'Enter the option or remove it' : null,
+                  ),
+                ),
+                if (options.length > 2)
+                  IconButton(
+                    tooltip: 'Remove option',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => setLocal(() {
+                      options.removeAt(i);
+                      if (correct > i || correct >= options.length) correct = (correct - 1).clamp(0, options.length - 1);
+                    }),
+                  ),
+              ]),
+            ),
+            ]),
+          ),
+          if (options.length < 6)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setLocal(() => options.add(TextEditingController())),
+                icon: const Icon(Icons.add),
+                label: const Text('Add option'),
+              ),
+            ),
+          Text('Select the circle next to the correct answer.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+        ],
       ],
       onSubmit: () => tryApi(() async {
         final body = {
@@ -118,6 +165,8 @@ class _QuestionBankTabState extends State<QuestionBankTab> with AutomaticKeepAli
           'bloomLevel': bloom,
           'courseOutcomeId': co,
           'type': type,
+          if (type == 'MCQ') 'options': [for (final o in options) o.text.trim()],
+          if (type == 'MCQ') 'correctOption': correct,
         };
         q == null ? await _api.createQuestion(_subjectId, body) : await _api.updateQuestion(q['id'], body);
       }),

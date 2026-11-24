@@ -19,6 +19,7 @@ import { AnnouncementsModule } from './modules/announcements/announcements.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { AcademicsModule } from './modules/academics/academics.module';
 import { OutcomesModule } from './modules/outcomes/outcomes.module';
+import { InternalAssessmentModule } from './modules/internal-assessment/internal-assessment.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
@@ -56,6 +57,7 @@ import { AppController } from './app.controller';
     ReportsModule,
     AcademicsModule,
     OutcomesModule,
+    InternalAssessmentModule,
     ParentModule,
     NotificationsModule,
     RemindersModule,

@@ -69,6 +69,8 @@ model School {
   questions           Question[]
   questionPapers      QuestionPaper[]
   attainmentRules     AttainmentRule[]
+  internalSchemes     InternalMarkScheme[]
+  quizzes             Quiz[]
   notificationLogs    NotificationDeliveryLog[]
 }
 
@@ -344,6 +346,8 @@ model Subject {
   courseOutcomes     CourseOutcome[]
   questions          Question[]
   attainmentRules    AttainmentRule[]
+  internalSchemes    InternalMarkScheme[]
+  quizzes            Quiz[]
 
   @@index([schoolId])
 }
@@ -396,6 +400,8 @@ model Student {
   leaveRequests     LeaveRequest[]
   documents         StudentDocument[]
   questionMarks     QuestionMark[]
+  internalManualMarks InternalManualMark[]
+  quizAttempts      QuizAttempt[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -1221,6 +1227,8 @@ model Question {
   marks           Float
   bloomLevel      String   // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, CREATE
   type            String   @default("DESCRIPTIVE") // DESCRIPTIVE, SHORT_ANSWER, MCQ
+  options         Json?    // MCQ: array of option strings
+  correctOption   Int?     // MCQ: index into options
   createdById     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1229,6 +1237,7 @@ model Question {
   subject       Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   courseOutcome CourseOutcome?      @relation(fields: [courseOutcomeId], references: [id], onDelete: SetNull)
   paperItems    QuestionPaperItem[]
+  quizItems     QuizQuestion[]
 
   @@index([schoolId])
   @@index([subjectId])
@@ -1296,5 +1305,119 @@ model QuestionMark {
   student   Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([paperItemId, studentId])
+  @@index([studentId])
+}
+
+// ----------------------------------------------------
+// 13. INTERNAL ASSESSMENT (INTERNAL MARK RULES) & ONLINE QUIZZES
+// ----------------------------------------------------
+
+/// How a subject's internal mark is built from exams, assignments, attendance and manual marks.
+model InternalMarkScheme {
+  id         String   @id @default(uuid())
+  schoolId   String
+  subjectId  String
+  classId    String?  // null = applies to every class studying the subject
+  name       String
+  passPercent Float   @default(40) // students below this % of the internal mark are flagged
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school     School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject    Subject                 @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  components InternalMarkComponent[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+}
+
+model InternalMarkComponent {
+  id         String   @id @default(uuid())
+  schemeId   String
+  label      String   // e.g. "Class tests", "Attendance"
+  type       String   // EXAM, ASSIGNMENT, ATTENDANCE, MANUAL
+  weight     Float    // marks this component contributes to the internal mark
+  bestOf     Int?     // EXAM / ASSIGNMENT: count only the best N of the selected assessments
+  sourceIds  String[] // EXAM: exam subject ids; ASSIGNMENT: assignment ids
+  orderIndex Int      @default(0)
+
+  scheme      InternalMarkScheme   @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  manualMarks InternalManualMark[]
+
+  @@index([schemeId])
+}
+
+/// Marks entered directly for a MANUAL component (out of the component's weight).
+model InternalManualMark {
+  id          String   @id @default(uuid())
+  componentId String
+  studentId   String
+  marks       Float
+  updatedAt   DateTime @updatedAt
+
+  component InternalMarkComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  student   Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([componentId, studentId])
+  @@index([studentId])
+}
+
+/// Online multiple-choice quiz built from MCQ questions in the bank; graded automatically.
+model Quiz {
+  id              String    @id @default(uuid())
+  schoolId        String
+  subjectId       String
+  classId         String
+  sectionId       String?   // null = every section of the class
+  title           String
+  instructions    String?
+  durationMinutes Int?
+  opensAt         DateTime?
+  closesAt        DateTime?
+  status          String    @default("DRAFT") // DRAFT, PUBLISHED, CLOSED
+  showAnswers     Boolean   @default(true)    // reveal correct answers after submitting
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([classId])
+}
+
+model QuizQuestion {
+  id         String @id @default(uuid())
+  quizId     String
+  questionId String
+  marks      Float
+  orderIndex Int    @default(0)
+
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@unique([quizId, questionId])
+  @@index([questionId])
+}
+
+model QuizAttempt {
+  id          String    @id @default(uuid())
+  quizId      String
+  studentId   String
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  answers     Json?     // { questionId: chosen option index }
+  score       Float?
+  maxScore    Float
+  late        Boolean   @default(false)
+
+  quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, studentId])
   @@index([studentId])
 }

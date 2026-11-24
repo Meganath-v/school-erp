@@ -168,6 +168,14 @@ export class CreateQuestionDto {
   @ApiProperty({ enum: BLOOM_LEVELS }) @IsIn(BLOOM_LEVELS as unknown as string[]) bloomLevel: string;
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() courseOutcomeId?: string | null;
   @ApiPropertyOptional({ enum: QUESTION_TYPES }) @IsOptional() @IsIn(QUESTION_TYPES as unknown as string[]) type?: string;
+  @ApiPropertyOptional({ type: [String], description: 'MCQ options (2-6)' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  options?: string[] | null;
+  @ApiPropertyOptional({ description: 'MCQ: index of the correct option' }) @IsOptional() @IsInt() @Min(0) @Max(5) correctOption?: number | null;
 }
 
 export class UpdateQuestionDto {
@@ -176,6 +184,14 @@ export class UpdateQuestionDto {
   @ApiPropertyOptional({ enum: BLOOM_LEVELS }) @IsOptional() @IsIn(BLOOM_LEVELS as unknown as string[]) bloomLevel?: string;
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() courseOutcomeId?: string | null;
   @ApiPropertyOptional({ enum: QUESTION_TYPES }) @IsOptional() @IsIn(QUESTION_TYPES as unknown as string[]) type?: string;
+  @ApiPropertyOptional({ type: [String], description: 'MCQ options (2-6)' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  options?: string[] | null;
+  @ApiPropertyOptional({ description: 'MCQ: index of the correct option' }) @IsOptional() @IsInt() @Min(0) @Max(5) correctOption?: number | null;
 }
 
 // ---------------------------------------------------------------- question papers

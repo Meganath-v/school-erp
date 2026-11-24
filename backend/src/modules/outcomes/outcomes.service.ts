@@ -499,6 +499,17 @@ export class OutcomesService {
     if (!ok) throw new BadRequestException('The course outcome must belong to the same subject');
   }
 
+  /** MCQ questions need 2-6 options and a correct answer; other types store neither. */
+  private mcqFields(type: string, options?: string[] | null, correct?: number | null) {
+    if (type !== 'MCQ') return { options: Prisma.DbNull, correctOption: null };
+    const opts = (options ?? []).map((o) => o.trim()).filter((o) => o.length > 0);
+    if (opts.length < 2) throw new BadRequestException('A multiple-choice question needs at least 2 options');
+    if (correct === null || correct === undefined || correct < 0 || correct >= opts.length) {
+      throw new BadRequestException('Choose which option is correct');
+    }
+    return { options: opts, correctOption: correct };
+  }
+
   async createQuestion(schoolId: string, subjectId: string, dto: CreateQuestionDto, actor: Actor) {
     await this.assertCanEditSubject(schoolId, subjectId, actor);
     await this.assertOutcomeInSubject(schoolId, subjectId, dto.courseOutcomeId);
@@ -511,6 +522,7 @@ export class OutcomesService {
         bloomLevel: dto.bloomLevel,
         courseOutcomeId: dto.courseOutcomeId || null,
         type: dto.type ?? 'DESCRIPTIVE',
+        ...this.mcqFields(dto.type ?? 'DESCRIPTIVE', dto.options, dto.correctOption),
         createdById: actor.userId,
       },
       include: { courseOutcome: { select: { id: true, code: true } } },
@@ -537,6 +549,8 @@ export class OutcomesService {
         ...(dto.bloomLevel !== undefined && { bloomLevel: dto.bloomLevel }),
         ...(dto.courseOutcomeId !== undefined && { courseOutcomeId: dto.courseOutcomeId || null }),
         ...(dto.type !== undefined && { type: dto.type }),
+        ...((dto.type !== undefined || dto.options !== undefined || dto.correctOption !== undefined) &&
+          this.mcqFields(dto.type ?? q.type, dto.options ?? (Array.isArray(q.options) ? (q.options as string[]) : []), dto.correctOption ?? q.correctOption)),
       },
       include: { courseOutcome: { select: { id: true, code: true } } },
     });
@@ -549,6 +563,8 @@ export class OutcomesService {
     await this.assertCanEditSubject(schoolId, q.subjectId, actor);
     const used = await this.prisma.questionPaperItem.count({ where: { questionId: id } });
     if (used > 0) throw new ConflictException(`This question is used in ${used} question paper(s); remove it from them first`);
+    const inQuiz = await this.prisma.quizQuestion.count({ where: { questionId: id } });
+    if (inQuiz > 0) throw new ConflictException(`This question is used in ${inQuiz} quiz(zes); remove it from them first`);
     await this.prisma.question.delete({ where: { id } });
     await this.logChange(schoolId, actor, 'QUESTION_DELETED', 'Question', id, {});
     return { deleted: true };
