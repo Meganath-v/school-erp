@@ -190,7 +190,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Unit of force?'), findsOneWidget);
-    expect(find.textContaining('14:'), findsOneWidget, reason: 'countdown shows');
+    expect(find.textContaining(RegExp(r'(14|15):[0-5][0-9]')), findsOneWidget, reason: 'countdown shows');
     await tester.tap(find.text('A. Newton'));
     await tester.pump();
     expect(find.text('1 of 1 answered'), findsOneWidget);

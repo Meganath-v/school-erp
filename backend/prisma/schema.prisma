@@ -72,6 +72,9 @@ model School {
   internalSchemes     InternalMarkScheme[]
   quizzes             Quiz[]
   notificationLogs    NotificationDeliveryLog[]
+  aiExamTests        AiExamTest[]
+  aiExamSettings     AiExamSettings?
+  aiExamPlans        AiExamImprovementPlan[]
 }
 
 model Campus {
@@ -258,6 +261,7 @@ model AcademicYear {
   exams            Exam[]
   feePlans         FeePlan[]
 
+  aiExamTests      AiExamTest[]
   @@index([schoolId])
 }
 
@@ -302,6 +306,7 @@ model Class {
   teachingDiaries    TeachingDiaryEntry[]
   circulars          Circular[]
 
+  aiExamTests        AiExamTest[]
   @@index([schoolId])
 }
 
@@ -323,6 +328,7 @@ model Section {
   teachingDiaries     TeachingDiaryEntry[]
   circulars           Circular[]
 
+  aiExamTests         AiExamTest[]
   @@index([schoolId])
   @@index([classId])
 }
@@ -349,6 +355,7 @@ model Subject {
   internalSchemes    InternalMarkScheme[]
   quizzes            Quiz[]
 
+  aiExamTests        AiExamTest[]
   @@index([schoolId])
 }
 
@@ -403,6 +410,9 @@ model Student {
   internalManualMarks InternalManualMark[]
   quizAttempts      QuizAttempt[]
 
+  aiExamAssignments AiExamAssignee[]
+  aiExamSubmissions AiExamSubmission[]
+  aiExamPlans       AiExamImprovementPlan[]
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
   @@index([userId])
@@ -1420,4 +1430,221 @@ model QuizAttempt {
 
   @@unique([quizId, studentId])
   @@index([studentId])
+}
+
+// ============================================================================
+// AI Examination & Performance Analyzer (Classes 10-12)
+// ============================================================================
+
+/// Module settings per school.
+model AiExamSettings {
+  id               String   @id @default(uuid())
+  schoolId         String   @unique
+  autoEvaluate     Boolean  @default(true) // queue AI evaluation as soon as a test is submitted
+  reviewConfidence Float    @default(0.6)  // AI evaluations below this confidence go to teacher review
+  allowVoice       Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+/// A test created by a teacher for one class (optionally one section) and subject.
+model AiExamTest {
+  id                 String    @id @default(uuid())
+  schoolId           String
+  academicYearId     String
+  classId            String
+  sectionId          String?   // null = every section of the class
+  subjectId          String
+  title              String
+  description        String?
+  chapter            String?
+  topics             String[]
+  instructions       String?
+  totalMarks         Float     @default(0) // kept equal to the sum of question marks
+  durationMinutes    Int?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  status             String    @default("DRAFT") // DRAFT, PUBLISHED, CLOSED, ARCHIVED (scheduled/active derive from times)
+  assignMode         String    @default("CLASS") // CLASS, SECTION, STUDENTS
+  autoSubmit         Boolean   @default(true)
+  publishedAt        DateTime?
+  resultsPublishedAt DateTime?
+  createdById        String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  school       School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class        Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  section      Section?           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject      Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questions    AiExamQuestion[]
+  assignees    AiExamAssignee[]
+  submissions  AiExamSubmission[]
+
+  @@index([schoolId, classId, subjectId])
+  @@index([schoolId, status])
+}
+
+/// MCQ, SHORT, LONG, FILL_BLANK, TRUE_FALSE or NUMERICAL question with its answer key.
+model AiExamQuestion {
+  id                String   @id @default(uuid())
+  testId            String
+  orderIndex        Int      @default(0)
+  type              String
+  text              String
+  imageUrl          String?
+  marks             Float
+  chapter           String?
+  topic             String?
+  difficulty        String   @default("MEDIUM") // EASY, MEDIUM, HARD
+  options           Json?    // MCQ option strings
+  correctOption     Int?     // MCQ index; TRUE_FALSE: 1 = true, 0 = false
+  answerKey         String?  // model answer / expected value
+  acceptableAnswers String[]
+  keywords          String[]
+  concepts          String[] // essential concepts
+  explanation       String?
+  partialCredit     String?  // partial-credit rules in words
+  tolerance         Float?   // NUMERICAL: allowed absolute difference
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  test    AiExamTest            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  rubric  AiExamRubricCriterion[]
+  answers AiExamAnswer[]
+
+  @@index([testId])
+}
+
+/// One marking criterion; the criteria of a question add up to its marks.
+model AiExamRubricCriterion {
+  id          String @id @default(uuid())
+  questionId  String
+  description String
+  marks       Float
+  orderIndex  Int    @default(0)
+
+  question AiExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+/// Students a test is assigned to when assignMode = STUDENTS.
+model AiExamAssignee {
+  id        String @id @default(uuid())
+  testId    String
+  studentId String
+
+  test    AiExamTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, studentId])
+  @@index([studentId])
+}
+
+/// One attempt per student per test.
+model AiExamSubmission {
+  id               String    @id @default(uuid())
+  schoolId         String
+  testId           String
+  studentId        String
+  status           String    @default("IN_PROGRESS") // IN_PROGRESS, SUBMITTED
+  startedAt        DateTime  @default(now())
+  deadline         DateTime?
+  submittedAt      DateTime?
+  autoSubmitted    Boolean   @default(false)
+  late             Boolean   @default(false)
+  evaluationStatus String    @default("NOT_SUBMITTED") // NOT_SUBMITTED, PENDING, PROCESSING, EVALUATED, FAILED, REVIEW
+  score            Float?
+  maxScore         Float     @default(0)
+  lastSavedAt      DateTime?
+
+  test    AiExamTest     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers AiExamAnswer[]
+
+  @@unique([testId, studentId])
+  @@index([schoolId, studentId])
+}
+
+/// A student's answer; typed and voice answers share this structure.
+model AiExamAnswer {
+  id           String   @id @default(uuid())
+  submissionId String
+  questionId   String
+  text         String   @default("")
+  choice       Int?     // MCQ option index / TRUE_FALSE 1 or 0
+  inputMethod  String   @default("TYPED") // TYPED, VOICE, MIXED
+  updatedAt    DateTime @updatedAt
+
+  submission AiExamSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question   AiExamQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  evaluation AiExamEvaluation?
+
+  @@unique([submissionId, questionId])
+  @@index([questionId])
+}
+
+/// Evaluation of one answer. AI marks and teacher marks are stored separately.
+model AiExamEvaluation {
+  id             String    @id @default(uuid())
+  answerId       String    @unique
+  status         String    @default("PENDING") // PENDING, PROCESSING, EVALUATED, FAILED, REVIEW
+  method         String?   // AUTO (answer key), AI, MOCK (development evaluator), TEACHER
+  maxMarks       Float
+  aiMarks        Float?
+  teacherMarks   Float?
+  finalMarks     Float?
+  feedback       Json?     // validated structured feedback
+  criteria       Json?     // per-rubric-criterion marks
+  confidence     Float?
+  reviewReasons  String[]
+  overrideReason String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  provider       String?
+  model          String?
+  attempts       Int       @default(0)
+  lastError      String?
+  claimedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  answer AiExamAnswer          @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  events AiExamEvaluationEvent[]
+
+  @@index([status])
+}
+
+/// History of every evaluation result, failure and teacher override.
+model AiExamEvaluationEvent {
+  id           String   @id @default(uuid())
+  evaluationId String
+  kind         String   // AUTO_RESULT, AI_RESULT, AI_FAILED, TEACHER_OVERRIDE, REQUEUED
+  marks        Float?
+  details      Json?
+  actorId      String?
+  createdAt    DateTime @default(now())
+
+  evaluation AiExamEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([evaluationId])
+}
+
+/// Latest generated improvement plan for a student (cached to avoid repeated AI calls).
+model AiExamImprovementPlan {
+  id        String   @id @default(uuid())
+  schoolId  String
+  studentId String
+  source    String   // RULES or AI
+  plan      Json
+  basedOn   Int      // number of evaluated tests used
+  createdAt DateTime @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, createdAt])
 }

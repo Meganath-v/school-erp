@@ -7,6 +7,7 @@ import '../../features/class_teacher/presentation/teacher_dashboard.dart';
 import '../../features/examination/presentation/examination_management_screen.dart';
 import '../../features/fees/presentation/fee_management_screen.dart';
 import '../../features/office/presentation/office_dashboard.dart';
+import '../../features/ai_exam/presentation/ai_exam_screen.dart';
 import '../../features/assessment/presentation/assessment_screen.dart';
 import '../../features/assessment/presentation/student_quizzes_screen.dart';
 import '../../features/outcomes/presentation/outcomes_screen.dart';
@@ -76,6 +77,7 @@ class RoleNavigation {
           _exams,
           _outcomes,
           _assessment,
+          _aiExam,
           _fees,
           _timetable,
           _circulars,
@@ -89,6 +91,7 @@ class RoleNavigation {
           _exams,
           _outcomes,
           _assessment,
+          _aiExam,
           _timetable,
           _circulars,
           _audit,
@@ -109,6 +112,7 @@ class RoleNavigation {
           _exams,
           _outcomes,
           _assessment,
+          _aiExam,
           _timetable,
           _circulars,
         ]);
@@ -119,6 +123,7 @@ class RoleNavigation {
           _exams,
           _outcomes,
           _assessment,
+          _aiExam,
           _timetable,
         ]);
       case AppRoles.parent:
@@ -129,6 +134,7 @@ class RoleNavigation {
         return RoleNavigation(role: role!, primaryIds: const ['portal', 'quizzes'], sections: [
           _s('portal', 'My Studies', 'Studies', Icons.menu_book_outlined, Icons.menu_book, (_) => const StudentPortalScreen()),
           _s('quizzes', 'Quizzes', 'Quizzes', Icons.quiz_outlined, Icons.quiz, (_) => const StudentQuizzesScreen()),
+          _aiExam,
         ]);
       default:
         return null;
@@ -144,6 +150,7 @@ class RoleNavigation {
   static final _exams = _s('exams', 'Exams & Marks', 'Marks', Icons.grade_outlined, Icons.grade, (_) => const ExaminationManagementScreen());
   static final _outcomes = _s('outcomes', 'Outcomes & Attainment', 'Outcomes', Icons.track_changes_outlined, Icons.track_changes, (_) => const OutcomesScreen());
   static final _assessment = _s('assessment', 'Internal Marks & Quizzes', 'Internals', Icons.calculate_outlined, Icons.calculate, (_) => const AssessmentScreen());
+  static final _aiExam = _s('ai-exam', 'AI Examination', 'AI Exam', Icons.psychology_outlined, Icons.psychology, (_) => const AiExamScreen());
   static final _fees = _s('fees', 'Fees & Receipts', 'Fees', Icons.receipt_long_outlined, Icons.receipt_long, (_) => const FeeManagementScreen());
   static final _timetable = _s('timetable', 'Timetable', 'Timetable', Icons.schedule_outlined, Icons.schedule, (_) => const TimetableManagementScreen());
   static final _circulars = _s('circulars', 'Circulars & Notices', 'Notices', Icons.campaign_outlined, Icons.campaign, (_) => const CircularManagementScreen());
