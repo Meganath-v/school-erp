@@ -41,6 +41,7 @@ jobs:
         run: |
           npx ts-node test-attainment.ts
           npx ts-node test-internal-marks.ts
+          npx ts-node test-ai-exam.ts
 
       - name: Seed Test Database & Run Academics E2E Tests
         working-directory: backend
@@ -52,6 +53,7 @@ jobs:
           npx ts-node test-academics-api.ts
           SEED_PW=password123 node test-outcomes-api.mjs
           SEED_PW=password123 node test-phase2-api.mjs
+          SEED_PW=password123 node test-ai-exam-api.mjs
 
   frontend-test:
     name: Frontend Analyze, Test & Web Build
