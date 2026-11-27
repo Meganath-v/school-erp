@@ -10,7 +10,7 @@ import { AiExamTestsService } from './ai-exam-tests.service';
 import { AiExamStudentService } from './ai-exam-student.service';
 import { AiExamAnalyticsService, AnalyticsFilter } from './ai-exam-analytics.service';
 import { AiEvaluationService } from './ai-evaluation.service';
-import { AiExamSettingsDto, AssignAiTestDto, EvaluateDto, OverrideMarksDto, SaveAiQuestionsDto, SaveAiTestDto, SaveAnswersDto, SubmitAnswersDto } from './ai-exam.dto';
+import { AiExamSettingsDto, AssignAiTestDto, EvaluateDto, OverrideMarksDto, SaveAiQuestionsDto, SaveAiTestDto, RescheduleAiTestDto, SaveAnswersDto, SubmitAnswersDto } from './ai-exam.dto';
 import { AiNotConfiguredError, describeProvider } from './ai/ai-provider';
 
 const optInt = (v?: string) => (v && /^\d+$/.test(v) ? Number(v) : undefined);
@@ -122,6 +122,12 @@ export class AiExamController {
   @Post(':id/publish')
   async publish(@CurrentSchoolId() schoolId: string, @CurrentUser() user: Actor, @Param('id') id: string) {
     return { data: await this.tests.publish(schoolId, user, id) };
+  }
+
+  @ApiOperation({ summary: 'Change start/end time (subject teacher, class teacher of the section, administrators); reopens a closed test' })
+  @Post(':id/reschedule')
+  async reschedule(@CurrentSchoolId() schoolId: string, @CurrentUser() user: Actor, @Param('id') id: string, @Body() dto: RescheduleAiTestDto) {
+    return { data: await this.tests.reschedule(schoolId, user, id, dto) };
   }
 
   @Post(':id/close')

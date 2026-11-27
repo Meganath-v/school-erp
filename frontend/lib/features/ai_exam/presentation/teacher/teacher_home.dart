@@ -77,7 +77,7 @@ Widget testTile(BuildContext context, AiExamApi api, Map<String, dynamic> t, Voi
       if (t['startsAt'] != null) 'Opens ${fmtDate(t['startsAt'])}',
       if (attention > 0) '$attention to evaluate',
     ].join(' · '),
-    trailing: Pill(label: phaseLabels[phase] ?? phase, color: phaseColor(phase)),
+    trailing: Pill(label: t['access'] == 'SCHEDULE' ? 'Schedule only' : phaseLabels[phase] ?? phase, color: t['access'] == 'SCHEDULE' ? AppColors.info : phaseColor(phase)),
     onTap: () async {
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => TestDetailScreen(api: api, testId: t['id'] as String)));
       onChanged();

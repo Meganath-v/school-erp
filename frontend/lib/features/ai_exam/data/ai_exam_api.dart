@@ -39,6 +39,8 @@ class AiExamApi {
       map(await _post('/ai-exams/$id/questions', {'questions': questions}));
   Future<Map<String, dynamic>> publish(String id) async => map(await _post('/ai-exams/$id/publish'));
   Future<Map<String, dynamic>> close(String id) async => map(await _post('/ai-exams/$id/close'));
+  /// [startsAt]/[endsAt]: omit a key to keep it, null to clear it.
+  Future<Map<String, dynamic>> reschedule(String id, Map<String, dynamic> body) async => map(await _post('/ai-exams/$id/reschedule', body));
   Future<Map<String, dynamic>> archive(String id) async => map(await _post('/ai-exams/$id/archive'));
   Future<Map<String, dynamic>> publishResults(String id) async => map(await _post('/ai-exams/$id/publish-results'));
   Future<List<Map<String, dynamic>>> candidates(String classId, {String? sectionId}) async =>

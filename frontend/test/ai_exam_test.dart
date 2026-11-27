@@ -125,6 +125,7 @@ void main() {
       return FakeResponse(200, {'data': [], 'meta': {}});
     });
     expect(find.text('Publish'), findsOneWidget);
+    expect(find.text('Reschedule'), findsOneWidget, reason: 'subject teachers can reschedule too');
     expect(find.text('Preview'), findsOneWidget);
     expect(find.text('Edit questions'), findsOneWidget);
     await tester.tap(find.text('Questions'));
@@ -133,6 +134,45 @@ void main() {
     expect(find.textContaining('Role of chlorophyll — 3'), findsOneWidget);
     expect(find.textContaining('Chlorophyll   ✓'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('class teacher: schedule-only view, reschedule with a reason', (tester) async {
+    Object? sent;
+    final view = {
+      ..._test,
+      'access': 'SCHEDULE',
+      'status': 'PUBLISHED',
+      'phase': 'ACTIVE',
+      'questions': [],
+      'questionCount': 2,
+      'endsAt': DateTime.now().add(const Duration(hours: 1)).toUtc().toIso8601String(),
+      'stats': {'assigned': 2, 'started': 1, 'submitted': 0, 'inProgress': 1},
+    };
+    await pump(tester, TestDetailScreen(api: AiExamApi(), testId: 't1'), (o) {
+      if (path(o) == '/ai-exams/t1/reschedule') {
+        sent = _body(o);
+        return FakeResponse(200, _env(view));
+      }
+      return FakeResponse(200, _env(view));
+    });
+    expect(find.textContaining('class teacher of this section'), findsOneWidget);
+    expect(find.text('Reschedule'), findsOneWidget);
+    expect(find.byType(TabBar), findsNothing, reason: 'no questions, submissions or analytics tabs');
+    for (final hidden in ['Publish', 'Close test', 'Edit questions', 'Preview', 'Submissions']) {
+      expect(find.text(hidden), findsNothing, reason: '$hidden is for the subject teacher');
+    }
+    await tester.tap(find.text('Reschedule'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('locked: students have started'), findsOneWidget);
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+    expect(find.textContaining('Give a short reason'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Reason (recorded)'), 'Sports day moved');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect((sent as Map)['reason'], 'Sports day moved');
+    expect((sent as Map).containsKey('startsAt'), isFalse, reason: 'start time is not sent once students have started');
+    expect(find.text('Test rescheduled'), findsOneWidget);
   });
 
   testWidgets('question form refuses a rubric that does not add up', (tester) async {
@@ -195,7 +235,7 @@ void main() {
     });
     // Resumes at the first unanswered question, timer visible.
     expect(find.text('Which pigment absorbs light?'), findsOneWidget);
-    expect(find.textContaining('19:'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'^(19|20):[0-5][0-9]$')), findsOneWidget);
     await tester.tap(find.text('B. Chlorophyll'));
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();

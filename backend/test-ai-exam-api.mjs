@@ -94,8 +94,12 @@ try {
   check('questions with answer keys and rubric saved; total marks computed', q.status === 201 && q.data.questions.length === 6 && q.data.totalMarks === 12 && q.data.questions[4].rubric.length === 5, q.body);
 
   check('draft is invisible to the student', (await call('GET', `/student/ai-exams/${testId}`, null, student)).status === 404);
-  check('another teacher cannot open the test', (await call('GET', `/ai-exams/${testId}`, null, other)).status === 403);
-  check('another teacher cannot see its submissions', (await call('GET', `/ai-exams/${testId}/submissions`, null, other)).status === 403);
+  // teacher.smith is the class teacher of the test's section (and teaches another subject there).
+  const ctView = await call('GET', `/ai-exams/${testId}`, null, other);
+  check('class teacher gets a schedule-only view without questions or answer keys', ctView.status === 200 && ctView.data.access === 'SCHEDULE' && ctView.data.questions.length === 0 && ctView.data.questionCount === 6 && !JSON.stringify(ctView.data).includes('chlorophyll'), ctView.data);
+  check('class teacher sees the test in their list', (await call('GET', '/ai-exams', null, other)).body?.data?.some((t) => t.id === testId && t.access === 'SCHEDULE'));
+  check('class teacher cannot see submissions', (await call('GET', `/ai-exams/${testId}/submissions`, null, other)).status === 403);
+  check('class teacher cannot edit questions', (await call('POST', `/ai-exams/${testId}/questions`, { questions }, other)).status === 403);
   const pub = await call('POST', `/ai-exams/${testId}/publish`, null, teacher);
   check('teacher publishes the test', pub.status === 201 && pub.data.status === 'PUBLISHED' && pub.data.phase === 'ACTIVE', pub.body);
 
@@ -120,6 +124,22 @@ try {
   const leaked = JSON.stringify(st.data?.questions ?? []);
   check('start returns questions without answer keys or rubrics', st.status === 201 && st.data.questions.length === 6 && !/answerKey|correctOption|rubric|acceptableAnswers|Mitochondria|starch/.test(leaked), st.data);
   check('attempt has a deadline from the duration', st.data?.deadline && new Date(st.data.deadline) - new Date(st.data.startedAt) === 20 * 60_000);
+
+  // ------------------------------------------------------------ rescheduling
+  const soon = new Date(Date.now() + 10 * 60_000).toISOString();
+  const rs1 = await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: soon, reason: 'Assembly moved to 11:00' }, other);
+  const dl1 = (await prisma.aiExamSubmission.findUnique({ where: { id: st.data.submissionId } })).deadline;
+  check('class teacher reschedules the end time; open attempts follow it', rs1.status === 201 && rs1.data.access === 'SCHEDULE' && dl1.toISOString() === soon, { status: rs1.status, body: rs1.body, dl1 });
+  const later = new Date(Date.now() + 90 * 60_000).toISOString();
+  const rs2 = await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: later, reason: 'Extra time' }, teacher);
+  const dl2 = (await prisma.aiExamSubmission.findUnique({ where: { id: st.data.submissionId } })).deadline;
+  check('subject teacher extends it; the deadline goes back to the duration limit', rs2.status === 201 && dl2.getTime() - new Date(st.data.startedAt).getTime() === 20 * 60_000);
+  check('start time is locked once students have started', (await call('POST', `/ai-exams/${testId}/reschedule`, { startsAt: new Date().toISOString(), reason: 'move' }, teacher)).status === 409);
+  check('rescheduling needs a reason', (await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: later }, other)).status === 400);
+  check('end time must be in the future', (await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: new Date(Date.now() - 60_000).toISOString(), reason: 'oops' }, other)).status === 400);
+  check('class teacher cannot close or publish', (await call('POST', `/ai-exams/${testId}/close`, null, other)).status === 403);
+  check('students cannot reschedule', (await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: later, reason: 'please' }, student)).status === 403);
+  check('rescheduling is audited', (await prisma.auditLog.count({ where: { entityId: testId, action: 'AI_EXAM_RESCHEDULED' } })) === 2);
   const qs = st.data.questions;
   const id = (type) => qs.find((x) => x.type === type).id;
   const longAnswer = 'Photosynthesis is how green plants make food. Chlorophyll absorbs sunlight, and the plant uses carbon dioxide and water to make glucose and releases oxygen.';
@@ -204,6 +224,7 @@ try {
   }
   const pr2 = await call('POST', `/ai-exams/${testId}/publish-results`, null, teacher);
   check('results published once everything is evaluated', pr2.status === 201 && pr2.data.resultsPublishedAt, pr2.body);
+  check('tests with published results cannot be rescheduled', (await call('POST', `/ai-exams/${testId}/reschedule`, { endsAt: later, reason: 'again' }, other)).status === 409);
 
   // ------------------------------------------------------------ student result & analytics
   const res = await call('GET', `/student/ai-exams/${testId}/result`, null, student);
@@ -245,6 +266,10 @@ try {
   check('cannot restart a submitted test', (await call('POST', `/student/ai-exams/${e.data.id}/start`, null, student)).status === 409);
   check('tests with attempts cannot be deleted', (await call('DELETE', `/ai-exams/${e.data.id}`, null, teacher)).status === 409);
   check('questions are locked once attempted', (await call('POST', `/ai-exams/${e.data.id}/questions`, { questions }, teacher)).status === 409);
+  await call('POST', `/ai-exams/${e.data.id}/close`, null, teacher);
+  const reopen = await call('POST', `/ai-exams/${e.data.id}/reschedule`, { endsAt: new Date(Date.now() + 3600_000).toISOString(), reason: 'Reopened for absentees' }, other);
+  check('class teacher reopens a closed test by rescheduling it', reopen.status === 201 && reopen.data.status === 'PUBLISHED', reopen.body);
+  check('a student who already submitted still cannot restart it', (await call('POST', `/student/ai-exams/${e.data.id}/start`, null, student)).status === 409);
 
   // restore settings
   if (settingsBefore) await prisma.aiExamSettings.update({ where: { schoolId }, data: { autoEvaluate: settingsBefore.autoEvaluate, reviewConfidence: settingsBefore.reviewConfidence, allowVoice: settingsBefore.allowVoice } });

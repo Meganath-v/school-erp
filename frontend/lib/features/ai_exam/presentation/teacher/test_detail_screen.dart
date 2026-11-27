@@ -70,13 +70,15 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
       future: _future,
       builder: (context, snap) {
         final t = snap.data;
+        final scheduleOnly = t?['access'] == 'SCHEDULE';
         return DefaultTabController(
-          length: 4,
-          initialIndex: widget.initialTab,
+          key: ValueKey('tabs-$scheduleOnly'),
+          length: scheduleOnly ? 1 : 4,
+          initialIndex: scheduleOnly ? 0 : widget.initialTab,
           child: Scaffold(
             appBar: AppBar(
               title: Text(t == null ? 'Test' : '${t['title']}', maxLines: 1, overflow: TextOverflow.ellipsis),
-              bottom: t == null
+              bottom: t == null || scheduleOnly
                   ? null
                   : const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [Tab(text: 'Overview'), Tab(text: 'Questions'), Tab(text: 'Submissions'), Tab(text: 'Analytics')]),
             ),
@@ -84,7 +86,9 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
                 ? const LoadingStateView(message: 'Loading test...')
                 : snap.hasError
                     ? ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [MessageBanner(message: apiErrorMessage(snap.error!), onRetry: _reload)])
-                    : TabBarView(children: [
+                    : scheduleOnly
+                        ? _overview(t!)
+                        : TabBarView(children: [
                         _overview(t!),
                         _questions(t),
                         _SubmissionsTab(key: ValueKey('subs-$_version'), api: widget.api, test: t, onChanged: _reload),
@@ -104,6 +108,8 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
     final questions = AiExamApi.list(t['questions']);
     final canEditQuestions = t['canEditQuestions'] == true && (status == 'DRAFT' || status == 'PUBLISHED');
     final ended = status == 'CLOSED' || status == 'ARCHIVED' || phase == 'ENDED';
+    final scheduleOnly = t['access'] == 'SCHEDULE';
+    final canReschedule = status != 'ARCHIVED' && t['resultsPublishedAt'] == null;
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [
@@ -113,15 +119,27 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
           Pill(label: '${t['subject']?['name']}', color: AppColors.info),
           Pill(label: '${t['class']?['name']}${t['section'] != null ? ' ${t['section']['name']}' : ' (all sections)'}', color: AppColors.textMuted),
         ]),
+        if (scheduleOnly) ...[
+          const SizedBox(height: AppSpacing.md),
+          const MessageBanner(message: 'You are the class teacher of this section, so you can change when this test runs. Questions, answers and marks stay with the subject teacher.', isError: false),
+        ],
         const SizedBox(height: AppSpacing.md),
         if ((t['chapter'] ?? '').toString().isNotEmpty) Text('Chapter: ${t['chapter']}', style: text.bodyMedium),
         if (((t['topics'] as List?) ?? const []).isNotEmpty) Text('Topics: ${(t['topics'] as List).join(', ')}', style: text.bodyMedium),
         Text(
-          '${questions.length} questions · ${fmtNum(t['totalMarks'] as num?)} marks · ${t['durationMinutes'] == null ? 'no time limit' : '${t['durationMinutes']} min'}',
+          '${t['questionCount'] ?? questions.length} questions · ${fmtNum(t['totalMarks'] as num?)} marks · ${t['durationMinutes'] == null ? 'no time limit' : '${t['durationMinutes']} min'}',
           style: text.bodyMedium?.copyWith(color: AppColors.textMuted),
         ),
         Text('Opens ${t['startsAt'] == null ? 'on publishing' : fmtDate(t['startsAt'])} · closes ${t['endsAt'] == null ? 'when you close it' : fmtDate(t['endsAt'])}', style: text.bodySmall?.copyWith(color: AppColors.textMuted)),
         const SizedBox(height: AppSpacing.lg),
+        if (scheduleOnly)
+          KpiGrid(tiles: [
+            KpiTile(label: 'Assigned', value: '${stats['assigned'] ?? 0}', icon: Icons.groups_outlined),
+            KpiTile(label: 'Submitted', value: '${stats['submitted'] ?? 0}', icon: Icons.task_alt, color: AppColors.success),
+            KpiTile(label: 'In progress', value: '${stats['inProgress'] ?? 0}', icon: Icons.edit_note, color: AppColors.warning),
+            KpiTile(label: 'Questions', value: '${t['questionCount'] ?? 0}', icon: Icons.help_outline, color: AppColors.info),
+          ])
+        else
         KpiGrid(tiles: [
           KpiTile(label: 'Assigned', value: '${stats['assigned'] ?? 0}', icon: Icons.groups_outlined),
           KpiTile(label: 'Submitted', value: '${stats['submitted'] ?? 0}', icon: Icons.task_alt, color: AppColors.success),
@@ -130,7 +148,13 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
         ]),
         const SizedBox(height: AppSpacing.lg),
         Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: [
-          if (status == 'DRAFT' || status == 'PUBLISHED')
+          if (canReschedule)
+            OutlinedButton.icon(
+              onPressed: _busy ? null : () => _reschedule(t),
+              icon: const Icon(Icons.event_repeat_outlined),
+              label: Text(status == 'CLOSED' ? 'Reschedule / reopen' : 'Reschedule'),
+            ),
+          if (!scheduleOnly && (status == 'DRAFT' || status == 'PUBLISHED'))
             OutlinedButton.icon(
               onPressed: _busy
                   ? null
@@ -141,7 +165,7 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Edit details'),
             ),
-          if (canEditQuestions)
+          if (canEditQuestions && !scheduleOnly)
             OutlinedButton.icon(
               onPressed: _busy
                   ? null
@@ -152,12 +176,13 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
               icon: const Icon(Icons.edit_note),
               label: Text(questions.isEmpty ? 'Add questions' : 'Edit questions'),
             ),
+          if (!scheduleOnly)
           OutlinedButton.icon(
             onPressed: questions.isEmpty ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TestPreviewScreen(api: widget.api, test: t))),
             icon: const Icon(Icons.visibility_outlined),
             label: const Text('Preview'),
           ),
-          if (status == 'DRAFT')
+          if (status == 'DRAFT' && !scheduleOnly)
             FilledButton.icon(
               onPressed: _busy || questions.isEmpty
                   ? null
@@ -166,7 +191,7 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
               icon: const Icon(Icons.send_outlined),
               label: const Text('Publish'),
             ),
-          if (status == 'PUBLISHED')
+          if (status == 'PUBLISHED' && !scheduleOnly)
             FilledButton.tonalIcon(
               onPressed: _busy
                   ? null
@@ -174,15 +199,15 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
               icon: const Icon(Icons.lock_outline),
               label: const Text('Close test'),
             ),
-          if (ended && t['resultsPublishedAt'] == null && (stats['submitted'] ?? 0) > 0)
+          if (!scheduleOnly && ended && t['resultsPublishedAt'] == null && (stats['submitted'] ?? 0) > 0)
             FilledButton.icon(
               onPressed: _busy ? null : () => _act(() => widget.api.publishResults(widget.testId), 'Results published to students', confirm: 'Publish results?', confirmBody: 'Students will see their marks, feedback and the model answers.'),
               icon: const Icon(Icons.campaign_outlined),
               label: const Text('Publish results'),
             ),
-          if (status == 'CLOSED' || status == 'DRAFT')
+          if (!scheduleOnly && (status == 'CLOSED' || status == 'DRAFT'))
             TextButton.icon(onPressed: _busy ? null : () => _act(() => widget.api.archive(widget.testId), 'Test archived'), icon: const Icon(Icons.archive_outlined), label: const Text('Archive')),
-          if ((stats['started'] ?? 0) == 0)
+          if (!scheduleOnly && (stats['started'] ?? 0) == 0)
             TextButton.icon(
               onPressed: _busy
                   ? null
@@ -200,7 +225,7 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
               style: TextButton.styleFrom(foregroundColor: AppColors.error),
             ),
         ]),
-        if (status == 'DRAFT' && questions.isEmpty)
+        if (!scheduleOnly && status == 'DRAFT' && questions.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: AppSpacing.sm),
             child: Text('Add questions before publishing.', style: text.bodySmall?.copyWith(color: AppColors.textMuted)),
@@ -215,6 +240,12 @@ class _TestDetailScreenState extends State<TestDetailScreen> {
         ],
       ]),
     );
+  }
+
+  Future<void> _reschedule(Map<String, dynamic> t) async {
+    final r = await showDialog<Map<String, dynamic>>(context: context, builder: (_) => RescheduleDialog(test: t));
+    if (r == null) return;
+    await _act(() => widget.api.reschedule(widget.testId, r), t['status'] == 'CLOSED' && r['endsAt'] != null ? 'Test rescheduled and reopened' : 'Test rescheduled');
   }
 
   Widget _questions(Map<String, dynamic> t) {
@@ -403,6 +434,91 @@ class TestPreviewScreen extends StatelessWidget {
             ]),
           ),
       ]),
+    );
+  }
+}
+
+// ======================================================================== reschedule
+
+/// Pick new start/end times and a reason. Pops with the request body.
+class RescheduleDialog extends StatefulWidget {
+  final Map<String, dynamic> test;
+  const RescheduleDialog({super.key, required this.test});
+
+  @override
+  State<RescheduleDialog> createState() => _RescheduleDialogState();
+}
+
+class _RescheduleDialogState extends State<RescheduleDialog> {
+  late DateTime? _startsAt = DateTime.tryParse('${widget.test['startsAt']}')?.toLocal();
+  late DateTime? _endsAt = DateTime.tryParse('${widget.test['endsAt']}')?.toLocal();
+  final _reason = TextEditingController();
+  String? _error;
+
+  bool get _started => ((widget.test['stats'] as Map?)?['started'] ?? 0) > 0;
+
+  Future<void> _pick(bool start) async {
+    final initial = (start ? _startsAt : _endsAt) ?? DateTime.now().add(const Duration(hours: 1));
+    final now = DateTime.now();
+    final date = await showDatePicker(context: context, initialDate: initial.isBefore(now) ? now : initial, firstDate: now.subtract(const Duration(days: 1)), lastDate: now.add(const Duration(days: 400)));
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(initial));
+    if (time == null) return;
+    final d = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    setState(() => start ? _startsAt = d : _endsAt = d);
+  }
+
+  void _save() {
+    if (_reason.text.trim().length < 3) return setState(() => _error = 'Give a short reason (it is recorded).');
+    if (_startsAt != null && _endsAt != null && !_endsAt!.isAfter(_startsAt!)) return setState(() => _error = 'The test must end after it starts.');
+    if (widget.test['status'] != 'DRAFT' && _endsAt != null && !_endsAt!.isAfter(DateTime.now())) return setState(() => _error = 'The new end time must be in the future.');
+    Navigator.pop(context, {
+      if (!_started) 'startsAt': _startsAt?.toUtc().toIso8601String(),
+      'endsAt': _endsAt?.toUtc().toIso8601String(),
+      'reason': _reason.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final closed = widget.test['status'] == 'CLOSED';
+    return AlertDialog(
+      title: const Text('Reschedule test'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (closed) Text('Setting a future end time reopens the test for students who have not submitted.', style: text.bodySmall?.copyWith(color: AppColors.textMuted)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              enabled: !_started,
+              leading: const Icon(Icons.event_available_outlined),
+              title: const Text('Starts'),
+              subtitle: Text(_started ? '${fmtDate(_startsAt?.toIso8601String())} (locked: students have started)' : _startsAt == null ? 'As soon as it is published' : fmtDate(_startsAt!.toIso8601String())),
+              trailing: _started || _startsAt == null ? null : IconButton(tooltip: 'Clear start time', icon: const Icon(Icons.clear), onPressed: () => setState(() => _startsAt = null)),
+              onTap: _started ? null : () => _pick(true),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_busy_outlined),
+              title: const Text('Ends'),
+              subtitle: Text(_endsAt == null ? 'When it is closed' : fmtDate(_endsAt!.toIso8601String())),
+              trailing: _endsAt == null ? null : IconButton(tooltip: 'Clear end time', icon: const Icon(Icons.clear), onPressed: () => setState(() => _endsAt = null)),
+              onTap: () => _pick(false),
+            ),
+            if (widget.test['durationMinutes'] != null)
+              Text('Each student still gets at most ${widget.test['durationMinutes']} minutes; students who are mid-test get the new end time.', style: text.bodySmall?.copyWith(color: AppColors.textMuted)),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(controller: _reason, maxLines: 2, decoration: const InputDecoration(labelText: 'Reason (recorded)')),
+            if (_error != null) Padding(padding: const EdgeInsets.only(top: AppSpacing.sm), child: Text(_error!, style: text.bodySmall?.copyWith(color: AppColors.error))),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
     );
   }
 }

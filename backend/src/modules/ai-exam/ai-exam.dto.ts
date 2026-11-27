@@ -130,3 +130,10 @@ export class SubmitAnswersDto {
   @Type(() => AnswerDto)
   answers?: AnswerDto[];
 }
+
+/** Change a test's timing (subject teacher, class teacher of the section, administrators). */
+export class RescheduleAiTestDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Omit to keep; null = opens on publishing' }) @IsOptional() @IsDateString() startsAt?: string | null;
+  @ApiPropertyOptional({ nullable: true, description: 'Omit to keep; null = open until closed' }) @IsOptional() @IsDateString() endsAt?: string | null;
+  @ApiProperty({ description: 'Why the test is rescheduled (recorded)' }) @IsString() @MinLength(3) @MaxLength(500) reason: string;
+}

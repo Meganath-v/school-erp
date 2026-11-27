@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Actor, AiExamAccessService, isAdmin } from './ai-exam-access.service';
 import { AiEvaluationService } from './ai-evaluation.service';
 import { AI_TYPES, EVAL, round2, testPhase } from './ai-exam.constants';
-import { AiQuestionDto, AssignAiTestDto, SaveAiQuestionsDto, SaveAiTestDto } from './ai-exam.dto';
+import { AiQuestionDto, AssignAiTestDto, RescheduleAiTestDto, SaveAiQuestionsDto, SaveAiTestDto } from './ai-exam.dto';
 import { extractNumber } from './grading/objective-grading';
 import { describeProvider } from './ai/ai-provider';
 
@@ -115,9 +115,13 @@ export class AiExamTestsService {
 
   async list(schoolId: string, actor: Actor, q: { status?: string; classId?: string; subjectId?: string; page?: number; pageSize?: number }) {
     const scope = await this.access.scope(schoolId, actor);
+    const ctSlots = await this.access.classTeacherSlots(schoolId, actor);
+    const visibility: Prisma.AiExamTestWhereInput = ctSlots.length
+      ? { OR: [this.access.testWhere(schoolId, scope), ...ctSlots.map((c) => ({ schoolId, classId: c.classId, sectionId: c.sectionId }))] }
+      : this.access.testWhere(schoolId, scope);
     const where: Prisma.AiExamTestWhereInput = {
       AND: [
-        this.access.testWhere(schoolId, scope),
+        visibility,
         {
           ...(q.status === 'ACTIVE_ALL' ? { status: { not: 'ARCHIVED' } } : q.status ? { status: q.status } : {}),
           ...(q.classId && { classId: q.classId }),
@@ -130,7 +134,8 @@ export class AiExamTestsService {
       include: { class: true, section: true, subject: true, _count: { select: { questions: true, submissions: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    const visible = await this.access.filterManageable(schoolId, scope, all);
+    const managed = new Set((await this.access.filterManageable(schoolId, scope, all)).map((t) => t.id));
+    const visible = all.filter((t) => managed.has(t.id) || AiExamAccessService.isClassTeacherOf(ctSlots, t));
     const page = Math.max(1, q.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, q.pageSize ?? 20));
     const slice = visible.slice((page - 1) * pageSize, page * pageSize);
@@ -142,6 +147,7 @@ export class AiExamTestsService {
         this.summary(t, {
           questions: t._count.questions,
           submissions: t._count.submissions,
+          access: managed.has(t.id) ? 'MANAGE' : 'SCHEDULE',
           needsAttention: pending.filter((p) => p.testId === t.id && p.evaluationStatus !== EVAL.EVALUATED).reduce((s, p) => s + p._count, 0),
         }),
       ),
@@ -150,7 +156,8 @@ export class AiExamTestsService {
   }
 
   async get(schoolId: string, actor: Actor, id: string) {
-    const t = await this.access.manageableTest(schoolId, actor, id);
+    const { test: t, access } = await this.access.accessibleTest(schoolId, actor, id);
+    if (access === 'SCHEDULE') return this.scheduleView(t);
     const [questions, assignees, roster, subs] = await Promise.all([
       this.prisma.aiExamQuestion.findMany({ where: { testId: id }, include: { rubric: { orderBy: { orderIndex: 'asc' } } }, orderBy: { orderIndex: 'asc' } }),
       this.prisma.aiExamAssignee.findMany({ where: { testId: id }, include: { student: { select: { id: true, firstName: true, lastName: true, admissionNo: true } } } }),
@@ -173,6 +180,7 @@ export class AiExamTestsService {
         pendingEvaluation: count((s) => s.evaluationStatus === EVAL.PENDING || s.evaluationStatus === EVAL.PROCESSING),
         failed: count((s) => s.evaluationStatus === EVAL.FAILED),
       },
+      access: 'MANAGE',
       canEditQuestions: count(() => true) === 0,
       aiQuestions: questions.filter((q) => AI_TYPES.includes(q.type as any) || q.type === 'NUMERICAL' || q.type === 'FILL_BLANK').length,
     });
@@ -241,6 +249,7 @@ export class AiExamTestsService {
       this.prisma.aiExamAssignee.deleteMany({ where: { testId: id, ...(p.mode === 'STUDENTS' && { studentId: { notIn: p.studentIds } }) } }),
       ...(p.mode === 'STUDENTS' ? [this.prisma.aiExamAssignee.createMany({ data: p.studentIds.map((studentId) => ({ testId: id, studentId })), skipDuplicates: true })] : []),
     ]);
+    await this.syncDeadlines({ id, durationMinutes: dto.durationMinutes ?? null, endsAt: dto.endsAt ? new Date(dto.endsAt) : null });
     await this.access.log(schoolId, actor, 'AI_EXAM_UPDATED', id, { title: dto.title });
     return this.get(schoolId, actor, id);
   }
@@ -305,6 +314,68 @@ export class AiExamTestsService {
       { timeout: 30_000, maxWait: 10_000 },
     );
     await this.access.log(schoolId, actor, 'AI_EXAM_QUESTIONS_SAVED', id, { questions: dto.questions.length, totalMarks: total });
+    return this.get(schoolId, actor, id);
+  }
+
+  /** What a class teacher sees: details and progress counts, no questions, answer keys or answers. */
+  private async scheduleView(t: any) {
+    const [questions, roster, subs] = await Promise.all([
+      this.prisma.aiExamQuestion.count({ where: { testId: t.id } }),
+      this.access.roster(t),
+      this.prisma.aiExamSubmission.groupBy({ by: ['status'], where: { testId: t.id }, _count: true }),
+    ]);
+    const n = (st: string) => subs.find((x) => x.status === st)?._count ?? 0;
+    return this.summary(t, {
+      access: 'SCHEDULE',
+      description: t.description,
+      instructions: t.instructions,
+      questionCount: questions,
+      questions: [],
+      assignees: [],
+      stats: { assigned: roster.length, started: n('IN_PROGRESS') + n('SUBMITTED'), submitted: n('SUBMITTED'), inProgress: n('IN_PROGRESS') },
+      canEditQuestions: false,
+    });
+  }
+
+  /** Keeps open attempts' deadlines in step with the test's duration and end time. */
+  private async syncDeadlines(test: { id: string; durationMinutes: number | null; endsAt: Date | null }) {
+    const open = await this.prisma.aiExamSubmission.findMany({ where: { testId: test.id, status: 'IN_PROGRESS' }, select: { id: true, startedAt: true } });
+    for (const s of open) {
+      const byDuration = test.durationMinutes ? new Date(s.startedAt.getTime() + test.durationMinutes * 60_000) : null;
+      const deadline = byDuration && test.endsAt ? (byDuration < test.endsAt ? byDuration : test.endsAt) : (byDuration ?? test.endsAt);
+      await this.prisma.aiExamSubmission.update({ where: { id: s.id }, data: { deadline } });
+    }
+    return open.length;
+  }
+
+  /**
+   * Changes a test's start/end time. Allowed for administrators, the subject teacher and the class
+   * teacher of the test's section. A closed test with a future end time is reopened for students who
+   * have not submitted; tests whose results are published cannot be rescheduled.
+   */
+  async reschedule(schoolId: string, actor: Actor, id: string, dto: RescheduleAiTestDto) {
+    const { test: t, access } = await this.access.accessibleTest(schoolId, actor, id);
+    if (t.status === 'ARCHIVED') throw new ConflictException('Archived tests cannot be rescheduled');
+    if (t.resultsPublishedAt) throw new ConflictException('Results are already published; this test can no longer be rescheduled');
+    const started = await this.prisma.aiExamSubmission.count({ where: { testId: id } });
+    const startsAt = dto.startsAt === undefined ? t.startsAt : dto.startsAt ? new Date(dto.startsAt) : null;
+    const endsAt = dto.endsAt === undefined ? t.endsAt : dto.endsAt ? new Date(dto.endsAt) : null;
+    if (started && (startsAt?.getTime() ?? null) !== (t.startsAt?.getTime() ?? null)) {
+      throw new ConflictException('Students have already started this test; only the end time can change');
+    }
+    if (startsAt && endsAt && startsAt >= endsAt) throw new BadRequestException('The test must end after it starts');
+    if (t.status !== 'DRAFT' && endsAt && endsAt.getTime() <= Date.now()) throw new BadRequestException('The new end time must be in the future');
+    const reopened = t.status === 'CLOSED';
+    await this.prisma.aiExamTest.update({ where: { id }, data: { startsAt, endsAt, ...(reopened && { status: 'PUBLISHED' }) } });
+    const adjusted = await this.syncDeadlines({ id, durationMinutes: t.durationMinutes, endsAt });
+    await this.access.log(schoolId, actor, 'AI_EXAM_RESCHEDULED', id, {
+      from: { startsAt: t.startsAt, endsAt: t.endsAt },
+      to: { startsAt, endsAt },
+      reason: dto.reason.trim(),
+      reopened,
+      openAttemptsAdjusted: adjusted,
+      as: access === 'SCHEDULE' ? 'CLASS_TEACHER' : isAdmin(actor) ? 'ADMIN' : 'SUBJECT_TEACHER',
+    });
     return this.get(schoolId, actor, id);
   }
 

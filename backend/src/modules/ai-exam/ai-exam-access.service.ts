@@ -93,6 +93,42 @@ export class AiExamAccessService {
     };
   }
 
+  /** Sections where the actor is the class teacher (empty for administrators, who manage everything). */
+  async classTeacherSlots(schoolId: string, actor: Actor): Promise<{ classId: string; sectionId: string }[]> {
+    if (isAdmin(actor)) return [];
+    const staff = await this.prisma.staff.findFirst({ where: { schoolId, userId: actor.userId }, select: { id: true } });
+    if (!staff) return [];
+    return this.prisma.teacherAssignment.findMany({ where: { schoolId, staffId: staff.id, isClassTeacher: true }, select: { classId: true, sectionId: true } });
+  }
+
+  /** Class teachers may reschedule tests assigned to their own section (whole-class tests stay with the subject teacher). */
+  static isClassTeacherOf(slots: { classId: string; sectionId: string }[], t: { classId: string; sectionId: string | null }) {
+    return !!t.sectionId && slots.some((s) => s.classId === t.classId && s.sectionId === t.sectionId);
+  }
+
+  /**
+   * MANAGE: administrators and the subject teacher (everything).
+   * SCHEDULE: the class teacher of the test's section (see it and change its timing only).
+   */
+  async testAccess(schoolId: string, actor: Actor, t: { classId: string; subjectId: string; sectionId: string | null }): Promise<'MANAGE' | 'SCHEDULE' | null> {
+    const scope = await this.scope(schoolId, actor);
+    if (await this.canManage(schoolId, scope, t.classId, t.subjectId, t.sectionId)) return 'MANAGE';
+    if (AiExamAccessService.isClassTeacherOf(await this.classTeacherSlots(schoolId, actor), t)) return 'SCHEDULE';
+    return null;
+  }
+
+  /** Loads a test the actor may manage or reschedule. */
+  async accessibleTest(schoolId: string, actor: Actor, testId: string) {
+    const test = await this.prisma.aiExamTest.findFirst({
+      where: { id: testId, schoolId },
+      include: { class: true, section: true, subject: true, academicYear: true },
+    });
+    if (!test) throw new NotFoundException('Test not found');
+    const access = await this.testAccess(schoolId, actor, test);
+    if (!access) throw new ForbiddenException('You can only open tests for classes and subjects you teach, or for the section you are class teacher of');
+    return { test, access };
+  }
+
   /** Drops tests the scope cannot fully manage (whole-class tests need every section). */
   async filterManageable<T extends { classId: string; subjectId: string; sectionId: string | null }>(schoolId: string, scope: TeachingSlot[] | null, tests: T[]) {
     if (scope === null) return tests;
