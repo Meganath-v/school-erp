@@ -179,13 +179,32 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen> w
 
     setState(() => _isSubmittingAlloc = true);
     try {
-      await ApiClient().dio.post('/staff/assignments', data: {
+      final body = {
         'staffId': _allocStaffId,
         'classId': _allocClassId,
         'sectionId': _allocSectionId,
         'subjectId': _allocSubjectId,
         'isClassTeacher': _allocIsClassTeacher,
-      });
+      };
+      try {
+        await ApiClient().dio.post('/staff/assignments', data: body);
+      } catch (e) {
+        // Each class has one class teacher: offer to hand the role over.
+        if (toApiException(e).statusCode != 409 || !mounted) rethrow;
+        final replace = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Class already has a class teacher'),
+            content: Text(apiErrorMessage(e)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Replace')),
+            ],
+          ),
+        );
+        if (replace != true) return;
+        await ApiClient().dio.post('/staff/assignments', data: {...body, 'replaceClassTeacher': true});
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { assertStudentAccess } from '../../common/access/student-access';
@@ -144,7 +144,23 @@ export class StudentsService {
     };
   }
 
-  async createStudentAdmission(schoolId: string, data: any) {
+  async createStudentAdmission(schoolId: string, data: any, actor?: { userId: string; role: string; name?: string }) {
+    if (actor?.role === 'CLASS_TEACHER') {
+      // A class teacher admits students only into the class they are class teacher of.
+      const staff = await this.prisma.staff.findFirst({ where: { schoolId, userId: actor.userId }, select: { id: true } });
+      const own = staff
+        ? await this.prisma.teacherAssignment.findFirst({ where: { schoolId, staffId: staff.id, isClassTeacher: true } })
+        : null;
+      if (!own) throw new ForbiddenException('You are not the class teacher of any class');
+      if ((data.sectionId && data.sectionId !== own.sectionId) || (data.classId && data.classId !== own.classId)) {
+        throw new ForbiddenException('Class teachers can add students only to their own class');
+      }
+      data = { ...data, classId: own.classId, sectionId: own.sectionId };
+    }
+    if (data.classId && data.sectionId) {
+      const activeYear = await this.prisma.academicYear.findFirst({ where: { schoolId, isCurrent: true }, select: { id: true } });
+      if (!activeYear) throw new BadRequestException('No current academic year is set, so the student cannot be enrolled');
+    }
     return this.prisma.$transaction(async (tx) => {
       // Generate admission number if not provided
       const count = await tx.student.count({ where: { schoolId } });

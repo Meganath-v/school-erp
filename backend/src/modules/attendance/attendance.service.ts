@@ -1,17 +1,47 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { OFFICE_STAFF } from '../../common/decorators/roles.decorator';
+import { schoolToday } from '../timetable/schedule.util';
+
+interface AttendanceActor {
+  userId: string;
+  role: string;
+  activeSchool?: { timezone?: string | null } | null;
+}
 
 @Injectable()
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
-  async getTodayAttendance(schoolId: string, sectionId?: string) {
+  /** A teacher's own section: the one they are class teacher of, else the first one they teach. */
+  private async defaultSectionId(schoolId: string, actor?: AttendanceActor) {
+    if (!actor || OFFICE_STAFF.includes(actor.role)) return undefined;
+    const staff = await this.prisma.staff.findFirst({ where: { schoolId, userId: actor.userId }, select: { id: true } });
+    if (!staff) return undefined;
+    const assignments = await this.prisma.teacherAssignment.findMany({
+      where: { schoolId, staffId: staff.id },
+      select: { sectionId: true, isClassTeacher: true },
+    });
+    return (assignments.find((a) => a.isClassTeacher) ?? assignments[0])?.sectionId;
+  }
+
+  /** Teachers can save or change attendance only for today; office staff can change any day. */
+  private assertSameDay(actor: AttendanceActor | undefined, day: Date) {
+    if (!actor || OFFICE_STAFF.includes(actor.role)) return;
+    const tz = actor.activeSchool?.timezone;
+    if (schoolToday(tz, day) !== schoolToday(tz)) {
+      throw new ForbiddenException('Attendance can only be taken or changed on the day. Ask the office to correct it.');
+    }
+  }
+
+  async getTodayAttendance(schoolId: string, sectionId?: string, actor?: AttendanceActor) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const targetSection = sectionId
+    const ownSectionId = sectionId || (await this.defaultSectionId(schoolId, actor));
+    const targetSection = ownSectionId
       ? await this.prisma.section.findFirst({
-          where: { id: sectionId, schoolId },
+          where: { id: ownSectionId, schoolId },
           include: { class: true },
         })
       : await this.prisma.section.findFirst({
@@ -110,8 +140,13 @@ export class AttendanceService {
     };
   }
 
-  async saveAttendance(schoolId: string, data: { sectionId: string; date?: string; records: { studentId: string; status: string; remarks?: string }[]; markedBy?: string }) {
+  async saveAttendance(
+    schoolId: string,
+    data: { sectionId: string; date?: string; records: { studentId: string; status: string; remarks?: string }[]; markedBy?: string },
+    actor?: AttendanceActor,
+  ) {
     const date = data.date ? new Date(data.date) : new Date();
+    this.assertSameDay(actor, date);
     date.setHours(0, 0, 0, 0);
 
     return this.prisma.$transaction(async (tx) => {
@@ -350,6 +385,7 @@ export class AttendanceService {
     recordId: string,
     data: { status: string; remarks?: string; reason?: string },
     actor: { id: string; name: string },
+    caller?: AttendanceActor,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const record = await tx.attendanceRecord.findFirst({
@@ -363,6 +399,7 @@ export class AttendanceService {
       if (!record || record.session.schoolId !== schoolId) {
         throw new BadRequestException('Attendance record not found in this school');
       }
+      this.assertSameDay(caller, record.session.date);
 
       const previousStatus = record.status;
 

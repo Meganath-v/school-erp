@@ -75,6 +75,10 @@ model School {
   aiExamTests        AiExamTest[]
   aiExamSettings     AiExamSettings?
   aiExamPlans        AiExamImprovementPlan[]
+
+  timetablePeriods    TimetablePeriod[]
+  periodSubstitutions PeriodSubstitution[]
+  periodAttendances   PeriodAttendance[]
 }
 
 model Campus {
@@ -262,6 +266,7 @@ model AcademicYear {
   feePlans         FeePlan[]
 
   aiExamTests      AiExamTest[]
+  timetablePeriods TimetablePeriod[]
   @@index([schoolId])
 }
 
@@ -329,6 +334,8 @@ model Section {
   circulars           Circular[]
 
   aiExamTests         AiExamTest[]
+  periodSubstitutions PeriodSubstitution[]
+  periodAttendances   PeriodAttendance[]
   @@index([schoolId])
   @@index([classId])
 }
@@ -356,6 +363,8 @@ model Subject {
   quizzes            Quiz[]
 
   aiExamTests        AiExamTest[]
+  periodSubstitutions PeriodSubstitution[]
+  periodAttendances   PeriodAttendance[]
   @@index([schoolId])
 }
 
@@ -413,6 +422,7 @@ model Student {
   aiExamAssignments AiExamAssignee[]
   aiExamSubmissions AiExamSubmission[]
   aiExamPlans       AiExamImprovementPlan[]
+  periodAttendanceRecords PeriodAttendanceRecord[]
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
   @@index([userId])
@@ -517,6 +527,8 @@ model Staff {
   assignments        Assignment[]
   lessonPlans        LessonPlan[]
   teachingDiaries    TeachingDiaryEntry[]
+  periodSubstitutions PeriodSubstitution[]
+  periodAttendances   PeriodAttendance[]
 
   @@unique([schoolId, employeeNo])
   @@index([schoolId])
@@ -532,6 +544,7 @@ model TeacherAssignment {
   sectionId      String
   subjectId      String?
   isClassTeacher Boolean @default(false)
+  source         String? // null = assigned by an admin; TIMETABLE = created from the class timetable
 
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -612,6 +625,93 @@ model TimetableEntry {
   @@index([sectionId])
   @@index([staffId])
   @@index([dayOfWeek])
+}
+
+// ----------------------------------------------------
+// 6b. BELL SCHEDULE, DAILY SUBSTITUTIONS & PERIOD ATTENDANCE
+// ----------------------------------------------------
+
+/// The periods of each school day (the timeline). Set by the office.
+model TimetablePeriod {
+  id             String   @id @default(uuid())
+  schoolId       String
+  academicYearId String
+  dayOfWeek      Int      // 1 = Monday ... 7 = Sunday
+  periodNumber   Int
+  startTime      String   // "09:00"
+  endTime        String   // "09:45"
+  label          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicYearId, dayOfWeek, periodNumber])
+  @@index([schoolId])
+}
+
+/// A one-day change to a section's timetable: another teacher takes the period on that date.
+model PeriodSubstitution {
+  id              String   @id @default(uuid())
+  schoolId        String
+  sectionId       String
+  date            DateTime @db.Date
+  periodNumber    Int
+  staffId         String   // teacher taking the period that day
+  subjectId       String?
+  originalStaffId String?  // timetable teacher at the time of the change
+  reason          String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  staff   Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@unique([sectionId, date, periodNumber])
+  @@index([schoolId])
+  @@index([staffId, date])
+}
+
+/// Attendance taken for one period of one section on one date.
+model PeriodAttendance {
+  id           String   @id @default(uuid())
+  schoolId     String
+  sectionId    String
+  date         DateTime @db.Date
+  periodNumber Int
+  subjectId    String?
+  staffId      String   // teacher who took the period
+  markedById   String?  // user who last saved it
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school  School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section Section                  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  staff   Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  subject Subject?                 @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  records PeriodAttendanceRecord[]
+
+  @@unique([sectionId, date, periodNumber])
+  @@index([schoolId])
+  @@index([staffId, date])
+}
+
+model PeriodAttendanceRecord {
+  id                 String  @id @default(uuid())
+  periodAttendanceId String
+  studentId          String
+  status             String  // PRESENT, ABSENT, LATE, EXCUSED
+  remarks            String?
+
+  periodAttendance PeriodAttendance @relation(fields: [periodAttendanceId], references: [id], onDelete: Cascade)
+  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([periodAttendanceId, studentId])
+  @@index([studentId])
 }
 
 // ----------------------------------------------------

@@ -68,5 +68,10 @@ export class CreateAssignmentDto {
   @IsOptional()
   @IsBoolean()
   isClassTeacher?: boolean;
+
+  @ApiPropertyOptional({ description: 'If the section already has a class teacher, hand the role over to this staff member' })
+  @IsOptional()
+  @IsBoolean()
+  replaceClassTeacher?: boolean;
 }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -63,8 +63,17 @@ export class StaffController {
   @Post('assignments')
   @ApiOperation({ summary: 'Assign a staff member as Class Teacher or Subject Teacher' })
   @ApiResponse({ status: 201, description: 'Assignment created successfully' })
-  async createAssignment(@CurrentSchoolId() schoolId: string, @Body() body: CreateAssignmentDto) {
-    const data = await this.staffService.createAssignment(schoolId, body);
+  async createAssignment(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Body() body: CreateAssignmentDto) {
+    const data = await this.staffService.createAssignment(schoolId, body, user);
+    return { data };
+  }
+
+  @Roles(...SCHOOL_ADMINS)
+  @Delete('assignments/:id')
+  @ApiOperation({ summary: 'Remove a class teacher / subject teacher assignment' })
+  @ApiResponse({ status: 200, description: 'Assignment removed' })
+  async deleteAssignment(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    const data = await this.staffService.deleteAssignment(schoolId, id, user);
     return { data };
   }
 }

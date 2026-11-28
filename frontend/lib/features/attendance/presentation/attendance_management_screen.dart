@@ -10,6 +10,12 @@ import '../../../core/widgets/responsive_metric_row.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/auth/roles.dart';
+import '../../timetable/data/timetable_api.dart';
+import '../../timetable/presentation/daily_periods_view.dart';
+import '../../timetable/presentation/my_day_view.dart';
+import '../../timetable/presentation/schedule_widgets.dart';
 
 class AttendanceManagementScreen extends ConsumerStatefulWidget {
   const AttendanceManagementScreen({super.key});
@@ -35,14 +41,6 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
   bool _isSavingDaily = false;
   String _dailySearchQuery = '';
 
-  // Period Marking State
-  int _selectedPeriod = 1;
-  String? _selectedSubjectId;
-  List<dynamic> _subjects = [];
-  Map<String, String> _periodAttendanceMap = {};
-  final _periodRemarksCtrl = TextEditingController();
-  bool _isSavingPeriod = false;
-
   // Monthly Register State
   Map<String, dynamic>? _monthlyMatrix;
   int _selectedMonth = DateTime.now().month;
@@ -62,7 +60,6 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
   @override
   void dispose() {
     _tabController.dispose();
-    _periodRemarksCtrl.dispose();
     super.dispose();
   }
 
@@ -75,13 +72,11 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
     try {
       final results = await Future.wait([
         ApiClient().dio.get('/schools/classes').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
-        ApiClient().dio.get('/schools/subjects').then((r) => r.data['data'] as List? ?? []).catchError((_) => []),
         fetchAttendanceCompliance().then<Map<String, dynamic>?>((m) => m).catchError((_) => null),
       ]);
 
       _classes = results[0] as List<dynamic>;
-      _subjects = results[1] as List<dynamic>;
-      _defaulterReport = results[2] as Map<String, dynamic>?;
+      _defaulterReport = results[1] as Map<String, dynamic>?;
 
       if (_classes.isNotEmpty) {
         _selectedClassId = _classes[0]['id'];
@@ -93,8 +88,22 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
         }
       }
 
-      if (_subjects.isNotEmpty) {
-        _selectedSubjectId = _subjects[0]['id'];
+      // Teachers start on their own class (the backend picks it when no section is given).
+      final role = ref.read(authProvider).activeRole;
+      if (role == AppRoles.classTeacher || role == AppRoles.subjectTeacher) {
+        final own = await ApiClient().dio.get('/attendance/today').then((r) => r.data['data']?['section']).catchError((_) => null);
+        if (own is Map && own['id'] != null) {
+          for (final c in _classes) {
+            for (final sec in (c['sections'] as List? ?? [])) {
+              if (sec['id'] == own['id']) {
+                _selectedClassId = c['id'];
+                _selectedSectionId = sec['id'];
+                _className = c['name'];
+                _sectionName = sec['name'];
+              }
+            }
+          }
+        }
       }
 
       await _loadSectionRoster();
@@ -118,16 +127,13 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
       final studentsList = data['students'] as List? ?? [];
 
       final Map<String, String> dMap = {};
-      final Map<String, String> pMap = {};
       for (final s in studentsList) {
         dMap[s['studentId']] = s['status'] ?? 'PRESENT';
-        pMap[s['studentId']] = 'PRESENT';
       }
 
       setState(() {
         _students = studentsList;
         _dailyAttendanceMap = dMap;
-        _periodAttendanceMap = pMap;
       });
     } catch (_) {}
   }
@@ -179,44 +185,6 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
       }
     } finally {
       if (mounted) setState(() => _isSavingDaily = false);
-    }
-  }
-
-  Future<void> _savePeriodAttendance() async {
-    if (_selectedSectionId == null || _selectedSubjectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select section and subject')));
-      return;
-    }
-
-    setState(() => _isSavingPeriod = true);
-    try {
-      final records = _periodAttendanceMap.entries.map((e) {
-        return {
-          'studentId': e.key,
-          'status': e.value,
-        };
-      }).toList();
-
-      await ApiClient().dio.post('/attendance/sessions', data: {
-        'sectionId': _selectedSectionId,
-        'sessionType': 'PERIOD',
-        'periodNumber': _selectedPeriod,
-        'subjectId': _selectedSubjectId,
-        'remarks': _periodRemarksCtrl.text.trim(),
-        'records': records,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Period $_selectedPeriod attendance recorded successfully!'), backgroundColor: AppColors.success),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to record period attendance: $e'), backgroundColor: AppColors.error));
-      }
-    } finally {
-      if (mounted) setState(() => _isSavingPeriod = false);
     }
   }
 
@@ -547,115 +515,13 @@ class _AttendanceManagementScreenState extends ConsumerState<AttendanceManagemen
     );
   }
 
+  /// Period attendance: teachers see their own periods for the day; office staff pick a class.
+  /// Only the teacher taking a period can mark it, on that day; the office can correct it later.
   Widget _buildPeriodMarkingTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
-            breadcrumbs: const ['Attendance', 'Period Attendance', 'Subject Session'],
-            title: 'Subject Period Attendance Marking',
-            subtitle: 'Record attendance for specific 1-8 class periods and curriculum subjects.',
-            actions: [
-              ElevatedButton.icon(
-                onPressed: _isSavingPeriod ? null : _savePeriodAttendance,
-                icon: _isSavingPeriod
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save, size: 16),
-                label: const Text('Commit Period Attendance'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.borderLight),
-              boxShadow: AppShadows.subtle,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Select Period & Instructional Subject', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<int>(isExpanded: true, 
-                        value: _selectedPeriod,
-                        decoration: const InputDecoration(labelText: 'Class Period (1 to 8)'),
-                        items: [1, 2, 3, 4, 5, 6, 7, 8].map((p) => DropdownMenuItem(value: p, child: Text('Period $p'))).toList(),
-                        onChanged: (val) => setState(() => _selectedPeriod = val!),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(isExpanded: true, 
-                        value: _selectedSubjectId,
-                        decoration: const InputDecoration(labelText: 'Subject Taught'),
-                        items: _subjects.map<DropdownMenuItem<String>>((sub) => DropdownMenuItem(value: sub['id'] as String, child: Text(sub['name']))).toList(),
-                        onChanged: (val) => setState(() => _selectedSubjectId = val),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextField(
-                  controller: _periodRemarksCtrl,
-                  decoration: const InputDecoration(labelText: 'Session Topic & Remarks', hintText: 'e.g. Chapter 4 Thermodynamics Lecture'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-
-          // Period Students Table
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.borderLight),
-              boxShadow: AppShadows.subtle,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _students.length,
-              separatorBuilder: (ctx, i) => const Divider(height: 1, color: AppColors.borderLight),
-              itemBuilder: (context, index) {
-                final s = _students[index];
-                final studentId = s['studentId'];
-                final status = _periodAttendanceMap[studentId] ?? 'PRESENT';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.secondarySubtle,
-                        child: Text('${s['rollNo'] ?? index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary, fontSize: 12)),
-                      ), const SizedBox(width: AppSpacing.md), Expanded(
-                        child: Text(s['fullName'] ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      )]), const SizedBox(height: AppSpacing.sm), SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: 'PRESENT', label: Text('Present')),
-                          ButtonSegment(value: 'ABSENT', label: Text('Absent')),
-                          ButtonSegment(value: 'LATE', label: Text('Late')),
-                        ],
-                        selected: {status},
-                        onSelectionChanged: (set) => setState(() => _periodAttendanceMap[studentId] = set.first),
-                      )]),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+    final role = ref.watch(authProvider).activeRole;
+    final api = TimetableApi();
+    if (role == AppRoles.classTeacher || role == AppRoles.subjectTeacher) return MyDayView(api: api);
+    return SectionScope(api: api, pickAny: true, builder: (id) => DailyPeriodsView(api: api, sectionId: id, officeView: true));
   }
 
   Widget _buildMonthlyRegisterTab() {

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export class StudentRecordAttendanceDto {
   @ApiProperty({ example: 'student-uuid-1', description: 'Student UUID' })
@@ -77,3 +77,62 @@ export class CorrectAttendanceRecordDto {
 }
 
 
+
+export class PeriodRecordDto {
+  @ApiProperty({ example: 'student-uuid-1' })
+  @IsNotEmpty()
+  @IsString()
+  studentId: string;
+
+  @ApiProperty({ example: 'PRESENT', enum: ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] })
+  @IsIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
+  status: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  remarks?: string;
+}
+
+export class SavePeriodAttendanceDto {
+  @ApiProperty({ description: 'Section UUID' })
+  @IsNotEmpty()
+  @IsString()
+  sectionId: string;
+
+  @ApiProperty({ example: '2026-11-30' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
+  date: string;
+
+  @ApiProperty({ example: 2 })
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  periodNumber: number;
+
+  @ApiProperty({ type: [PeriodRecordDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => PeriodRecordDto)
+  records: PeriodRecordDto[];
+}
+
+export class PeriodAttendanceQueryDto {
+  @ApiProperty({ description: 'Section UUID' })
+  @IsNotEmpty()
+  @IsString()
+  sectionId: string;
+
+  @ApiProperty({ example: '2026-11-30' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
+  date: string;
+
+  @ApiProperty({ example: 2 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  periodNumber: number;
+}

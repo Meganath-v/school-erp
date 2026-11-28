@@ -20,7 +20,7 @@ import '../../features/staff/presentation/staff_management_screen.dart';
 import '../../features/student/presentation/student_portal_screen.dart';
 import '../../features/students/presentation/student_management_screen.dart';
 import '../../features/subject_teacher/presentation/subject_teacher_dashboard.dart';
-import '../../features/timetable/presentation/timetable_management_screen.dart';
+import '../../features/timetable/presentation/timetable_hub_screen.dart';
 
 /// A screen a role may open. [label] is used in menus and app bars,
 /// [shortLabel] in the bottom navigation bar.
@@ -102,6 +102,8 @@ class RoleNavigation {
           _reports,
           _fees,
           _students,
+          _timetable,
+          _attendance,
           _circulars,
           _audit,
         ]);
@@ -152,7 +154,7 @@ class RoleNavigation {
   static final _assessment = _s('assessment', 'Internal Marks & Quizzes', 'Internals', Icons.calculate_outlined, Icons.calculate, (_) => const AssessmentScreen());
   static final _aiExam = _s('ai-exam', 'AI Examination', 'AI Exam', Icons.psychology_outlined, Icons.psychology, (_) => const AiExamScreen());
   static final _fees = _s('fees', 'Fees & Receipts', 'Fees', Icons.receipt_long_outlined, Icons.receipt_long, (_) => const FeeManagementScreen());
-  static final _timetable = _s('timetable', 'Timetable', 'Timetable', Icons.schedule_outlined, Icons.schedule, (_) => const TimetableManagementScreen());
+  static final _timetable = _s('timetable', 'Timetable', 'Timetable', Icons.schedule_outlined, Icons.schedule, (_) => const TimetableHubScreen());
   static final _circulars = _s('circulars', 'Circulars & Notices', 'Notices', Icons.campaign_outlined, Icons.campaign, (_) => const CircularManagementScreen());
   static final _audit = _s('audit', 'Audit Logs', 'Audit', Icons.history_outlined, Icons.history, (_) => const AuditLogsScreen());
 }

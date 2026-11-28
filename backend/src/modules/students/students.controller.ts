@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles, OFFICE_STAFF, ALL_SCHOOL_ROLES } from '../../common/decorators/roles.decorator';
+
+const ADMITTERS = [...OFFICE_STAFF, 'CLASS_TEACHER'];
 import { CurrentSchoolId, CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   CreateStudentAdmissionDto,
@@ -62,12 +64,12 @@ export class StudentsController {
     return { data };
   }
 
-  @Roles(...OFFICE_STAFF)
+  @Roles(...ADMITTERS)
   @Post()
-  @ApiOperation({ summary: 'Admit a new student with optional enrollment and guardian link' })
+  @ApiOperation({ summary: 'Admit a new student (office: any class; class teacher: into their own class)' })
   @ApiResponse({ status: 201, description: 'Student admitted successfully' })
-  async createStudent(@CurrentSchoolId() schoolId: string, @Body() body: CreateStudentAdmissionDto) {
-    const data = await this.studentsService.createStudentAdmission(schoolId, body);
+  async createStudent(@CurrentSchoolId() schoolId: string, @CurrentUser() user: any, @Body() body: CreateStudentAdmissionDto) {
+    const data = await this.studentsService.createStudentAdmission(schoolId, body, user);
     return { data };
   }
 

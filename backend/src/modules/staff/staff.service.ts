@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -148,20 +148,57 @@ export class StaffService {
     });
   }
 
-  async createAssignment(schoolId: string, data: any) {
-    const assignment = await this.prisma.teacherAssignment.create({
-      data: {
-        schoolId,
-        staffId: data.staffId,
-        classId: data.classId,
-        sectionId: data.sectionId,
-        subjectId: data.subjectId,
-        isClassTeacher: !!data.isClassTeacher,
-      },
+  async createAssignment(schoolId: string, data: any, actor?: { userId?: string; name?: string }) {
+    const [staff, section] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { id: data.staffId, schoolId } }),
+      this.prisma.section.findFirst({ where: { id: data.sectionId, schoolId }, include: { class: true } }),
+    ]);
+    if (!staff) throw new BadRequestException('Staff member not found');
+    if (!section || section.classId !== data.classId) throw new BadRequestException('Section not found in that class');
+    if (data.subjectId) {
+      const subject = await this.prisma.subject.findFirst({ where: { id: data.subjectId, schoolId } });
+      if (!subject) throw new BadRequestException('Subject not found');
+    }
+
+    const assignment = await this.prisma.$transaction(async (tx) => {
+      if (data.isClassTeacher) {
+        // Each class (section) has exactly one class teacher.
+        const current = await tx.teacherAssignment.findMany({
+          where: { schoolId, sectionId: data.sectionId, isClassTeacher: true, NOT: { staffId: data.staffId } },
+          include: { staff: true },
+        });
+        if (current.length && !data.replaceClassTeacher) {
+          const who = current[0].staff;
+          throw new ConflictException(
+            `${section.class.name} ${section.name} already has a class teacher: ${who.firstName} ${who.lastName}. Replace them or remove that assignment first.`,
+          );
+        }
+        for (const old of current) {
+          // Keep the old teacher's subject; drop a class-teacher-only row.
+          if (old.subjectId) await tx.teacherAssignment.update({ where: { id: old.id }, data: { isClassTeacher: false } });
+          else await tx.teacherAssignment.delete({ where: { id: old.id } });
+        }
+        const mine = await tx.teacherAssignment.findFirst({
+          where: { schoolId, staffId: data.staffId, sectionId: data.sectionId, subjectId: data.subjectId ?? null },
+        });
+        if (mine) return tx.teacherAssignment.update({ where: { id: mine.id }, data: { isClassTeacher: true, source: null } });
+      }
+      return tx.teacherAssignment.create({
+        data: {
+          schoolId,
+          staffId: data.staffId,
+          classId: data.classId,
+          sectionId: data.sectionId,
+          subjectId: data.subjectId,
+          isClassTeacher: !!data.isClassTeacher,
+        },
+      });
     });
 
     await this.auditService.log({
       schoolId,
+      actorId: actor?.userId,
+      actorName: actor?.name,
       action: 'STAFF_ASSIGNED',
       entity: 'TeacherAssignment',
       entityId: assignment.id,
@@ -171,9 +208,31 @@ export class StaffService {
         sectionId: data.sectionId,
         subjectId: data.subjectId,
         isClassTeacher: !!data.isClassTeacher,
+        replacedClassTeacher: !!data.replaceClassTeacher,
       },
     });
 
     return assignment;
+  }
+
+  async deleteAssignment(schoolId: string, id: string, actor?: { userId?: string; name?: string }) {
+    const assignment = await this.prisma.teacherAssignment.findFirst({ where: { id, schoolId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    await this.prisma.teacherAssignment.delete({ where: { id } });
+    await this.auditService.log({
+      schoolId,
+      actorId: actor?.userId,
+      actorName: actor?.name,
+      action: 'STAFF_UNASSIGNED',
+      entity: 'TeacherAssignment',
+      entityId: id,
+      details: {
+        staffId: assignment.staffId,
+        sectionId: assignment.sectionId,
+        subjectId: assignment.subjectId,
+        isClassTeacher: assignment.isClassTeacher,
+      },
+    });
+    return { id };
   }
 }

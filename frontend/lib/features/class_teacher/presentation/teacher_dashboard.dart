@@ -7,6 +7,7 @@ import '../../../core/widgets/metric_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/search_filter_bar.dart';
 import '../../../core/widgets/state_views.dart';
+import 'add_student_dialog.dart';
 
 class ClassTeacherDashboard extends ConsumerStatefulWidget {
   const ClassTeacherDashboard({super.key});
@@ -75,7 +76,8 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
         _attendanceMap = newMap;
         _leaveRequests = results[1].data['data'] ?? [];
         _assignments = results[2].data['data'] as List? ?? [];
-        _circulars = results[3].data as List? ?? [];
+        final circularBody = results[3].data;
+        _circulars = circularBody is Map ? (circularBody['data'] as List? ?? []) : (circularBody as List? ?? []);
         _isLoading = false;
       });
     } catch (e) {
@@ -245,6 +247,18 @@ class _ClassTeacherDashboardState extends ConsumerState<ClassTeacherDashboard> w
               title: 'Class Attendance: $_className - $_sectionName',
               subtitle: 'Assigned Classroom • Academic Year 2026-2027 • Mark attendance and manage class learners.',
               actions: [
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final added = await showAddStudentDialog(context, className: '$_className $_sectionName');
+                    if (added && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student added to your class')));
+                      _loadTeacherData();
+                    }
+                  },
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                  label: const Text('Add student'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 OutlinedButton.icon(
                   onPressed: _markAllPresent,
                   icon: const Icon(Icons.done_all, size: 16),
